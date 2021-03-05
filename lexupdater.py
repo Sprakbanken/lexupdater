@@ -4,7 +4,7 @@
 import sqlite3
 import re
 
-from bin import RuleValidator, UpdateQueryBuiler, SelectQueryBuilder
+from bin import RuleValidator, UpdateQueryBuiler, SelectQueryBuilder, BlacklistReader
 
 # Regex checker
 
@@ -13,6 +13,26 @@ def regexp(regpat, item):
     mypattern = re.compile(regpat)
     return mypattern.search(item) is not None
 
+# Config
+
+dialects =  ['e_spoken', 'e_written', 'sw_spoken', 'sw_written', 'w_spoken', 'w_written', 
+            't_spoken', 't_written', 'n_spoken', 'n_written']
+
+word_table = "words_tmp"
+
+database = '../backend-db02.db'
+
+test1 = {"area": "e_spoken", "name": "retrotest", "rules": 
+        [{'pattern': r'\b(R)([NTD])\b', 'repl': r'\1 \2', 'constraints': []}, 
+        {'pattern': r'\b(R)(NX0)\b', 'repl': r'\1 AX0 N', 'constraints': []}]}
+test2 = {"area": "e_spoken", "name": "masc", "rules": 
+        [{'pattern': r'\bAX0 R$', 'repl': r'AA0 R', 'constraints': 
+            [{'field': 'pos', 'pattern': 'NN', 'is_regex': False}, {'field': 'feats', 'pattern': r'MAS', 'is_regex': True}]}, 
+        {'pattern': r'\bNX0 AX0$', 'repl': r'AA0 N AX0', 'constraints': 
+            [{'field': 'pos', 'pattern': 'NN', 'is_regex': False}, {'field': 'feats', 'pattern': r'MAS', 'is_regex': True}]}]}
+
+blacklist1 = {'ruleset': 'retrotest', 'words': ['garn', 'klarne']}
+blacklist2 = {'ruleset': 'masc', 'words': ['søknader', 'søknadene', 'dugnader', 'dugnadene']}
 
 # Create temporary table_expressions
 def create_dialect_table_stmts(dialectlist):
@@ -29,14 +49,38 @@ def create_dialect_table_stmts(dialectlist):
         stmts.append((create_stmt, insert_stmt))
     return stmts
 
+def create_word_table_stmts(word_table_name):
+    create_stmt = f'''CREATE TEMPORARY TABLE {word_table_name} (
+                    word_row_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    word_id INTEGER NOT NULL,
+                    wordform TEXT NOT NULL,
+                    pos TEXT,
+                    feats TEXT,
+                    source TEXT,
+                    decomp_ort TEXT,
+                    decomp_pos TEXT,
+                    garbage TEXT,
+                    domain TEXT,
+                    abbr TEXT,
+                    set_name TEXT,
+                    style_status TEXT,
+                    inflector_role TEXT,
+                    inflector_rule TEXT,
+                    morph_label TEXT,
+                    compounder_code TEXT,
+                    update_info TEXT);'''
+    insert_stmt = f"INSERT INTO {word_table_name} SELECT * FROM words;"
+    return create_stmt, insert_stmt
+
+
 
 class UpdateDatabase(object):
-    def __init__(self, db, rulesets, blacklists=[]):
+    def __init__(self, db, rulesets, dialect_names, word_tbl, blacklists=[]):
         self._db = db
         self._rulesets = rulesets
         self._blacklists = blacklists
-        self._dialects = ['e_spoken', 'e_written', 'sw_spoken', 'sw_written', 'w_spoken', 'w_written', 
-                        't_spoken', 't_written', 'n_spoken', 'n_written']
+        self._dialects = dialect_names
+        self._word_table = word_tbl
         for rule in self._rulesets:
             RuleValidator(rule).validate()
     
@@ -51,6 +95,10 @@ class UpdateDatabase(object):
         self._connection.create_function("REGEXP", 2, regexp)
         self._connection.create_function("REGREPLACE", 3, re.sub)
         self._cursor = self._connection.cursor()
+        self._word_create_stmt, self._word_update_stmt = create_word_table_stmts(self._word_table)
+        self._cursor.execute(self._word_create_stmt)
+        self._cursor.execute(self._word_update_stmt)
+        self._connection.commit()
         for create_stmt, insert_stmt in create_dialect_table_stmts(self._dialects):
             self._cursor.execute(create_stmt)
             self._cursor.execute(insert_stmt)
@@ -59,49 +107,56 @@ class UpdateDatabase(object):
     def _construct_update_queries(self):
         self._updates = []
         for ruleset in self._rulesets:
+            name = ruleset["name"]
             area = self._validate_dialect(ruleset['area'])
-            name = ruleset['name']
+            self._bl_str = ''
+            self._bl_values = []
+            for blist in self._blacklists:
+                if blist['ruleset'] == name:
+                    self._bl_str, self._bl_values = BlacklistReader(blist).get_blacklist()
+                    break # Possibly add support for myltiple backlists referencing the same ruleset 
             rules = []
             for r in ruleset['rules']:
                 mydict = {}
-                mydict['query'], mydict['values'], mydict['is_constrained'] = UpdateQueryBuiler(area, r).get_update_query()
+                mydict['query'], mydict['values'], mydict['is_constrained'] = UpdateQueryBuiler(area, r, self._word_table).get_update_query()
                 if mydict['is_constrained'] == False:
-                    mydict['query'] = mydict['query'] + ';'
+                    if self._bl_str == '':
+                        mydict['query'] = mydict['query'] + ';'
+                    else:
+                        mydict['query'] = mydict['query'] + f' WHERE word_id IN (SELECT word_id FROM {self._word_table} WHERE' + self._bl_str + ');'
+                        mydict['values'] = mydict['values'] + self._bl_values
                 else:
-                    mydict['query'] = mydict['query'] + ');' # handle blacklists
+                    if self._bl_str == '':
+                        mydict['query'] = mydict['query'] + ');'
+                    else:
+                        mydict['query'] = mydict['query'] + ' AND' + self._bl_str + ');'
+                        mydict['values'] = mydict['values'] + self._bl_values
                 rules.append(mydict)
             self._updates.append(rules)
+        
+
 
     def update(self):
+        self._fullqueries = []
         self._establish_connection()
         self._construct_update_queries()
         print(self._cursor.execute("SELECT COUNT(*) FROM e_spoken WHERE nofabet REGEXP ?;", (r'\bAX0 R$',)).fetchall())
         print(self._cursor.execute("SELECT COUNT(*) FROM e_spoken WHERE nofabet REGEXP ?;", (r'\b(R)([NTD])\b',)).fetchall())
         for u in self._updates:
             for rule in u:
-                self._cursor.execute(rule['query'], rule['values'])
+                self._cursor.execute(rule['query'], tuple(rule['values']))
                 self._connection.commit()
+                self._fullqueries.append((rule['query'], tuple(rule['values'])))
         print(self._cursor.execute("SELECT COUNT(*) FROM e_spoken WHERE nofabet REGEXP ?;", (r'\bAX0 R$',)).fetchall())
         print(self._cursor.execute("SELECT COUNT(*) FROM e_spoken WHERE nofabet REGEXP ?;", (r'\b(R)([NTD])\b',)).fetchall())
         self._close_connection()
+        return self._fullqueries # embed call in a print to manually verify the correctness of the update statements
     
     def _close_connection(self):
         self._connection.close()
 
 
-# Testing
-
-test1 = {"area": "e_spoken", "name": "retrotest", "rules": 
-        [{'pattern': r'\b(R)([NTD])\b', 'repl': r'\1 \2', 'constraints': []}, 
-        {'pattern': r'\b(R)(NX0)\b', 'repl': r'\1 AX0 N', 'constraints': []}]}
-test2 = {"area": "e_spoken", "name": "masc", "rules": 
-        [{'pattern': r'\bAX0 R$', 'repl': r'AA0 R', 'constraints': 
-            [{'field': 'pos', 'pattern': 'NN', 'is_regex': False}, {'field': 'feats', 'pattern': r'MAS', 'is_regex': True}]}, 
-        {'pattern': r'\bNX0 AX0$', 'repl': r'AA0 N AX0', 'constraints': 
-            [{'field': 'pos', 'pattern': 'NN', 'is_regex': False}, {'field': 'feats', 'pattern': r'MAS', 'is_regex': True}]}]}
-
-blacklist1 = {'ruleset': 'masc', 'words': ['søknader', 'søknadene', 'dugnader', 'dugnadene']}
 
 
 if __name__ == "__main__":
-    UpdateDatabase('../backend-db02.db', [test1, test2]).update()
+    print(UpdateDatabase(database, [test1, test2], dialects, word_table, blacklists=[blacklist1, blacklist2]).update())

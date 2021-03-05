@@ -27,6 +27,7 @@ class BlacklistValidator(object):
 
     def __init__(self, bldict):
         self._bldict = bldict
+
     
     def validate(self):
         blkeys = ["ruleset", "words"]
@@ -37,8 +38,9 @@ class BlacklistValidator(object):
 
 class QueryBuiler(object):
 
-    def __init__(self, area, rule):
+    def __init__(self, area, rule, word_table):
         self._area = area # Temporary assumption: area per ruleset. Needs to be modified in final version
+        self._word_table = word_table
         self._pattern = rule['pattern']
         self._repl = rule['repl']
         self._constraints = rule['constraints']
@@ -46,12 +48,12 @@ class QueryBuiler(object):
 
 
 class UpdateQueryBuiler(QueryBuiler):
-    def __init__(self, area, rule):
-        QueryBuiler.__init__(self, area, rule)
+    def __init__(self, area, rule, word_table):
+        QueryBuiler.__init__(self, area, rule, word_table)
         self._query = f"UPDATE {area} SET nofabet = REGREPLACE(?,?,nofabet)"
         self._values = [self._pattern, self._repl]
         if self._constrained_query == True:
-            conststr, constvalues = ConstraintReader(self._constraints).get_constraints()
+            conststr, constvalues = ConstraintReader(self._constraints, self._word_table).get_constraints()
             self._query += conststr
             self._values = self._values + constvalues
     
@@ -66,9 +68,10 @@ class SelectQueryBuilder(QueryBuiler):
 
 
 class ConstraintReader(object):
-    def __init__(self, constraints):
+    def __init__(self, constraints, word_table):
+        self._word_table = word_table
         self._constraints = constraints
-        self._constraintstring = " WHERE word_id IN (SELECT word_id FROM words WHERE "
+        self._constraintstring = f" WHERE word_id IN (SELECT word_id FROM {self._word_table} WHERE "
         self._values = []
     
     def _parse_constraints(self):
@@ -88,8 +91,11 @@ class ConstraintReader(object):
 class BlacklistReader(object):
     def __init__(self, bldict):
         self._bldict = bldict
-        RuleValidator(bldict).validate()
-        self._ruleset = bldict['ruleset']
-        self._words = bldict['words']
-        #generate queries
+        BlacklistValidator(bldict).validate()
+        self._values = bldict['words']
+        self._blstring = f' wordform NOT IN ({",".join(["?" for n in range(len(self._values))])})'
+
+    
+    def get_blacklist(self):
+        return self._blstring, self._values
 
