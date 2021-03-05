@@ -4,7 +4,7 @@
 import sqlite3
 import re
 
-from bin import RuleValidator, UpdateQueryBuiler, SelectQueryBuilder, BlacklistReader
+from dialect_updater import RuleValidator, UpdateQueryBuiler, SelectQueryBuilder, BlacklistReader
 
 # Regex checker
 
@@ -20,16 +20,16 @@ dialects =  ['e_spoken', 'e_written', 'sw_spoken', 'sw_written', 'w_spoken', 'w_
 
 word_table = "words_tmp"
 
-database = '../backend-db02.db'
+database = '../../backend-db02.db'
 
 test1 = {"area": "e_spoken", "name": "retrotest", "rules": 
         [{'pattern': r'\b(R)([NTD])\b', 'repl': r'\1 \2', 'constraints': []}, 
         {'pattern': r'\b(R)(NX0)\b', 'repl': r'\1 AX0 N', 'constraints': []}]}
 test2 = {"area": "e_spoken", "name": "masc", "rules": 
         [{'pattern': r'\bAX0 R$', 'repl': r'AA0 R', 'constraints': 
-            [{'field': 'pos', 'pattern': 'NN', 'is_regex': False}, {'field': 'feats', 'pattern': r'MAS', 'is_regex': True}]}, 
+            [{'field': 'pos', 'pattern': r'NN', 'is_regex': False}, {'field': 'feats', 'pattern': r'MAS', 'is_regex': True}]}, 
         {'pattern': r'\bNX0 AX0$', 'repl': r'AA0 N AX0', 'constraints': 
-            [{'field': 'pos', 'pattern': 'NN', 'is_regex': False}, {'field': 'feats', 'pattern': r'MAS', 'is_regex': True}]}]}
+            [{'field': 'pos', 'pattern': r'NN', 'is_regex': False}, {'field': 'feats', 'pattern': r'MAS', 'is_regex': True}]}]}
 
 blacklist1 = {'ruleset': 'retrotest', 'words': ['garn', 'klarne']}
 blacklist2 = {'ruleset': 'masc', 'words': ['søknader', 'søknadene', 'dugnader', 'dugnadene']}
@@ -140,23 +140,45 @@ class UpdateDatabase(object):
         self._fullqueries = []
         self._establish_connection()
         self._construct_update_queries()
-        print(self._cursor.execute("SELECT COUNT(*) FROM e_spoken WHERE nofabet REGEXP ?;", (r'\bAX0 R$',)).fetchall())
-        print(self._cursor.execute("SELECT COUNT(*) FROM e_spoken WHERE nofabet REGEXP ?;", (r'\b(R)([NTD])\b',)).fetchall())
         for u in self._updates:
             for rule in u:
                 self._cursor.execute(rule['query'], tuple(rule['values']))
                 self._connection.commit()
                 self._fullqueries.append((rule['query'], tuple(rule['values'])))
-        print(self._cursor.execute("SELECT COUNT(*) FROM e_spoken WHERE nofabet REGEXP ?;", (r'\bAX0 R$',)).fetchall())
-        print(self._cursor.execute("SELECT COUNT(*) FROM e_spoken WHERE nofabet REGEXP ?;", (r'\b(R)([NTD])\b',)).fetchall())
-        self._close_connection()
-        return self._fullqueries # embed call in a print to manually verify the correctness of the update statements
+#        self.close_connection()
+#        return self._fullqueries # embed call in a print to manually verify the correctness of the update statements
     
-    def _close_connection(self):
+    def get_connection(self):
+        return self._connection
+    
+    def close_connection(self):
         self._connection.close()
 
-
+class Results(object):
+    def __init__(self, connection, dialect_names, word_tbl):
+        self._connection = connection
+        self._cursor = self._connection.cursor()
+        self._dialects = dialect_names
+        self._word_table = word_tbl
+        self._results = {d:[] for d in self._dialects}
+        self._query_db()
+    
+    def _query_db(self):
+        for d in self._dialects:
+            stmt = f"""SELECT w.word_id, w.wordform, w.pos, w.feats, w.source, w.decomp_ort, w.decomp_pos, 
+                        w.garbage, w.domain, w.abbr, w.set_name, w.style_status, w.inflector_role, w.inflector_rule, 
+                        w.morph_label, w.compounder_code, w.update_info, p.pron_id, p.nofabet, p.certainty
+                        FROM {self._word_table} w LEFT JOIN {d} p ON p.word_id = w.word_id;"""
+            self._results[d] = self._cursor.execute(stmt).fetchall()
+    
+    def get_results(self):
+        return self._results
 
 
 if __name__ == "__main__":
-    print(UpdateDatabase(database, [test1, test2], dialects, word_table, blacklists=[blacklist1, blacklist2]).update())
+    updateobj = UpdateDatabase(database, [test1, test2], dialects, word_table, blacklists=[blacklist1, blacklist2])
+    updateobj.update()
+    connection = updateobj.get_connection()
+    resultobj = Results(connection, dialects, word_table)
+    updateobj.close_connection()
+    resultobj2 = Results(connection, dialects, word_table)
