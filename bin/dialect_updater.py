@@ -6,6 +6,7 @@ import re
 
 
 class RuleValidator(object):
+    """Check that dialect update rules are valid format"""
 
     def __init__(self, ruledict):
         self._ruledict = ruledict
@@ -24,7 +25,7 @@ class RuleValidator(object):
                      raise KeyError("The constraint dict must have the keys 'field', 'pattern', 'is_regex', and no other keys")
 
 class BlacklistValidator(object):
-
+    """Check that blacklists are valid format"""
     def __init__(self, bldict):
         self._bldict = bldict
 
@@ -37,9 +38,9 @@ class BlacklistValidator(object):
 
 
 class QueryBuiler(object):
-
+    """Parent class for querybuilder classes."""
     def __init__(self, area, rule, word_table):
-        self._area = area # Temporary assumption: area per ruleset. Needs to be modified in final version
+        self._area = area # Temporary assumption: one area per ruleset. Needs to be modified in final version
         self._word_table = word_table
         self._pattern = rule['pattern']
         self._repl = rule['repl']
@@ -48,6 +49,7 @@ class QueryBuiler(object):
 
 
 class UpdateQueryBuiler(QueryBuiler):
+    """Build an sql update query string """
     def __init__(self, area, rule, word_table):
         QueryBuiler.__init__(self, area, rule, word_table)
         self._query = f"UPDATE {area} SET nofabet = REGREPLACE(?,?,nofabet)"
@@ -64,10 +66,14 @@ class UpdateQueryBuiler(QueryBuiler):
 
 
 class SelectQueryBuilder(QueryBuiler):
+    """Not yet implemented. The idea is that it should build a select query that retrieves all entries
+    that fits the search pattern, making it easier to test and debug."""
     pass
 
 
 class ConstraintReader(object):
+    """Replacement rules can be constrained to certain grammatical categories or other information from the word table.
+    This class reads such constraints and converts them to SQL WHERE clauses."""
     def __init__(self, constraints, word_table):
         self._word_table = word_table
         self._constraints = constraints
@@ -89,6 +95,7 @@ class ConstraintReader(object):
         return self._constraintstring, self._values
 
 class BlacklistReader(object):
+    """parses blacklists and converts them to SQL WHERE clause fragments"""
     def __init__(self, bldict):
         self._bldict = bldict
         BlacklistValidator(bldict).validate()

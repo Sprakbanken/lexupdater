@@ -4,38 +4,22 @@
 import sqlite3
 import re
 
-from dialect_updater import RuleValidator, UpdateQueryBuiler, SelectQueryBuilder, BlacklistReader
+from bin.dialect_updater import RuleValidator, UpdateQueryBuiler, SelectQueryBuilder, BlacklistReader
 
-# Regex checker
+# Regex checker, to be used in SQL queries
 
 def regexp(regpat, item):
     """True if regex match, else False"""
     mypattern = re.compile(regpat)
     return mypattern.search(item) is not None
 
-# Config
-
-dialects =  ['e_spoken', 'e_written', 'sw_spoken', 'sw_written', 'w_spoken', 'w_written', 
-            't_spoken', 't_written', 'n_spoken', 'n_written']
-
-word_table = "words_tmp"
-
-database = '../../backend-db02.db'
-
-test1 = {"area": "e_spoken", "name": "retrotest", "rules": 
-        [{'pattern': r'\b(R)([NTD])\b', 'repl': r'\1 \2', 'constraints': []}, 
-        {'pattern': r'\b(R)(NX0)\b', 'repl': r'\1 AX0 N', 'constraints': []}]}
-test2 = {"area": "e_spoken", "name": "masc", "rules": 
-        [{'pattern': r'\bAX0 R$', 'repl': r'AA0 R', 'constraints': 
-            [{'field': 'pos', 'pattern': r'NN', 'is_regex': False}, {'field': 'feats', 'pattern': r'MAS', 'is_regex': True}]}, 
-        {'pattern': r'\bNX0 AX0$', 'repl': r'AA0 N AX0', 'constraints': 
-            [{'field': 'pos', 'pattern': r'NN', 'is_regex': False}, {'field': 'feats', 'pattern': r'MAS', 'is_regex': True}]}]}
-
-blacklist1 = {'ruleset': 'retrotest', 'words': ['garn', 'klarne']}
-blacklist2 = {'ruleset': 'masc', 'words': ['søknader', 'søknadene', 'dugnader', 'dugnadene']}
 
 # Create temporary table_expressions
+
 def create_dialect_table_stmts(dialectlist):
+    """Create a temp table for each dialect in the dialect list
+    (to be supplied from the config file), and make it mirror base, 
+    the table containing the original pronunciations."""
     stmts = []
     for d in dialectlist:
         create_stmt = f'''CREATE TEMPORARY TABLE {d} (
@@ -50,6 +34,10 @@ def create_dialect_table_stmts(dialectlist):
     return stmts
 
 def create_word_table_stmts(word_table_name):
+    """Create a temp table that mirrors the "words" table,
+    i.e. the table with ortographic forms and word metadata.
+    The name should be supplied in the configuration file. 
+    New words should be added to this table."""
     create_stmt = f'''CREATE TEMPORARY TABLE {word_table_name} (
                     word_row_id INTEGER PRIMARY KEY AUTOINCREMENT,
                     word_id INTEGER NOT NULL,
@@ -74,7 +62,8 @@ def create_word_table_stmts(word_table_name):
 
 
 
-class UpdateDatabase(object):
+class DatabaseUpdater(object):
+    """Class for handling the db connection and running the updates on temp tables"""
     def __init__(self, db, rulesets, dialect_names, word_tbl, blacklists=[]):
         self._db = db
         self._rulesets = rulesets
@@ -83,6 +72,7 @@ class UpdateDatabase(object):
         self._word_table = word_tbl
         for rule in self._rulesets:
             RuleValidator(rule).validate()
+        self._establish_connection()
     
     def _validate_dialect(self, dialect):
         if not dialect in self._dialects:
@@ -137,48 +127,32 @@ class UpdateDatabase(object):
 
 
     def update(self):
+        """Connects to db and creates temp tables. Then reads dialect update rules and applies them to the temp tables."""
         self._fullqueries = []
         self._establish_connection()
         self._construct_update_queries()
+#        print(self._cursor.execute(f"SELECT w.wordform, p.nofabet FROM {self._word_table} w LEFT JOIN e_spoken p ON w.word_id = p.word_id WHERE wordform = 'barn';").fetchall())
         for u in self._updates:
             for rule in u:
                 self._cursor.execute(rule['query'], tuple(rule['values']))
                 self._connection.commit()
                 self._fullqueries.append((rule['query'], tuple(rule['values'])))
-#        self.close_connection()
-#        return self._fullqueries # embed call in a print to manually verify the correctness of the update statements
+#        print(self._cursor.execute(f"SELECT w.wordform, p.nofabet FROM {self._word_table} w LEFT JOIN e_spoken p ON w.word_id = p.word_id WHERE wordform = 'barn';").fetchall())
+        return self._fullqueries # embed call in a print to manually verify the correctness of the update statements
     
     def get_connection(self):
         return self._connection
-    
-    def close_connection(self):
-        self._connection.close()
 
-class Results(object):
-    def __init__(self, connection, dialect_names, word_tbl):
-        self._connection = connection
-        self._cursor = self._connection.cursor()
-        self._dialects = dialect_names
-        self._word_table = word_tbl
+    def get_results(self):
+        """Retrieves a dict with the updated state of the lexicon for each dialect."""
         self._results = {d:[] for d in self._dialects}
-        self._query_db()
-    
-    def _query_db(self):
         for d in self._dialects:
             stmt = f"""SELECT w.word_id, w.wordform, w.pos, w.feats, w.source, w.decomp_ort, w.decomp_pos, 
                         w.garbage, w.domain, w.abbr, w.set_name, w.style_status, w.inflector_role, w.inflector_rule, 
                         w.morph_label, w.compounder_code, w.update_info, p.pron_id, p.nofabet, p.certainty
                         FROM {self._word_table} w LEFT JOIN {d} p ON p.word_id = w.word_id;"""
             self._results[d] = self._cursor.execute(stmt).fetchall()
-    
-    def get_results(self):
         return self._results
-
-
-if __name__ == "__main__":
-    updateobj = UpdateDatabase(database, [test1, test2], dialects, word_table, blacklists=[blacklist1, blacklist2])
-    updateobj.update()
-    connection = updateobj.get_connection()
-    resultobj = Results(connection, dialects, word_table)
-    updateobj.close_connection()
-    resultobj2 = Results(connection, dialects, word_table)
+    
+    def close_connection(self):
+        self._connection.close()
