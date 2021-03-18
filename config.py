@@ -19,7 +19,10 @@ database = '../backend-db02.db'
 
 # List of dialect update rules. Note that multiple rules may affect the same pronunciations, and that the ordering
 # of the rules may matter.
-rules = [test1, test2]
+rules = [
+            test1, 
+            test2
+        ]
 
 # List of blacklists
 blacklists = [blacklist1, blacklist2]
