@@ -37,7 +37,7 @@ class BlacklistValidator(object):
 
 
 
-class QueryBuiler(object):
+class QueryBuiler(object):  # TODO: fix typo
     """Parent class for querybuilder classes."""
     def __init__(self, area, rule, word_table):
         self._area = area # Temporary assumption: one area per ruleset. Needs to be modified in final version
