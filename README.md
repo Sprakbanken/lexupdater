@@ -59,3 +59,17 @@ python -m lexupdater -d e_spoken, e_written, sw_spoken, sw_written, w_spoken, w_
 python -m lexupdater -b
 ```
 
+## Installér `lexupdater` som en python-pakke 
+Du kan lage en pip-installérbar python-pakke (komprimerte filer med `.tar.gz`, `.egg`, `.whl` suffiks) 
+via `setup.py`-skriptet: 
+
+```commandline
+python setup.py install     # Installer direkte fra repoet 
+```
+Dette lagrer en `.egg`-fil i en ny mappe `dist`. 
+Denne fila kan deles med andre python-brukere, 
+og de kan installere pakken med pip: 
+
+```commandline
+pip install ./lexupdater-0.0.1-py3.7.egg
+```
