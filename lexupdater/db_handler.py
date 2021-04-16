@@ -4,7 +4,7 @@
 import sqlite3
 import re
 
-from .dialect_updater import RuleValidator, UpdateQueryBuiler, BlacklistReader
+from .dialect_updater import RuleValidator, UpdateQueryBuiler, SelectQueryBuilder, BlacklistReader
 
 # Regex checker, to be used in SQL queries
 
