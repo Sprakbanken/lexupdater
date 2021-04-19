@@ -56,7 +56,7 @@ for d in args.print_dialects:
     # If not, TODO: unindent conditional block
     if args.print_base:
         base = get_base(connection)
-        with open(output_dir + f'/base.txt', 'w') as basefile:
+        with open(f'{output_dir}/base.txt', 'w') as basefile:
             for el in base:
                 basefile.write(f'{el[1]}\t{el[2]}\t{el[3]}\t{el[-2]}\n')
 
