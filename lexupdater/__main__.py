@@ -49,7 +49,7 @@ print(datetime.datetime.now() - begin_time)
 
 
 for d in args.print_dialects:
-    with open(output_dir + f'{d}.txt', 'w') as expfile:
+    with open(f'{output_dir}{d}.txt', 'w') as expfile:
         for elm in exp[d]:
             expfile.write(f'{elm[1]}\t{elm[2]}\t{elm[3]}\t{elm[-2]}\n')
 
@@ -58,5 +58,12 @@ if args.print_base:
     with open(output_dir + f'/base.txt', 'w') as basefile:
         for el in base:
             basefile.write(f'{el[1]}\t{el[2]}\t{el[3]}\t{el[-2]}\n')
+
+if args.print_base:
+    base = get_base(connection)
+    with open(f'{output_dir}/base.txt', 'w') as basefile:
+        for el in base:
+            basefile.write(f'{el[1]}\t{el[2]}\t{el[3]}\t{el[-2]}\n')
+
 
 print(datetime.datetime.now() - begin_time)
