@@ -4,7 +4,7 @@
 import sqlite3
 import re
 
-from .dialect_updater import RuleValidator, UpdateQueryBuiler, SelectQueryBuilder, BlacklistReader
+from .dialect_updater import RuleValidator, UpdateQueryBuilder, SelectQueryBuilder, BlacklistReader
 
 # Regex checker, to be used in SQL queries
 
@@ -108,7 +108,7 @@ class DatabaseUpdater(object):
             rules = []
             for r in ruleset['rules']:
                 mydict = {}
-                mydict['query'], mydict['values'], mydict['is_constrained'] = UpdateQueryBuiler(area, r, self._word_table).get_update_query()
+                mydict['query'], mydict['values'], mydict['is_constrained'] = UpdateQueryBuilder(area, r, self._word_table).get_update_query()
                 if mydict['is_constrained'] == False:
                     if self._bl_str == '':
                         mydict['query'] = mydict['query'] + ';'

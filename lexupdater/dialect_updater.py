@@ -37,7 +37,7 @@ class BlacklistValidator(object):
 
 
 
-class QueryBuiler(object):  # TODO: fix typo
+class QueryBuilder(object):
     """Parent class for querybuilder classes."""
     def __init__(self, area, rule, word_table):
         self._area = area # Temporary assumption: one area per ruleset. Needs to be modified in final version
@@ -48,10 +48,10 @@ class QueryBuiler(object):  # TODO: fix typo
         self._constrained_query = True if not self._constraints == [] else False # Affects how the querystring should be continued downstream when blacklist is added
 
 
-class UpdateQueryBuiler(QueryBuiler):
+class UpdateQueryBuilder(QueryBuilder):
     """Build an sql update query string """
     def __init__(self, area, rule, word_table):
-        QueryBuiler.__init__(self, area, rule, word_table)
+        QueryBuilder.__init__(self, area, rule, word_table)
         self._query = f"UPDATE {area} SET nofabet = REGREPLACE(?,?,nofabet)"
         self._values = [self._pattern, self._repl]
         if self._constrained_query == True:
@@ -65,7 +65,7 @@ class UpdateQueryBuiler(QueryBuiler):
 
 
 
-class SelectQueryBuilder(QueryBuiler):
+class SelectQueryBuilder(QueryBuilder):
     """Not yet implemented. The idea is that it should build a select query that retrieves all entries
     that fits the search pattern, making it easier to test and debug."""
     pass
