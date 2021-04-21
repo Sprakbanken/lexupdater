@@ -98,30 +98,31 @@ class DatabaseUpdater(object):
         self._updates = []
         for ruleset in self._rulesets:
             name = ruleset["name"]
-            area = self._validate_dialect(ruleset['area'])
+            dialects = [self._validate_dialect(dialect) for dialect in ruleset['areas']] # issue 2: handle list input
             self._bl_str = ''
             self._bl_values = []
             for blist in self._blacklists:
                 if blist['ruleset'] == name:
                     self._bl_str, self._bl_values = BlacklistReader(blist).get_blacklist()
-                    break # Possibly add support for myltiple backlists referencing the same ruleset 
+                    break # Possibly add support for multiple backlists referencing the same ruleset 
             rules = []
             for r in ruleset['rules']:
-                mydict = {}
-                mydict['query'], mydict['values'], mydict['is_constrained'] = UpdateQueryBuilder(area, r, self._word_table).get_update_query()
-                if mydict['is_constrained'] == False:
-                    if self._bl_str == '':
-                        mydict['query'] = mydict['query'] + ';'
+                for dialect in dialects:
+                    mydict = {}
+                    mydict['query'], mydict['values'], mydict['is_constrained'] = UpdateQueryBuilder(dialect, r, self._word_table).get_update_query()
+                    if mydict['is_constrained'] == False: # issue 2: handle multiple queries
+                        if self._bl_str == '':
+                            mydict['query'] = mydict['query'] + ';'
+                        else:
+                            mydict['query'] = mydict['query'] + f' WHERE word_id IN (SELECT word_id FROM {self._word_table} WHERE' + self._bl_str + ');'
+                            mydict['values'] = mydict['values'] + self._bl_values
                     else:
-                        mydict['query'] = mydict['query'] + f' WHERE word_id IN (SELECT word_id FROM {self._word_table} WHERE' + self._bl_str + ');'
-                        mydict['values'] = mydict['values'] + self._bl_values
-                else:
-                    if self._bl_str == '':
-                        mydict['query'] = mydict['query'] + ');'
-                    else:
-                        mydict['query'] = mydict['query'] + ' AND' + self._bl_str + ');'
-                        mydict['values'] = mydict['values'] + self._bl_values
-                rules.append(mydict)
+                        if self._bl_str == '':
+                            mydict['query'] = mydict['query'] + ');'
+                        else:
+                            mydict['query'] = mydict['query'] + ' AND' + self._bl_str + ');'
+                            mydict['values'] = mydict['values'] + self._bl_values
+                    rules.append(mydict)
             self._updates.append(rules)
         
 
@@ -131,13 +132,11 @@ class DatabaseUpdater(object):
         self._fullqueries = []
         self._establish_connection()
         self._construct_update_queries()
-#        print(self._cursor.execute(f"SELECT w.wordform, p.nofabet FROM {self._word_table} w LEFT JOIN e_spoken p ON w.word_id = p.word_id WHERE wordform = 'barn';").fetchall())
         for u in self._updates:
             for rule in u:
                 self._cursor.execute(rule['query'], tuple(rule['values']))
                 self._connection.commit()
                 self._fullqueries.append((rule['query'], tuple(rule['values'])))
-#        print(self._cursor.execute(f"SELECT w.wordform, p.nofabet FROM {self._word_table} w LEFT JOIN e_spoken p ON w.word_id = p.word_id WHERE wordform = 'barn';").fetchall())
         return self._fullqueries # embed call in a print to manually verify the correctness of the update statements
     
     def get_connection(self):
