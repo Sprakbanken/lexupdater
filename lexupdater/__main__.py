@@ -7,7 +7,7 @@ import argparse
 import datetime
 
 
-
+# For calculating execution time. Remove in stable version
 begin_time = datetime.datetime.now()
 
 # Argument parser
@@ -42,11 +42,12 @@ updateobj.update()
 exp = updateobj.get_results()
 updateobj.close_connection()
 
-print(datetime.datetime.now() - begin_time)
+# For calculating execution time. Remove in stable version
+update_end_time = datetime.datetime.now()
+updatetime = update_end_time - begin_time
+print(f'Database updated. Time: {updatetime}')
 
 # Write a base and exp lexicon file for each dialect area d.
-
-
 
 for d in args.print_dialects:
     with open(f'{output_dir}/{d}.txt', 'w') as expfile:
@@ -65,5 +66,7 @@ if args.print_base:
         for el in base:
             basefile.write(f'{el[1]}\t{el[2]}\t{el[3]}\t{el[-2]}\n')
 
-
-print(datetime.datetime.now() - begin_time)
+# For calculating execution time. Remove in stable version
+fielgen_end_time = datetime.datetime.now()
+filegentime = fielgen_end_time - update_end_time
+print(f'Files generated. Time: {filegentime}')
