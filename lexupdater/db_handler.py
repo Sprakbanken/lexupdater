@@ -132,13 +132,11 @@ class DatabaseUpdater(object):
         self._fullqueries = []
         self._establish_connection()
         self._construct_update_queries()
-#        print(self._cursor.execute(f"SELECT w.wordform, p.nofabet FROM {self._word_table} w LEFT JOIN e_spoken p ON w.word_id = p.word_id WHERE wordform = 'barn';").fetchall())
         for u in self._updates:
             for rule in u:
                 self._cursor.execute(rule['query'], tuple(rule['values']))
                 self._connection.commit()
                 self._fullqueries.append((rule['query'], tuple(rule['values'])))
-#        print(self._cursor.execute(f"SELECT w.wordform, p.nofabet FROM {self._word_table} w LEFT JOIN e_spoken p ON w.word_id = p.word_id WHERE wordform = 'barn';").fetchall())
         return self._fullqueries # embed call in a print to manually verify the correctness of the update statements
     
     def get_connection(self):
