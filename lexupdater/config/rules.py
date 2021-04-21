@@ -11,7 +11,7 @@
 # is a regex and False otherwise. 
 
 
-test1 = {"area": "e_spoken", 
+test1 = {"areas": ["e_spoken"], 
         "name": "retrotest", 
         "rules": 
             [{
@@ -26,7 +26,7 @@ test1 = {"area": "e_spoken",
             }]
         }
         
-test2 = {"area": "e_spoken", 
+test2 = {"areas": ["n_written", "n_spoken", "sw_written", "sw_spoken"], 
         "name": "masc", 
         "rules": 
         [{

@@ -12,7 +12,7 @@ class RuleValidator(object):
         self._ruledict = ruledict
     
     def validate(self):
-        topkeyset = ["area", "name", "rules"]
+        topkeyset = ["areas", "name", "rules"]
         rulekeyset = ["pattern", "repl", "constraints"]
         conkeyset = ["field", "pattern", "is_regex"]
         if sorted(list(self._ruledict.keys())) != sorted(topkeyset):
