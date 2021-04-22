@@ -5,13 +5,22 @@ Lexupdater er et utviklingsverktøy for å oppdatere og utvide [NST-leksikonet](
 strengtransformasjoner (søk-erstatt-regler), mens nyorda legges til som lister med ord og
 transkripsjoner.
 
-## Last ned data
+## Kom i gang
+### 1. Sett opp kode-miljøet
+Sørg for at du har aktivert et virtuelt miljø med `python>=3.6`, f.eks. via `anaconda` eller [`pyenv virtualenv`](https://github.com/pyenv/pyenv-virtualenv)
+
+Installér eksterne python-pakker med `pip`:  
+```commandline
+pip install -r requirements.txt 
+```
+
+### 2. Last ned data
 Original-leksikonet er blitt lagret som en `sqlite`-database, 
 og må lastes ned i forkant. Kontakt [Per Erik Solberg](https://github.com/peresolb) for å få tilgang til denne fila. 
 
 Lagre databasen lokalt i data-mappen: `./data/input/backend-db02.db`
 
-## Konfigurér oppdateringen
+### 3. Konfigurér oppdateringen av leksikonet
 
 Hovedskriptet til `lexupdater` konfigureres i `config/config.py`, 
 hvor man bl.a. spesifiserer følgende variabler: 
@@ -19,8 +28,8 @@ hvor man bl.a. spesifiserer følgende variabler:
 * `dialects`: navnet på dialektområdene
 * `database`: stien til backend-databasen i filstrukturen
 * `output_dir`: filmappen hvor output blir lagret
-* `rules`: regelfiler 
-* `blacklists`: svartelister
+* `rules`: regelfiler med søk-erstatt-regelsett 
+* `blacklists`: svartelister for ord som er unntatt regel-oppdateringene
 
 
 ## Oppdatér leksikonet
@@ -58,6 +67,14 @@ python -m lexupdater -d e_spoken, e_written, sw_spoken, sw_written, w_spoken, w_
 ```commandline
 python -m lexupdater -b
 ```
+
+## Test koden
+Kjør automatiske enhets- og integrasjonstester med `pytest`: 
+```commandline
+python -m pytest
+```
+
+Oppsett for kvalitativ testing av leksikonoppdateringene vil komme på plass senere. 
 
 ## Installér `lexupdater` som en python-pakke 
 Du kan lage en pip-installérbar python-pakke (komprimerte filer med `.tar.gz`, `.egg`, `.whl` suffiks) 
