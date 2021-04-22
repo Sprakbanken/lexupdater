@@ -3,4 +3,5 @@
 
 import sqlite3
 
-# Classes and functions for adding new vocabulary to the lexicon. Not yet implemented.
+# Classes and functions for adding new vocabulary to the lexicon.
+# Not yet implemented.

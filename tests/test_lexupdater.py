@@ -8,7 +8,6 @@ class TestFullLexupdater(unittest.TestCase):
     def test_get_base(self):
         pass
 
-
     def test_main_script(self):
         pass
 

@@ -13,8 +13,8 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/peresolb/lexupdater",
     project_urls={
-        "Bug Tracker": "https://github.com/pypa/sampleproject/issues", #TODO Finn ut hva dette er
-    },
+        "Bug Tracker": "https://github.com/pypa/sampleproject/issues",
+    },  # TODO Finn ut hva dette er
     classifiers=[       # TODO: FInn ut hva dette betyr
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
