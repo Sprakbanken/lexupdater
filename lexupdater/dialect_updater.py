@@ -12,7 +12,7 @@ class RuleValidator(object):
         self._ruledict = ruledict
     
     def validate(self):
-        topkeyset = ["area", "name", "rules"]
+        topkeyset = ["areas", "name", "rules"]
         rulekeyset = ["pattern", "repl", "constraints"]
         conkeyset = ["field", "pattern", "is_regex"]
         if sorted(list(self._ruledict.keys())) != sorted(topkeyset):
@@ -40,7 +40,7 @@ class BlacklistValidator(object):
 class QueryBuilder(object):
     """Parent class for querybuilder classes."""
     def __init__(self, area, rule, word_table):
-        self._area = area # Temporary assumption: one area per ruleset. Needs to be modified in final version
+        self._area = area
         self._word_table = word_table
         self._pattern = rule['pattern']
         self._repl = rule['repl']
