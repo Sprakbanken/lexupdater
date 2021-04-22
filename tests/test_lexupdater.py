@@ -1,5 +1,8 @@
 import unittest
 
+import pytest
+
+pytest.skip("skipping unimplemented tests", allow_module_level=True)
 
 class TestFullLexupdater(unittest.TestCase):
     """

@@ -3,6 +3,9 @@ Skeleton test suite for all the classes in the dialect_updater.py module
 """
 import unittest
 
+import pytest
+
+pytest.skip("skipping unimplemented tests", allow_module_level=True)
 
 class TestRuleValidator(unittest.TestCase):
 
