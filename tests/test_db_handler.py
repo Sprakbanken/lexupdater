@@ -225,120 +225,39 @@ class TestDatabaseUpdater:
     def test__construct_update_queries(self, database_updater_fixture):
         # given
         updater_obj = database_updater_fixture
-        expected_updates = [[{
-            'query': 'UPDATE e_spoken SET nofabet = REGREPLACE(?,?,nofabet) '
-                     'WHERE word_id IN (SELECT word_id '
-                     'FROM words_tmp WHERE wordform NOT IN (?,?));',
-            'values': [
-                '\\b(R)([NTD])\\\\b', '\\1 \\2', 'garn', 'klarne'
-            ],
+        # TODO: Refactor code so we can test smaller values at a time
+        expected_first_item = {
+            'query': 'UPDATE e_spoken SET nofabet = REGREPLACE(?,?,nofabet) WHERE word_id IN (SELECT word_id FROM words_tmp WHERE wordform NOT IN (?,?));',
+            'values': ['\\b(R)([NTD])\\\\b', '\\1 \\2', 'garn', 'klarne'],
             'is_constrained': False
-        }, {
-            'query': 'UPDATE e_spoken SET nofabet = REGREPLACE(?,?,nofabet) '
-                     'WHERE word_id IN (SELECT word_id '
-                     'FROM words_tmp WHERE wordform NOT IN (?,?));',
-            'values': [
-                '\\b(R)(NX0)\\b', '\\1 AX0 N', 'garn', 'klarne'
-            ],
-            'is_constrained': False
-        }], [{
-            'query': 'UPDATE n_written SET nofabet = REGREPLACE(?,?,nofabet) '
-                     'WHERE word_id IN (SELECT word_id FROM words_tmp '
-                     'WHERE pos = ? AND feats REGEXP ? AND wordform NOT IN (?,?,?,?));',
-            'values': [
-                '\\bAX0 R$', 'AA0 R', 'NN', 'MAS', 'søknader', 'søknadene', 'dugnader', 'dugnadene'
-            ],
-            'is_constrained': True
-        }, {
-            'query': 'UPDATE sw_spoken SET nofabet = REGREPLACE(?,?,nofabet) '
-                     'WHERE word_id IN (SELECT word_id FROM words_tmp '
-                     'WHERE pos = ? AND feats REGEXP ? AND wordform NOT IN (?,?,?,?));',
-            'values': ['\\bAX0 R$', 'AA0 R', 'NN', 'MAS', 'søknader', 'søknadene', 'dugnader', 'dugnadene'],
-            'is_constrained': True
-        }, {
-            'query': 'UPDATE n_written SET nofabet = REGREPLACE(?,?,nofabet) '
-                     'WHERE word_id IN (SELECT word_id FROM words_tmp '
-                     'WHERE pos = ? AND feats REGEXP ? AND wordform NOT IN (?,?,?,?));',
-            'values': ['\\bNX0 AX0$', 'AA0 N AX0', 'NN', 'MAS', 'søknader', 'søknadene', 'dugnader', 'dugnadene'],
-            'is_constrained': True
-        }, {
-            'query': 'UPDATE sw_spoken SET nofabet = REGREPLACE(?,?,nofabet) '
-                     'WHERE word_id IN (SELECT word_id FROM words_tmp '
-                     'WHERE pos = ? AND feats REGEXP ? AND wordform NOT IN (?,?,?,?));',
-            'values': [
-                '\\bNX0 AX0$', 'AA0 N AX0', 'NN', 'MAS', 'søknader', 'søknadene', 'dugnader', 'dugnadene'
-            ],
-            'is_constrained': True
-        }]]
-
+        }
         # when
         updater_obj._construct_update_queries()
         # then
-        assert updater_obj._updates == expected_updates
+        assert all([actual == expected for actual, expected in zip(updater_obj._updates[0][0].items(), expected_first_item.items())])
 
-    @pytest.mark.skip
-    def test_update(self):
-        assert False
+    def test_update(self, database_updater_fixture):
+        # given
+        updater_obj = database_updater_fixture
+        expected_first_item = (
+            'UPDATE e_spoken SET nofabet = REGREPLACE(?,?,nofabet) '
+            'WHERE word_id IN (SELECT word_id '
+            'FROM words_tmp '
+            'WHERE wordform NOT IN (?,?));',
+            ('\\b(R)([NTD])\\\\b', '\\1 \\2', 'garn', 'klarne'))
+        # when
+        result = updater_obj.update()
+        # then
+        assert result[0] == expected_first_item
 
-    @pytest.mark.skip
-    def test_get_connection(self):
-        assert False
-
-    @pytest.mark.skip
-    def test_get_results(self):
-        assert False
-
-    @pytest.mark.skip
-    def test_close_connection(self):
-        assert False
-
-################################
-
-# ''' An example of how to mock the sqlite3.connection method '''
-#
-# from unittest.mock import MagicMock, Mock, patch
-# import unittest
-# import sqlite3
-#
-#
-# class MyTests(unittest.TestCase):
-#
-#     def test_sqlite3_connect_success(self):
-#         sqlite3.connect = MagicMock(return_value='connection succeeded')
-#
-#         dbc = DataBaseClass()
-#         sqlite3.connect.assert_called_with('test_database')
-#         self.assertEqual(dbc.connection, 'connection succeeded')
-#
-#     def test_sqlite3_connect_fail(self):
-#         sqlite3.connect = MagicMock(return_value='connection failed')
-#
-#         dbc = DataBaseClass()
-#         sqlite3.connect.assert_called_with('test_database')
-#         self.assertEqual(dbc.connection, 'connection failed')
-#
-#     def test_sqlite3_connect_with_sideaffect(self):
-#         self._setup_mock_sqlite3_connect()
-#
-#         dbc = DataBaseClass('good_connection_string')
-#         self.assertTrue(dbc.connection)
-#         sqlite3.connect.assert_called_with('good_connection_string')
-#
-#         dbc = DataBaseClass('bad_connection_string')
-#         self.assertFalse(dbc.connection)
-#         sqlite3.connect.assert_called_with('bad_connection_string')
-#
-#     def _setup_mock_sqlite3_connect(self):
-#         values = {'good_connection_string': True,
-#                   'bad_connection_string': False}
-#
-#         def side_effect(arg):
-#             return values[arg]
-#
-#         sqlite3.connect = Mock(side_effect=side_effect)
-#
-#
-# class DataBaseClass():
-#
-#     def __init__(self, connection_string='test_database'):
-#         self.connection = sqlite3.connect(connection_string)
+    def test_get_results(self, database_updater_fixture, dialects_fixture):
+        # given
+        expected = (1, '-abel', 'JJ', 'SIN|IND|NOM|MAS-FEM|POS', 'LEX|INFL', '-abel', 'JJ', '', '', '',
+                    'baseform_lex_no|inflector_no', 'Neutral', 'BASE', 'a4b2A-døgnåpen', '101', '', '',
+                    1, 'AA1 B AX0 L', 1)
+        test_dialect_name = sorted(list(dialects_fixture))[0]
+        # when
+        result = database_updater_fixture.get_results()
+        # then
+        assert sorted(result.keys()) == sorted(dialects_fixture)
+        assert expected == result.get(test_dialect_name)[0], print(result.get(test_dialect_name)[0])
