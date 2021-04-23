@@ -1,4 +1,3 @@
-import unittest
 from unittest.mock import patch
 
 import pytest
@@ -35,7 +34,8 @@ def test_create_dialect_table_stmts():
             word_id INTEGER NOT NULL,
             nofabet TEXT NOT NULL,
             certainty INTEGER NOT NULL,
-            FOREIGN KEY(word_id) REFERENCES words(word_id) ON UPDATE CASCADE);""",
+            FOREIGN KEY(word_id) REFERENCES words(word_id)
+             ON UPDATE CASCADE);""",
             "INSERT INTO trøndersk SELECT * FROM base;",
         ),
         (
@@ -45,7 +45,8 @@ def test_create_dialect_table_stmts():
             word_id INTEGER NOT NULL,
             nofabet TEXT NOT NULL,
             certainty INTEGER NOT NULL,
-            FOREIGN KEY(word_id) REFERENCES words(word_id) ON UPDATE CASCADE);""",
+            FOREIGN KEY(word_id) REFERENCES words(word_id)
+             ON UPDATE CASCADE);""",
             "INSERT INTO bergensk SELECT * FROM base;",
         ),
     ]
@@ -80,14 +81,12 @@ def test_create_word_table_stmts():
                     morph_label TEXT,
                     compounder_code TEXT,
                     update_info TEXT);"""
-    exected_insert_stmt = f"INSERT INTO word_table_name SELECT * FROM words;"
+    expected_insert_stmt = "INSERT INTO word_table_name SELECT * FROM words;"
     # when
-    result_create_stmt, result_insert_stmt = db_handler.create_word_table_stmts(
-        input_word
-    )
+    result_c, result_i = db_handler.create_word_table_stmts(input_word)
     # then
-    assert result_create_stmt == expected_create_stmt
-    assert result_insert_stmt == exected_insert_stmt
+    assert result_c == expected_create_stmt
+    assert result_i == expected_insert_stmt
 
 
 class TestDatabaseUpdater:
@@ -141,7 +140,8 @@ class TestDatabaseUpdater:
 
     @pytest.fixture(scope="class")
     def dialects_fixture(self):
-        """Set up a test value for the dialects. Select either all, or only a few dialects to test with"""
+        """Set up a test value for the dialects.
+        Select either all, or only a few dialects to test with"""
         all_dialects = [
             "e_spoken",
             "e_written",
@@ -169,14 +169,13 @@ class TestDatabaseUpdater:
         ]
 
     @pytest.fixture(scope="class")
-    def database_updater_fixture(
-        self, ruleset_fixture, dialects_fixture, blacklists_fixture
-    ):
+    def db_updater_obj(self, ruleset_fixture, dialects_fixture, blacklists_fixture):
         """Set up an instance of the class object we want to test,
         connect to the correct database, yield the DatabaseUpdater object,
         and close the connection after the test is done with the object.
 
-        Tests that use this fixture will need to be updated if the config values are changed.
+        Tests that use this fixture will need to be updated
+        if the config values are changed.
         """
         updater_obj = db_handler.DatabaseUpdater(
             config.database,
@@ -222,21 +221,21 @@ class TestDatabaseUpdater:
             # Check that the patched function was called
             db_handler.DatabaseUpdater._establish_connection.assert_called()
 
-    def test__validate_dialect(self, database_updater_fixture):
+    def test__validate_dialect(self, db_updater_obj):
         # given
         input_dialect = "e_spoken"
         # when
-        result = database_updater_fixture._validate_dialect(input_dialect)
+        result = db_updater_obj._validate_dialect(input_dialect)
         # then
         assert result == input_dialect
 
-    def test__validate_dialect_raises_ValueError(self, database_updater_fixture):
+    def test__validate_dialect_raises_ValueError(self, db_updater_obj):
         # given
         input_dialect = "bergensk"
         expected_error_message = f"{input_dialect} is not a valid dialect"
         # when
         with pytest.raises(ValueError) as errorinfo:
-            result = database_updater_fixture._validate_dialect(input_dialect)
+            result = db_updater_obj._validate_dialect(input_dialect)
             # then
             assert expected_error_message in str(errorinfo.value)
             assert result is None
@@ -247,12 +246,17 @@ class TestDatabaseUpdater:
         """Test the constructor of the DatabaseUpdater
         with patched elements for the _establish_connection function
         """
-        # given "fake" objects/functions that are called by _establish_connection
-        with patch("lexupdater.db_handler.sqlite3", autospec=True) as patched_sqlite, \
-                patch("lexupdater.db_handler.create_word_table_stmts", autospec=True) as patched_word_tbl, \
-                patch("lexupdater.db_handler.create_dialect_table_stmts", autospec=True) as patched_dialect_tbl:
-            patched_word_tbl.return_value = ("some string here", "another string here")
-            patched_dialect_tbl.return_value = [
+        # given
+        # patch functions that are called by _establish_connection
+        with patch(
+            "lexupdater.db_handler.sqlite3", autospec=True
+        ) as patched_sqlite, patch(
+            "lexupdater.db_handler.create_word_table_stmts", autospec=True
+        ) as p_word_tbl, patch(
+            "lexupdater.db_handler.create_dialect_table_stmts", autospec=True
+        ) as p_dialect_tbl:
+            p_word_tbl.return_value = ("some string here", "another string here")
+            p_dialect_tbl.return_value = [
                 ("dialect string here", "another dialect string here")
             ] * len(dialects_fixture)
             patch_connection = patched_sqlite.connect.return_value
@@ -269,10 +273,10 @@ class TestDatabaseUpdater:
             # then
             # Check that the patched functions were called
             patched_sqlite.connect.assert_called()
-            patched_sqlite.connect.assert_called_with("./data/input/backend-db02.db")
+            patched_sqlite.connect.assert_called_with(config.database)
 
-            patched_word_tbl.assert_called_with(config.word_table)
-            patched_dialect_tbl.assert_called_with(dialects_fixture)
+            p_word_tbl.assert_called_with(config.word_table)
+            p_dialect_tbl.assert_called_with(dialects_fixture)
 
             patch_connection.create_function.assert_called()
             patch_connection.cursor.assert_called()
@@ -282,30 +286,31 @@ class TestDatabaseUpdater:
             patch_cursor.execute.assert_any_call("dialect string here")
             patch_cursor.execute.assert_any_call("another dialect string here")
 
-    def test__construct_update_queries(self, database_updater_fixture):
+    def test__construct_update_queries(self, db_updater_obj):
         # given
-        updater_obj = database_updater_fixture
         # TODO: Refactor code so we can test smaller values at a time
         expected_first_item = {
-            "query": "UPDATE e_spoken SET nofabet = REGREPLACE(?,?,nofabet) WHERE word_id IN (SELECT word_id FROM words_tmp WHERE wordform NOT IN (?,?));",
+            "query": "UPDATE e_spoken SET nofabet = REGREPLACE(?,?,nofabet) "
+            "WHERE word_id IN (SELECT word_id "
+            "FROM words_tmp WHERE wordform NOT IN (?,?));",
             "values": ["\\b(R)([NTD])\\\\b", "\\1 \\2", "garn", "klarne"],
             "is_constrained": False,
         }
         # when
-        updater_obj._construct_update_queries()
+        db_updater_obj._construct_update_queries()
         # then
         assert all(
             [
                 actual == expected
                 for actual, expected in zip(
-                    updater_obj._updates[0][0].items(), expected_first_item.items()
+                    db_updater_obj._updates[0][0].items(), expected_first_item.items()
                 )
             ]
         )
 
-    def test_update(self, database_updater_fixture):
+    def test_update(self, db_updater_obj):
         # given
-        updater_obj = database_updater_fixture
+        updater_obj = db_updater_obj
         expected_first_item = (
             "UPDATE e_spoken SET nofabet = REGREPLACE(?,?,nofabet) "
             "WHERE word_id IN (SELECT word_id "
@@ -318,7 +323,7 @@ class TestDatabaseUpdater:
         # then
         assert result[0] == expected_first_item
 
-    def test_get_results(self, database_updater_fixture, dialects_fixture):
+    def test_get_results(self, db_updater_obj, dialects_fixture):
         # given
         expected = (
             1,
@@ -344,9 +349,7 @@ class TestDatabaseUpdater:
         )
         test_dialect_name = sorted(list(dialects_fixture))[0]
         # when
-        result = database_updater_fixture.get_results()
+        result = db_updater_obj.get_results()
         # then
         assert sorted(result.keys()) == sorted(dialects_fixture)
-        assert expected == result.get(test_dialect_name)[0], print(
-            result.get(test_dialect_name)[0]
-        )
+        assert expected == result.get(test_dialect_name)[0]
