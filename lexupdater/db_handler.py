@@ -95,6 +95,7 @@ class DatabaseUpdater(object):
             self._connection.commit()
     
     def _construct_update_queries(self):
+        # TODO: refactor to handle separate variable updates in separate functions
         self._updates = []
         for ruleset in self._rulesets:
             name = ruleset["name"]

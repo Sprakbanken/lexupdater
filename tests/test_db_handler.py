@@ -83,6 +83,7 @@ class TestDatabaseUpdater:
     """
     Test suite for the DatabaseUpdater class
     """
+
     @pytest.fixture(scope="class")
     def ruleset_fixture(self):
         """Set up a test value for the rules"""
@@ -95,7 +96,7 @@ class TestDatabaseUpdater:
                             'repl': r'\1 AX0 N',
                             'constraints': []}]},
 
-                {'areas': ['n_written', 'n_spoken', 'sw_written', 'sw_spoken'],
+                {'areas': ['n_written', 'sw_spoken'],
                  'name': 'masc',
                  'rules': [{'pattern': r'\bAX0 R$',
                             'repl': r'AA0 R',
@@ -108,12 +109,14 @@ class TestDatabaseUpdater:
 
     @pytest.fixture(scope="class")
     def dialects_fixture(self):
-        """Set up a test value for the dialects"""
-        return ['e_spoken', 'e_written',
-                'sw_spoken', 'sw_written',
-                'w_spoken', 'w_written',
-                't_spoken', 't_written',
-                'n_spoken', 'n_written']
+        """Set up a test value for the dialects. Select either all, or only a few dialects to test with"""
+        all_dialects = ['e_spoken', 'e_written',
+                        'sw_spoken', 'sw_written',
+                        'w_spoken', 'w_written',
+                        't_spoken', 't_written',
+                        'n_spoken', 'n_written']
+        some_dialects = ['e_spoken', 'n_written', 'sw_spoken']
+        return some_dialects
 
     @pytest.fixture(scope="class")
     def blacklists_fixture(self):
@@ -129,49 +132,16 @@ class TestDatabaseUpdater:
     @pytest.fixture(scope="class")
     def database_updater_fixture(self, ruleset_fixture, dialects_fixture, blacklists_fixture):
         """Set up an instance of the class object we want to test,
-        which connects to the correct database with the right configuration.
-        Tests that use this test object will need to be updated if the config values are changed.
+        connect to the correct database, yield the DatabaseUpdater object,
+        and close the connection after the test is done with the object.
+
+        Tests that use this fixture will need to be updated if the config values are changed.
         """
-        return db_handler.DatabaseUpdater(
+        updater_obj = db_handler.DatabaseUpdater(
             config.database, ruleset_fixture, dialects_fixture, config.word_table, blacklists_fixture
         )
-
-    def test_database_updater_patch_sqlite3(self, ruleset_fixture, dialects_fixture, blacklists_fixture):
-        """Test the constructor of the DatabaseUpdater
-        with patched elements for the _establish_connection function
-        """
-        # given
-        #input_db_path = 'fake_path_to_database.db'  # We don't want to actually open the db here
-
-        # create "fake" objects/functions that are called during initialisation
-        with patch("lexupdater.db_handler.sqlite3", autospec=True) as patched_sqlite, \
-                patch("lexupdater.db_handler.create_word_table_stmts", autospec=True) as patched_word_tbl:
-            patched_word_tbl.return_value = ("some string here", "another string here")
-            # when
-            result = db_handler.DatabaseUpdater(
-                config.database, ruleset_fixture, dialects_fixture, config.word_table, blacklists_fixture
-            )
-            # then
-            assert isinstance(result, db_handler.DatabaseUpdater)
-            # Check list equality
-            assert len(result._rulesets) == len(ruleset_fixture)
-            assert all([actual == expected for actual, expected in zip(result._rulesets, ruleset_fixture)])
-
-            assert len(result._blacklists) == len(blacklists_fixture)
-            assert all([actual == expected for actual, expected in zip(result._blacklists, blacklists_fixture)])
-
-            assert len(result._dialects) == len(dialects_fixture)
-            assert all([actual == expected for actual, expected in zip(result._dialects, dialects_fixture)])
-
-            # Check private attribute values
-            assert result._db == "./data/input/backend-db02.db"
-            assert result._word_table == "words_tmp"
-            assert result._word_create_stmt == "some string here"
-            assert result._word_update_stmt == "another string here"
-            # Check that the patched functions were called
-            patched_sqlite.connect.assert_called()
-            patched_sqlite.connect.assert_called_with("./data/input/backend-db02.db")
-            patched_word_tbl.assert_called_with(config.word_table)
+        yield updater_obj
+        updater_obj._connection.close()
 
     def test_database_updater_patch_private_method(self, ruleset_fixture, dialects_fixture, blacklists_fixture):
         """
@@ -186,11 +156,17 @@ class TestDatabaseUpdater:
             )
             # then
             assert isinstance(result, db_handler.DatabaseUpdater)
+            # Check private attribute values
             assert result._db == "./data/input/backend-db02.db"
-            assert result._rulesets == ruleset_fixture
-            assert result._blacklists == blacklists_fixture
-            assert result._dialects == dialects_fixture
             assert result._word_table == "words_tmp"
+            # Check list equality
+            assert len(result._rulesets) == len(ruleset_fixture)
+            assert result._rulesets == ruleset_fixture
+            assert len(result._blacklists) == len(blacklists_fixture)
+            assert result._blacklists == blacklists_fixture
+            assert len(result._dialects) == len(dialects_fixture)
+            assert result._dialects == dialects_fixture
+            # Check that the patched function was called
             db_handler.DatabaseUpdater._establish_connection.assert_called()
 
     def test__validate_dialect(self, database_updater_fixture):
@@ -212,13 +188,93 @@ class TestDatabaseUpdater:
             assert expected_error_message in str(errorinfo.value)
             assert result is None
 
-    @pytest.mark.skip
-    def test__establish_connection(self):
-        assert False
+    def test__establish_connection(self, ruleset_fixture, dialects_fixture, blacklists_fixture):
+        """Test the constructor of the DatabaseUpdater
+        with patched elements for the _establish_connection function
+        """
+        # given "fake" objects/functions that are called by _establish_connection
+        with patch("lexupdater.db_handler.sqlite3", autospec=True) as patched_sqlite, \
+                patch("lexupdater.db_handler.create_word_table_stmts", autospec=True) as patched_word_tbl, \
+                patch("lexupdater.db_handler.create_dialect_table_stmts", autospec=True) as patched_dialect_tbl:
+            patched_word_tbl.return_value = ("some string here", "another string here")
+            patched_dialect_tbl.return_value = [("dialect string here", "another dialect string here")] * len(
+                dialects_fixture)
+            patch_connection = patched_sqlite.connect.return_value
+            patch_cursor = patch_connection.cursor.return_value
 
-    @pytest.mark.skip
-    def test__construct_update_queries(self):
-        assert False
+            # when
+            _ = db_handler.DatabaseUpdater(
+                config.database, ruleset_fixture, dialects_fixture, config.word_table, blacklists_fixture
+            )
+            # then
+            # Check that the patched functions were called
+            patched_sqlite.connect.assert_called()
+            patched_sqlite.connect.assert_called_with("./data/input/backend-db02.db")
+
+            patched_word_tbl.assert_called_with(config.word_table)
+            patched_dialect_tbl.assert_called_with(dialects_fixture)
+
+            patch_connection.create_function.assert_called()
+            patch_connection.cursor.assert_called()
+
+            patch_cursor.execute.assert_any_call("some string here")
+            patch_cursor.execute.assert_any_call("another string here")
+            patch_cursor.execute.assert_any_call("dialect string here")
+            patch_cursor.execute.assert_any_call("another dialect string here")
+
+    def test__construct_update_queries(self, database_updater_fixture):
+        # given
+        updater_obj = database_updater_fixture
+        expected_updates = [[{
+            'query': 'UPDATE e_spoken SET nofabet = REGREPLACE(?,?,nofabet) '
+                     'WHERE word_id IN (SELECT word_id '
+                     'FROM words_tmp WHERE wordform NOT IN (?,?));',
+            'values': [
+                '\\b(R)([NTD])\\\\b', '\\1 \\2', 'garn', 'klarne'
+            ],
+            'is_constrained': False
+        }, {
+            'query': 'UPDATE e_spoken SET nofabet = REGREPLACE(?,?,nofabet) '
+                     'WHERE word_id IN (SELECT word_id '
+                     'FROM words_tmp WHERE wordform NOT IN (?,?));',
+            'values': [
+                '\\b(R)(NX0)\\b', '\\1 AX0 N', 'garn', 'klarne'
+            ],
+            'is_constrained': False
+        }], [{
+            'query': 'UPDATE n_written SET nofabet = REGREPLACE(?,?,nofabet) '
+                     'WHERE word_id IN (SELECT word_id FROM words_tmp '
+                     'WHERE pos = ? AND feats REGEXP ? AND wordform NOT IN (?,?,?,?));',
+            'values': [
+                '\\bAX0 R$', 'AA0 R', 'NN', 'MAS', 'søknader', 'søknadene', 'dugnader', 'dugnadene'
+            ],
+            'is_constrained': True
+        }, {
+            'query': 'UPDATE sw_spoken SET nofabet = REGREPLACE(?,?,nofabet) '
+                     'WHERE word_id IN (SELECT word_id FROM words_tmp '
+                     'WHERE pos = ? AND feats REGEXP ? AND wordform NOT IN (?,?,?,?));',
+            'values': ['\\bAX0 R$', 'AA0 R', 'NN', 'MAS', 'søknader', 'søknadene', 'dugnader', 'dugnadene'],
+            'is_constrained': True
+        }, {
+            'query': 'UPDATE n_written SET nofabet = REGREPLACE(?,?,nofabet) '
+                     'WHERE word_id IN (SELECT word_id FROM words_tmp '
+                     'WHERE pos = ? AND feats REGEXP ? AND wordform NOT IN (?,?,?,?));',
+            'values': ['\\bNX0 AX0$', 'AA0 N AX0', 'NN', 'MAS', 'søknader', 'søknadene', 'dugnader', 'dugnadene'],
+            'is_constrained': True
+        }, {
+            'query': 'UPDATE sw_spoken SET nofabet = REGREPLACE(?,?,nofabet) '
+                     'WHERE word_id IN (SELECT word_id FROM words_tmp '
+                     'WHERE pos = ? AND feats REGEXP ? AND wordform NOT IN (?,?,?,?));',
+            'values': [
+                '\\bNX0 AX0$', 'AA0 N AX0', 'NN', 'MAS', 'søknader', 'søknadene', 'dugnader', 'dugnadene'
+            ],
+            'is_constrained': True
+        }]]
+
+        # when
+        updater_obj._construct_update_queries()
+        # then
+        assert updater_obj._updates == expected_updates
 
     @pytest.mark.skip
     def test_update(self):
@@ -235,7 +291,6 @@ class TestDatabaseUpdater:
     @pytest.mark.skip
     def test_close_connection(self):
         assert False
-
 
 ################################
 
