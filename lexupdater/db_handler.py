@@ -125,8 +125,11 @@ class DatabaseUpdater(object):
                 for dialect in dialects:
                     builder = UpdateQueryBuilder(
                         dialect, r, self._word_table).get_update_query()
-                    mydict = {"query": builder[0], "values": builder[1],
-                              "is_constrained": builder[2]}
+                    mydict = {
+                        "query": builder[0],
+                        "values": builder[1],
+                        "is_constrained": builder[2],
+                    }
                     if not mydict["is_constrained"]:
                         if self._bl_str == "":
                             mydict["query"] = mydict["query"] + ";"
