@@ -56,9 +56,9 @@ def get_base(connection):
 # blacklists specified in the config file. Note that all modifications
 # in the backend db target temp tables, so the db isn"t modified.
 
-updateobj = DatabaseUpdater(database, rules,
-                            dialects, word_table,
-                            blacklists=blacklists)
+updateobj = DatabaseUpdater(
+    database, rules, dialects, word_table, blacklists=blacklists
+)
 connection = updateobj.get_connection()
 updateobj.update()
 exp = updateobj.get_results()
