@@ -93,7 +93,7 @@ class ConstraintReader(object):
         for n, const in enumerate(self._constraints):
             field = const["field"]
             pattern = const["pattern"]
-            operator = "=" if const["is_regex"] else "REGEXP"
+            operator = "=" if not const["is_regex"] else "REGEXP"
             self._constraintstring += f"{field} {operator} ?"
             self._values.append(pattern)
             if n != len(self._constraints)-1:
