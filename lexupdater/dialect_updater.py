@@ -49,8 +49,7 @@ class QueryBuilder(object):
         self._pattern = rule["pattern"]
         self._repl = rule["repl"]
         self._constraints = rule["constraints"]
-        self._constrained_query = (True if not
-                                   self._constraints == [] else False)
+        self._constrained_query = self._constraints != []
 
 
 class UpdateQueryBuilder(QueryBuilder):
