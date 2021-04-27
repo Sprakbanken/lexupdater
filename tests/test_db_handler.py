@@ -154,8 +154,8 @@ class TestDatabaseUpdater:
         # TODO: Refactor code so we can test smaller values at a time
         expected = {
             "query": "UPDATE e_spoken SET nofabet = REGREPLACE(?,?,nofabet) "
-            "WHERE word_id IN (SELECT word_id "
-            "FROM words_tmp WHERE wordform NOT IN (?,?));",
+                     "WHERE word_id IN (SELECT word_id "
+                     "FROM words_tmp WHERE wordform NOT IN (?,?));",
             "values": ["\\b(R)([NTD])\\\\b", "\\1 \\2", "garn", "klarne"],
             "is_constrained": False,
         }

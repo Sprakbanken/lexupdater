@@ -84,9 +84,8 @@ class ConstraintReader(object):
     def __init__(self, constraints, word_table):
         self._word_table = word_table
         self._constraints = constraints
-        self._constraintstring = f""" WHERE word_id IN
-                                  (SELECT word_id FROM
-                                  {self._word_table} WHERE """
+        self._constraintstring = f" WHERE word_id IN (SELECT word_id FROM" \
+                                 f" {self._word_table} WHERE "
         self._values = []
 
     def _parse_constraints(self):
@@ -110,9 +109,8 @@ class BlacklistReader(object):
         self._bldict = bldict
         BlacklistValidator(bldict).validate()
         self._values = bldict["words"]
-        self._blstring = f""" wordform NOT IN
-                         ({','.join(['?' for n
-                                    in range(len(self._values))])})"""
+        self._blstring = f" wordform NOT IN (" \
+                         f"{','.join(['?' for _ in range(len(self._values))])})"
 
     def get_blacklist(self):
         return self._blstring, self._values

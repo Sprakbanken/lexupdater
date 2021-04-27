@@ -137,10 +137,11 @@ class DatabaseUpdater(object):
                         if self._bl_str == "":
                             mydict["query"] = mydict["query"] + ";"
                         else:
-                            mydict["query"] = f"""{mydict["query"]} WHERE
-                                                word_id IN (SELECT word_id
-                                                FROM {self._word_table}
-                                                WHERE{self._bl_str});"""
+                            mydict["query"] = f"{mydict['query']} " \
+                                              f"WHERE word_id IN " \
+                                              f"(SELECT word_id " \
+                                              f"FROM {self._word_table} " \
+                                              f"WHERE{self._bl_str});"
                             mydict["values"] = (mydict["values"]
                                                 + self._bl_values)
                     else:
