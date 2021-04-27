@@ -1,19 +1,29 @@
-import unittest
+"""
+Test suite for newword_updater.py (yet to be implemented)
+"""
+import pytest
 
 
-class TestNewwordUpdater(unittest.TestCase):
-    """
-    Skeleton test suite for newword_updater.py (yet to be implemented)
-    """
-    @unittest.skip
+@pytest.mark.skip("Not implemented yet")
+class TestNewwordUpdater:
+
     def test_newword_list(self):
-        # Test that the list of new words meet the criteria we've set
-        pass
+        """Test that the list of new words meet the criteria we've set"""
+        # given
+        # when
+        # then
+        assert False  # while the test is not implemented, it shouldn't pass
 
     def test_add_new_word(self):
-        # Test that the addition of a new word entry worked as expected
-        pass
+        """Test that the addition of a new word entry worked as expected"""
+        # given
+        # when
+        # then
+        assert False
 
     def test_entry_information(self):
-        # For each entry, the following information should be available
-        pass
+        """Test that the expected information is available for each entry"""
+        # given
+        # when
+        # then
+        assert False
