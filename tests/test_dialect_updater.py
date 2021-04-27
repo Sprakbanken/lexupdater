@@ -34,12 +34,14 @@ class TestQueryBuilders(unittest.TestCase):
     def test_select_query_builder(self):
         self.fail()
 
+
 class TestConstraintReader(unittest.TestCase):
     def test_constraint_reader(self):
         self.fail()
 
     def test_constraint_reader__parse_constraints(self):
         pass
+
 
 class TestBlacklistReader(unittest.TestCase):
 
