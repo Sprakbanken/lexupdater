@@ -5,8 +5,7 @@ import argparse
 import datetime
 
 from .db_handler import DatabaseUpdater
-from .config import (dialects, word_table,
-                     database, rules, blacklists, output_dir)
+from .config import dialects, word_table, database, rules, blacklists, output_dir
 
 
 # For calculating execution time. Remove in stable version
@@ -38,6 +37,7 @@ args = parser.parse_args()
 
 
 # Function to select the state of the lexicon before the updates
+
 
 def get_base(connection):
     stmt = """SELECT w.word_id, w.wordform, w.pos, w.feats, w.source,

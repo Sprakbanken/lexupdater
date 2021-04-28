@@ -14,6 +14,7 @@ from .dialect_updater import (
 
 # Regex checker, to be used in SQL queries
 
+
 def regexp(regpat, item):
     """True if regex match, else False."""
     mypattern = re.compile(regpat)
@@ -21,6 +22,7 @@ def regexp(regpat, item):
 
 
 # Create temporary table_expressions
+
 
 def create_dialect_table_stmts(dialectlist):
     """Create a temp table for each dialect in the dialect list
@@ -75,6 +77,7 @@ class DatabaseUpdater(object):
     """Class for handling the db connection and
     running the updates on temp tables.
     """
+
     def __init__(self, db, rulesets, dialect_names, word_tbl, blacklists=None):
         if blacklists is None:
             blacklists = []
@@ -98,8 +101,9 @@ class DatabaseUpdater(object):
         self._connection.create_function("REGEXP", 2, regexp)
         self._connection.create_function("REGREPLACE", 3, re.sub)
         self._cursor = self._connection.cursor()
-        (self._word_create_stmt,
-            self._word_update_stmt) = create_word_table_stmts(self._word_table)
+        (self._word_create_stmt, self._word_update_stmt) = create_word_table_stmts(
+            self._word_table
+        )
         self._cursor.execute(self._word_create_stmt)
         self._cursor.execute(self._word_update_stmt)
         self._connection.commit()
@@ -114,8 +118,7 @@ class DatabaseUpdater(object):
         self._updates = []
         for ruleset in self._rulesets:
             name = ruleset["name"]
-            dialects = [self._validate_dialect(dialect)
-                        for dialect in ruleset["areas"]]
+            dialects = [self._validate_dialect(dialect) for dialect in ruleset["areas"]]
             self._bl_str = ""
             self._bl_values = []
             for blist in self._blacklists:
@@ -127,7 +130,8 @@ class DatabaseUpdater(object):
             for r in ruleset["rules"]:
                 for dialect in dialects:
                     builder = UpdateQueryBuilder(
-                        dialect, r, self._word_table).get_update_query()
+                        dialect, r, self._word_table
+                    ).get_update_query()
                     mydict = {
                         "query": builder[0],
                         "values": builder[1],
@@ -137,23 +141,22 @@ class DatabaseUpdater(object):
                         if self._bl_str == "":
                             mydict["query"] = mydict["query"] + ";"
                         else:
-                            mydict["query"] = f"{mydict['query']} " \
-                                              f"WHERE word_id IN " \
-                                              f"(SELECT word_id " \
-                                              f"FROM {self._word_table} " \
-                                              f"WHERE{self._bl_str});"
-                            mydict["values"] = (mydict["values"]
-                                                + self._bl_values)
+                            mydict["query"] = (
+                                f"{mydict['query']} "
+                                f"WHERE word_id IN "
+                                f"(SELECT word_id "
+                                f"FROM {self._word_table} "
+                                f"WHERE{self._bl_str});"
+                            )
+                            mydict["values"] = mydict["values"] + self._bl_values
                     else:
                         if self._bl_str == "":
                             mydict["query"] = mydict["query"] + ");"
                         else:
-                            mydict["query"] = (mydict["query"]
-                                               + " AND"
-                                               + self._bl_str
-                                               + ");")
-                            mydict["values"] = (mydict["values"]
-                                                + self._bl_values)
+                            mydict["query"] = (
+                                mydict["query"] + " AND" + self._bl_str + ");"
+                            )
+                            mydict["values"] = mydict["values"] + self._bl_values
                     rules.append(mydict)
             self._updates.append(rules)
 
@@ -168,8 +171,7 @@ class DatabaseUpdater(object):
             for rule in u:
                 self._cursor.execute(rule["query"], tuple(rule["values"]))
                 self._connection.commit()
-                self._fullqueries.append((rule["query"],
-                                          tuple(rule["values"])))
+                self._fullqueries.append((rule["query"], tuple(rule["values"])))
         return self._fullqueries  # Test: embed call in a print
 
     def get_connection(self):
