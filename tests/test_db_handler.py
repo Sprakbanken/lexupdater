@@ -54,7 +54,7 @@ class TestDatabaseUpdater:
     Test suite for the DatabaseUpdater class
     """
 
-    def test_database_updater_patch_private_method(
+    def test_database_updater(
         self, ruleset_fixture, some_dialects, blacklists_fixture
     ):
         """
@@ -88,7 +88,7 @@ class TestDatabaseUpdater:
             # Check that the patched function was called
             db_handler.DatabaseUpdater._establish_connection.assert_called()
 
-    def test__validate_dialect(self, db_updater_obj):
+    def test_validate_dialect(self, db_updater_obj):
         # given
         input_dialect = "e_spoken"
         # when
@@ -96,7 +96,7 @@ class TestDatabaseUpdater:
         # then
         assert result == input_dialect
 
-    def test__validate_dialect_raises_ValueError(self, db_updater_obj):
+    def test_validate_dialect_raises_ValueError(self, db_updater_obj):
         # given
         input_dialect = "bergensk"
         # when
@@ -105,7 +105,7 @@ class TestDatabaseUpdater:
             # then
             assert result is None
 
-    def test__establish_connection(
+    def test_establish_connection(
         self, ruleset_fixture, some_dialects, blacklists_fixture
     ):
         """Test the constructor of the DatabaseUpdater
@@ -149,7 +149,7 @@ class TestDatabaseUpdater:
             patch_cursor.execute.assert_any_call("dialect string here")
             patch_cursor.execute.assert_any_call("another dialect string here")
 
-    def test__construct_update_queries(self, db_updater_obj):
+    def test_construct_update_queries(self, db_updater_obj):
         # given
         # TODO: Refactor code so we can test smaller values at a time
         expected = {
