@@ -15,7 +15,7 @@ parser.add_argument(
     "-d",
     action="store",
     type=str,
-    nargs="*",
+    nargs="+",
     default=dialects,
     help="Generate lexicon files for one or more specified dialects.",
 )
@@ -27,7 +27,5 @@ parser.add_argument(
          "prior to updates."
 )
 args = parser.parse_args()
-args.print_dialects = dialects if args.print_dialects is None \
-    else args.print_dialects
 
 main(args.print_dialects, args.print_base)
