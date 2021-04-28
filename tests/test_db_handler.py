@@ -88,7 +88,7 @@ class TestDatabaseUpdater:
             # Check that the patched function was called
             db_handler.DatabaseUpdater._establish_connection.assert_called()
 
-    def test__validate_dialect(self, db_updater_obj):
+    def test_validate_dialect(self, db_updater_obj):
         # given
         input_dialect = "e_spoken"
         # when
