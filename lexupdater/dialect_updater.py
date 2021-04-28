@@ -99,7 +99,7 @@ class ConstraintReader(object):
         self._word_table = word_table
         self._constraints = constraints
         self._constraintstring = (
-            f" WHERE word_id IN (SELECT word_id FROM" f" {self._word_table} WHERE "
+            f" WHERE word_id IN (SELECT word_id FROM {self._word_table} WHERE "
         )
         self._values = []
 
