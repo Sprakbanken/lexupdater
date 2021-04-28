@@ -23,8 +23,10 @@ parser.add_argument(
     "--print_base",
     "-b",
     action="store_true",
-    help="Generate a base lexicon file, containing the state of the lexicon "
-         "prior to updates."
+    help=(
+        "Generate a base lexicon file, containing the state of the lexicon "
+        "prior to updates."
+    ),
 )
 args = parser.parse_args()
 

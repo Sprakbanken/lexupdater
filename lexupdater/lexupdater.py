@@ -1,8 +1,7 @@
 import datetime
 
 from .db_handler import DatabaseUpdater
-from .config import (dialects, word_table,
-                     database, rules, blacklists, output_dir)
+from .config import dialects, word_table, database, rules, blacklists, output_dir
 
 
 def get_base(connection):
