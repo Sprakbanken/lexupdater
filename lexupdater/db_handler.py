@@ -4,8 +4,10 @@
 import sqlite3
 import re
 
+from schema import Schema
+
+from .config import rule_schema, blacklist_schema, dialect_schema
 from .dialect_updater import (
-    RuleValidator,
     UpdateQueryBuilder,
     SelectQueryBuilder,
     BlacklistReader,
@@ -82,19 +84,16 @@ class DatabaseUpdater(object):
         if blacklists is None:
             blacklists = []
         self._db = db
-        self._rulesets = rulesets
-        self._blacklists = blacklists
-        self._dialects = dialect_names
+        # Validate the config values before instantiating the DatabaseUpdater
+        self._rulesets = rule_schema.validate(rulesets)
+        self._blacklists = blacklist_schema.validate(blacklists)
+        self._dialects = dialect_schema.validate(dialect_names)
         self._word_table = word_tbl
-        for rule in self._rulesets:
-            RuleValidator(rule).validate()
         self._establish_connection()
 
-    def _validate_dialect(self, dialect):
-        if dialect not in self._dialects:
-            raise ValueError(f"{dialect} is not a valid dialect")
-        else:
-            return dialect
+    def validate_dialects(self, ruleset_dialects):
+        return Schema(self._dialects).validate(ruleset_dialects)
+
 
     def _establish_connection(self):
         self._connection = sqlite3.connect(self._db)
@@ -118,9 +117,7 @@ class DatabaseUpdater(object):
         self._updates = []
         for ruleset in self._rulesets:
             name = ruleset["name"]
-            dialects = [
-                self._validate_dialect(dialect) for dialect in ruleset["areas"]
-            ]
+            rule_dialects = self.validate_dialects(ruleset["areas"])
             self._bl_str = ""
             self._bl_values = []
             for blist in self._blacklists:
@@ -130,7 +127,7 @@ class DatabaseUpdater(object):
                     break
             rules = []
             for r in ruleset["rules"]:
-                for dialect in dialects:
+                for dialect in rule_dialects:
                     builder = UpdateQueryBuilder(
                         dialect, r, self._word_table
                     ).get_update_query()
