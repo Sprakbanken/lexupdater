@@ -1,7 +1,6 @@
 """
 Test suite for all the classes in the dialect_updater.py module
 """
-from unittest.mock import patch
 
 import pytest
 
@@ -40,9 +39,7 @@ class TestQueryBuilders:
         assert "UPDATE area SET nofabet = REGREPLACE(?,?,nofabet)" in query
         assert "WHERE word_id IN (SELECT word_id FROM table" in query
         assert "WHERE pos = ? AND feats REGEXP ?" in query
-        assert values == [
-            rule["pattern"],  rule["repl"], "NN", "MAS"
-        ]
+        assert values == [rule["pattern"], rule["repl"], "NN", "MAS"]
         assert constrained_bool  # bool("bool") Evaluates to True
 
     @pytest.mark.skip("Not implemented yet")
