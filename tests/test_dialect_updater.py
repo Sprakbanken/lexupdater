@@ -110,21 +110,21 @@ class TestReaders:
             {"field": "pos", "pattern": r"NN", "is_regex": False},
             {"field": "feats", "pattern": r"MAS", "is_regex": True},
         ]
-        reader = dialect_updater.ConstraintReader(constraints, "word_table")
         # when
-        result_string, result_values = reader.get_constraints()
+        result_string, result_values = dialect_updater.parse_constraints(
+            constraints, "word_table"
+        )
         # then
         assert result_values == ["NN", "MAS"]
         assert "pos = ? AND feats REGEXP ?" in result_string
 
-    @patch("lexupdater.dialect_updater.BlacklistValidator.validate")
-    def test_parse_blacklists(self, patched_validator):
+    def test_parse_blacklists(self):
         # given
         input_blacklists = {"ruleset": "test", "words": ["garn", "klarne"]}
-        reader = dialect_updater.BlacklistReader(input_blacklists)
         # when
-        result_string, result_values = reader.get_blacklist()
+        result_string, result_values = dialect_updater.parse_exemptions(
+            input_blacklists
+        )
         # then
         assert result_string == " wordform NOT IN (?,?)"
         assert result_values == ["garn", "klarne"]
-        patched_validator.assert_called()

@@ -68,9 +68,9 @@ class UpdateQueryBuilder(QueryBuilder):
         self._query = f"UPDATE {area} SET nofabet = REGREPLACE(?,?,nofabet)"
         self._values = [self._pattern, self._repl]
         if self._constrained_query:
-            cstr, cvals = ConstraintReader(
+            cstr, cvals = parse_constraints(
                 self._constraints, self._word_table
-            ).get_constraints()
+            )
             self._query += cstr
             self._values = self._values + cvals
 
@@ -87,7 +87,7 @@ class SelectQueryBuilder(QueryBuilder):
     pass
 
 
-def parse_constraints(word_table: str, constraints: List):
+def parse_constraints(constraints: List, word_table: str):
     """Extract constraint values from replacement rules
     and construct SQL WHERE queries based on them.
 
@@ -97,9 +97,9 @@ def parse_constraints(word_table: str, constraints: List):
 
     Parameters
     ----------
-    word_table: str
     constraints: list[dict]
         list of dictionaries with `field`, `pattern`, and `is_regex` keys
+    word_table: str
 
     Returns
     -------
@@ -136,13 +136,11 @@ def parse_exemptions(exemption):
     Returns
     -------
     tuple[str, list]
-        SQL fragment, a list of words that are exempt,
-        and the ruleset that the exemptions apply to
+        SQL fragment and a list of words that are exempt
     """
-    ruleset = exemption["ruleset"]
     values = exemption["words"]
     exemption_string = (
         f" wordform NOT IN ({','.join(['?' for _ in values])})"
     )
-    return exemption_string, values, ruleset
+    return exemption_string, values
 

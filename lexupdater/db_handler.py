@@ -8,7 +8,7 @@ from .dialect_updater import (
     RuleValidator,
     UpdateQueryBuilder,
     SelectQueryBuilder,
-    BlacklistReader,
+    parse_exemptions,
 )
 
 
@@ -125,8 +125,7 @@ class DatabaseUpdater(object):
             self._bl_values = []
             for blist in self._blacklists:
                 if blist["ruleset"] == name:
-                    blreader = BlacklistReader(blist).get_blacklist()
-                    self._bl_str, self._bl_values = blreader
+                    self._bl_str, self._bl_values = parse_exemptions(blist)
                     break
             rules = []
             for r in ruleset["rules"]:
