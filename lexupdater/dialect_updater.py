@@ -70,8 +70,8 @@ class ConstraintReader(object):
         return self._constraintstring, self._values
 
 
-class BlacklistReader(object):
-    """parses blacklists and converts them to SQL WHERE clause fragments"""
+class ExemptionReader(object):
+    """parses exemptions and converts them to SQL WHERE clause fragments"""
 
     def __init__(self, bldict):
         self._bldict = bldict

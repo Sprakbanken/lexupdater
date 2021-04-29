@@ -5,7 +5,7 @@
 # affected by the rule. For now it only supports a single dialect, but in the
 # final version, it should take a list. Dialect names are specified in the
 # config file. "name" is the name of the ruleset. These should be unique, as
-# blacklists make reference to them. "rules" contains a list of
+# exemptions make reference to them. "rules" contains a list of
 # replacement rules. Each rule consists of a "pattern", which is
 # a regex pattern for a certain transcription, "repl" which is a
 # replacement referencing the pattern, and a possibly empty list

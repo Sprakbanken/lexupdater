@@ -6,18 +6,17 @@ __all__ = [
     "word_table",
     "database",
     "rules",
-    "blacklists",
+    "exemptions",
     "output_dir",
     "rule_schema",
-    "blacklist_schema",
+    "exemption_schema",
     "dialect_schema",
 ]
 
 from schema import Schema
 
+from .exemptions import exemption1, exemption2
 from .rules import test1, test2
-from .blacklists import blacklist1, blacklist2
-
 
 # Name of the temp table containing all
 # words and word metadata in the backend dict
@@ -86,6 +85,6 @@ rule_schema = Schema(
 )
 
 # List of words to be exempted from the rules
-blacklists = [blacklist1, blacklist2]
+exemptions = [exemption1, exemption2]
 # Validation schema for the rulesets
-blacklist_schema = Schema([{"ruleset": str, "words": list}])
+exemption_schema = Schema([{"ruleset": str, "words": list}])

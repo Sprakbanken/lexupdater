@@ -56,7 +56,7 @@ class TestDatabaseUpdater:
     """
 
     def test_database_updater(
-        self, ruleset_fixture, some_dialects, blacklists_fixture
+        self, ruleset_fixture, some_dialects, exemptions_fixture
     ):
         """
         Test the constructor of the DatabaseUpdater
@@ -72,7 +72,7 @@ class TestDatabaseUpdater:
                 ruleset_fixture,
                 some_dialects,
                 config.word_table,
-                blacklists_fixture,
+                exemptions_fixture,
             )
             # then
             assert isinstance(result, db_handler.DatabaseUpdater)
@@ -80,16 +80,14 @@ class TestDatabaseUpdater:
             db_handler.DatabaseUpdater._establish_connection.assert_called()
 
     @pytest.mark.parametrize(
-        "invalid_config_values",
-        ["rules", "blacklists", "dialects"],
-        indirect=True
+        "invalid_config_values", ["rules", "exemptions", "dialects"], indirect=True
     )
     def test_invalid_config_values_raises_error(self, invalid_config_values):
-        """Test validation of rules and blacklists
+        """Test validation of rules and exemptions
         when loaded by DatabaseUpdater
         """
         # given
-        rules, blacklists, dialects = invalid_config_values
+        rules, exemptions, dialects = invalid_config_values
         with patch.object(
             db_handler.DatabaseUpdater, "_establish_connection", autospec=True
         ):
@@ -99,7 +97,7 @@ class TestDatabaseUpdater:
                     rules,
                     dialects,
                     config.word_table,
-                    blacklists,
+                    exemptions,
                 )
 
     def test_validate_dialect(self, db_updater_obj, some_dialects):
@@ -120,7 +118,7 @@ class TestDatabaseUpdater:
             assert result is None
 
     def test_establish_connection(
-        self, ruleset_fixture, some_dialects, blacklists_fixture
+        self, ruleset_fixture, some_dialects, exemptions_fixture
     ):
         """Test the constructor of the DatabaseUpdater
         with patched elements for the _establish_connection function
@@ -147,7 +145,7 @@ class TestDatabaseUpdater:
                 ruleset_fixture,
                 some_dialects,
                 config.word_table,
-                blacklists_fixture,
+                exemptions_fixture,
             )
             # then
             # Check that the patched functions were called
@@ -168,8 +166,8 @@ class TestDatabaseUpdater:
         # TODO: Refactor code so we can test smaller values at a time
         expected = {
             "query": "UPDATE e_spoken SET nofabet = REGREPLACE(?,?,nofabet) "
-                     "WHERE word_id IN (SELECT word_id "
-                     "FROM words_tmp WHERE wordform NOT IN (?,?));",
+            "WHERE word_id IN (SELECT word_id "
+            "FROM words_tmp WHERE wordform NOT IN (?,?));",
             "values": ["\\b(R)([NTD])\\\\b", "\\1 \\2", "garn", "klarne"],
             "is_constrained": False,
         }

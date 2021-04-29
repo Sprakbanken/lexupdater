@@ -1,16 +1,16 @@
 #!/usr/bin/env python
 # coding=utf-8
 
-import sqlite3
 import re
+import sqlite3
 
 from schema import Schema
 
-from .config import rule_schema, blacklist_schema, dialect_schema
+from .config import rule_schema, exemption_schema, dialect_schema
 from .dialect_updater import (
     UpdateQueryBuilder,
     SelectQueryBuilder,
-    BlacklistReader,
+    ExemptionReader,
 )
 
 
@@ -80,20 +80,19 @@ class DatabaseUpdater(object):
     running the updates on temp tables.
     """
 
-    def __init__(self, db, rulesets, dialect_names, word_tbl, blacklists=None):
-        if blacklists is None:
-            blacklists = []
+    def __init__(self, db, rulesets, dialect_names, word_tbl, exemptions=None):
+        if exemptions is None:
+            exemptions = []
         self._db = db
         # Validate the config values before instantiating the DatabaseUpdater
         self._rulesets = rule_schema.validate(rulesets)
-        self._blacklists = blacklist_schema.validate(blacklists)
+        self._exemptions = exemption_schema.validate(exemptions)
         self._dialects = dialect_schema.validate(dialect_names)
         self._word_table = word_tbl
         self._establish_connection()
 
     def validate_dialects(self, ruleset_dialects):
         return Schema(self._dialects).validate(ruleset_dialects)
-
 
     def _establish_connection(self):
         self._connection = sqlite3.connect(self._db)
@@ -120,9 +119,9 @@ class DatabaseUpdater(object):
             rule_dialects = self.validate_dialects(ruleset["areas"])
             self._bl_str = ""
             self._bl_values = []
-            for blist in self._blacklists:
+            for blist in self._exemptions:
                 if blist["ruleset"] == name:
-                    blreader = BlacklistReader(blist).get_blacklist()
+                    blreader = ExemptionReader(blist).get_blacklist()
                     self._bl_str, self._bl_values = blreader
                     break
             rules = []

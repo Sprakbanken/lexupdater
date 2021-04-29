@@ -60,7 +60,7 @@ class TestQueryBuilders:
 
 
 class TestReaders:
-    """Test that constraints and blacklists are parsed
+    """Test that constraints and exemptions are parsed
     and converted to the expected SQL-query fragments.
     """
 
@@ -74,10 +74,10 @@ class TestReaders:
         assert result_values == ["NN", "MAS"]
         assert "pos = ? AND feats REGEXP ?" in result_string
 
-    def test_parse_blacklists(self):
+    def test_parse_exemptions(self):
         # given
-        input_blacklists = {"ruleset": "test", "words": ["garn", "klarne"]}
-        reader = dialect_updater.BlacklistReader(input_blacklists)
+        input_exemptions = {"ruleset": "test", "words": ["garn", "klarne"]}
+        reader = dialect_updater.ExemptionReader(input_exemptions)
         # when
         result_string, result_values = reader.get_blacklist()
         # then
