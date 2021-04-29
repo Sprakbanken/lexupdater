@@ -4,6 +4,7 @@ Test suite for all the classes in the db_handler.py module
 from unittest.mock import patch
 
 import pytest
+from schema import SchemaError
 
 from lexupdater import config
 from lexupdater import db_handler
@@ -75,33 +76,46 @@ class TestDatabaseUpdater:
             )
             # then
             assert isinstance(result, db_handler.DatabaseUpdater)
-            # Check private attribute values
-            assert result._db == config.database
-            assert result._word_table == config.word_table
-            # Check list equality
-            assert len(result._rulesets) == len(ruleset_fixture)
-            assert result._rulesets == ruleset_fixture
-            assert len(result._blacklists) == len(blacklists_fixture)
-            assert result._blacklists == blacklists_fixture
-            assert len(result._dialects) == len(some_dialects)
-            assert result._dialects == some_dialects
             # Check that the patched function was called
             db_handler.DatabaseUpdater._establish_connection.assert_called()
 
-    def test_validate_dialect(self, db_updater_obj):
+    @pytest.mark.parametrize(
+        "invalid_config_values",
+        ["rules", "blacklists", "dialects"],
+        indirect=True
+    )
+    def test_invalid_config_values_raises_error(self, invalid_config_values):
+        """Test validation of rules and blacklists
+        when loaded by DatabaseUpdater
+        """
         # given
-        input_dialect = "e_spoken"
-        # when
-        result = db_updater_obj._validate_dialect(input_dialect)
-        # then
-        assert result == input_dialect
+        rules, blacklists, dialects = invalid_config_values
+        with patch.object(
+            db_handler.DatabaseUpdater, "_establish_connection", autospec=True
+        ):
+            with pytest.raises(SchemaError):
+                db_handler.DatabaseUpdater(
+                    config.database,
+                    rules,
+                    dialects,
+                    config.word_table,
+                    blacklists,
+                )
 
-    def test_validate_dialect_raises_ValueError(self, db_updater_obj):
+    def test_validate_dialect(self, db_updater_obj, some_dialects):
         # given
-        input_dialect = "bergensk"
+        input_dialects = some_dialects + ["e_spoken"]
         # when
-        with pytest.raises(ValueError):
-            result = db_updater_obj._validate_dialect(input_dialect)
+        result = db_updater_obj.validate_dialects(input_dialects)
+        # then
+        assert result == input_dialects
+
+    def test_validate_dialect_raises_error(self, db_updater_obj, some_dialects):
+        # given
+        input_dialects = some_dialects + ["bergensk"]
+        # when
+        with pytest.raises(SchemaError):
+            result = db_updater_obj.validate_dialects(input_dialects)
             # then
             assert result is None
 
