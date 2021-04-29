@@ -118,7 +118,9 @@ class DatabaseUpdater(object):
         self._updates = []
         for ruleset in self._rulesets:
             name = ruleset["name"]
-            dialects = [self._validate_dialect(dialect) for dialect in ruleset["areas"]]
+            dialects = [
+                self._validate_dialect(dialect) for dialect in ruleset["areas"]
+            ]
             self._bl_str = ""
             self._bl_values = []
             for blist in self._blacklists:
