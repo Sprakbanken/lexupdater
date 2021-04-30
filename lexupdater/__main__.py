@@ -6,7 +6,6 @@ import argparse
 from .config import dialects
 from .lexupdater import main
 
-
 # Argument parser
 parser = argparse.ArgumentParser()
 

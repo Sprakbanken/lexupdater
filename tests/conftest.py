@@ -72,18 +72,43 @@ def all_dialects():
 
 
 @pytest.fixture(scope="session")
-def blacklists_fixture():
-    """Set up a test value for the blacklists"""
+def exemptions_fixture():
+    """Test value for the exemptions"""
     return [
         {"ruleset": "retrotest", "words": ["garn", "klarne"]},
         {"ruleset": "masc", "words": ["søknader", "søknadene"]},
     ]
 
 
+@pytest.fixture
+def invalid_config_values(request, ruleset_fixture, exemptions_fixture, some_dialects):
+    if request.param == "rules":
+        return (
+            ruleset_fixture + [{"unexpected_key": "unexpected_value"}],
+            exemptions_fixture,
+            some_dialects,
+        )
+    elif request.param == "exemptions":
+        return (
+            ruleset_fixture,
+            exemptions_fixture + [{"unexpected_key": "unexpected_value"}],
+            some_dialects,
+        )
+    elif request.param == "dialects":
+        return (
+            ruleset_fixture,
+            exemptions_fixture,
+            some_dialects + ["invalid_dialect"],
+        )
+    else:
+        raise ValueError("invalid internal test config")
+
+
 @pytest.fixture(scope="session")
-def db_updater_obj(ruleset_fixture, all_dialects, blacklists_fixture):
-    """Set up an instance of the class object we want to test,
-    connect to the correct database, yield the DatabaseUpdater object,
+def db_updater_obj(ruleset_fixture, all_dialects, exemptions_fixture):
+    """Instance of the class object we want to test.
+
+    Connect to the correct database, yield the DatabaseUpdater object,
     and close the connection after the test is done with the object.
 
     Tests that make use of this fixture will need to be updated
@@ -94,7 +119,7 @@ def db_updater_obj(ruleset_fixture, all_dialects, blacklists_fixture):
         ruleset_fixture,
         all_dialects,
         config.word_table,
-        blacklists_fixture,
+        exemptions_fixture,
     )
     yield updater_obj
     updater_obj._connection.close()

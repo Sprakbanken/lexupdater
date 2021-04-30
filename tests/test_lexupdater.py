@@ -20,8 +20,6 @@ def test_get_base(db_updater_obj):
     assert result[0] is not None
 
 
-
-
 @pytest.fixture
 def dir_path(tmp_path):
     dir_path = tmp_path / "sub"
@@ -30,11 +28,7 @@ def dir_path(tmp_path):
 
 
 @pytest.mark.parametrize("write_base", [True, False], ids=["base", "no_base"])
-def test_main_script_some_dialects(
-        some_dialects,
-        write_base,
-        dir_path
-):
+def test_main_script_some_dialects(some_dialects, write_base, dir_path):
     # given
     with patch("lexupdater.lexupdater.output_dir", new=dir_path):
         with patch("lexupdater.lexupdater.DatabaseUpdater"):
@@ -45,9 +39,5 @@ def test_main_script_some_dialects(
             expected_files = [f"{d}.txt" for d in some_dialects]
             result_files = [file_path.name for file_path in dir_path.iterdir()]
             # then
-            assert all([
-                file in result_files for file in expected_files
-            ]), print(result_files)
+            assert all([file in result_files for file in expected_files])
             assert ("base.txt" in result_files) == write_base
-
-
