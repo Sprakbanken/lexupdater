@@ -19,10 +19,10 @@ from .exemptions import exemption1, exemption2
 from .rules import test1, test2
 
 # Name of the temp table containing all
-# words and word metadata in the backend dict
+# words and word metadata in the backend db
 word_table = "words_tmp"
 
-# Path to the backend dict
+# Path to the backend db
 database = "./data/input/backend-db02.db"
 
 # Path to the output folder for the lexica
