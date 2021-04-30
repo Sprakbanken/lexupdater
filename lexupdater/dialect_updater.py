@@ -2,51 +2,6 @@
 # coding=utf-8
 
 
-class RuleValidator(object):
-    """Check that dialect update rules are valid format"""
-
-    def __init__(self, ruledict):
-        self._ruledict = ruledict
-
-    def validate(self):
-        topkeyset = ["areas", "name", "rules"]
-        rulekeyset = ["pattern", "repl", "constraints"]
-        conkeyset = ["field", "pattern", "is_regex"]
-        if sorted(list(self._ruledict.keys())) != sorted(topkeyset):
-            raise KeyError(
-                "The dict must have the keys 'area', 'name'"
-                " and 'rules', and no other keys"
-            )
-        for rule in self._ruledict["rules"]:
-            if sorted(list(rule.keys())) != sorted(rulekeyset):
-                raise KeyError(
-                    "The rule dict must have the keys 'pattern',"
-                    " 'repl', 'constraints', and no other keys"
-                )
-            for constraint in rule["constraints"]:
-                if sorted(list(constraint.keys())) != sorted(conkeyset):
-                    raise KeyError(
-                        "The constraint dict must"
-                        " have the keys 'field', 'pattern',"
-                        " 'is_regex', and no other keys"
-                    )
-
-
-class BlacklistValidator(object):
-    """Check that blacklists are valid format"""
-
-    def __init__(self, bldict):
-        self._bldict = bldict
-
-    def validate(self):
-        blkeys = ["ruleset", "words"]
-        if sorted(list(self._bldict.keys())) != sorted(blkeys):
-            raise KeyError(
-                "The blacklist dict must have the keys"
-                " 'ruleset' and 'words', and no other keys"
-            )
-
-
 class QueryBuilder(object):
     """Parent class for querybuilder classes."""
 
@@ -115,12 +70,11 @@ class ConstraintReader(object):
         return self._constraintstring, self._values
 
 
-class BlacklistReader(object):
-    """parses blacklists and converts them to SQL WHERE clause fragments"""
+class ExemptionReader(object):
+    """parses exemptions and converts them to SQL WHERE clause fragments"""
 
     def __init__(self, bldict):
         self._bldict = bldict
-        BlacklistValidator(bldict).validate()
         self._values = bldict["words"]
         self._blstring = (
             f" wordform NOT IN ("

@@ -1,7 +1,6 @@
 """
 Test suite for all the classes in the dialect_updater.py module
 """
-from unittest.mock import patch
 
 import pytest
 
@@ -9,86 +8,44 @@ from lexupdater import dialect_updater
 
 
 @pytest.fixture
-def rule_dict():
+def rule():
     """A test example of a structured rule from a ruleset"""
-    const = {"field": "field", "pattern": "const_pattern", "is_regex": "bool"}
-    rule = {"pattern": "pattern", "repl": "repl", "constraints": [const]}
-    top = {"areas": ["list"], "name": "name", "rules": [rule]}
-    return top
-
-
-class TestValidators:
-    """Test validation of rules and blacklists"""
-
-    def test_rule_validator_validate_passing(self, rule_dict):
-        # given
-        validator = dialect_updater.RuleValidator(rule_dict)
-        # when
-        validator.validate()
-        # then, if no Error is raised, the test passes
-
-    def test_rule_validator_validate_raises_error(self, rule_dict):
-        # given
-        rule_dict["unexpected_key"] = "unexpected_value"
-        validator = dialect_updater.RuleValidator(rule_dict)
-        # when
-        with pytest.raises(KeyError):
-            validator.validate()
-
-    def test_blacklist_validator_validate_raises_error(self):
-        # given
-        input_dict = {
-            "ruleset": "str",
-            "words": ["list", "of", "words"],
-            "unexpected_key": "unexpected_value",
-        }
-        validator = dialect_updater.BlacklistValidator(input_dict)
-        # when
-        with pytest.raises(KeyError):
-            validator.validate()
-
-    def test_blacklist_validator_validate_passes(self):
-        # given
-        blacklist_dict = {
-            "ruleset": "str",
-            "words": ["list", "of", "words"],
-        }
-        validator = dialect_updater.BlacklistValidator(blacklist_dict)
-        # when
-        validator.validate()
+    return {
+        "pattern": r"\bAX0 R$",
+        "repl": r"AA0 R",
+        "constraints": [
+            {"field": "pos", "pattern": "NN", "is_regex": False},
+            {"field": "feats", "pattern": "MAS", "is_regex": True},
+        ],
+    }
 
 
 class TestQueryBuilders:
     """Test that queries are constructed as intended"""
 
-    def test_query_builder(self, rule_dict):
-        # given
-        rule = rule_dict["rules"][0]
+    def test_query_builder(self, rule):
         # when
         q_builder = dialect_updater.QueryBuilder("area", rule, "word_table")
         # then
         assert isinstance(q_builder, dialect_updater.QueryBuilder)
         assert q_builder._constrained_query  # direct boolean assertion
 
-    def test_update_query_builder(self, rule_dict):
+    def test_update_query_builder(self, rule):
         # given
-        rule = rule_dict["rules"][0]
         q_builder = dialect_updater.UpdateQueryBuilder("area", rule, "table")
         # when
         query, values, constrained_bool = q_builder.get_update_query()
         # then
         assert "UPDATE area SET nofabet = REGREPLACE(?,?,nofabet)" in query
         assert "WHERE word_id IN (SELECT word_id FROM table" in query
-        assert "WHERE field REGEXP ?" in query
-        assert values == ["pattern", "repl", "const_pattern"]
+        assert "WHERE pos = ? AND feats REGEXP ?" in query
+        assert values == [rule["pattern"], rule["repl"], "NN", "MAS"]
         assert constrained_bool  # bool("bool") Evaluates to True
 
     @pytest.mark.skip("Not implemented yet")
-    def test_select_query_builder(self):
+    def test_select_query_builder(self, rule):
         """Skeleton test for desired functionality"""
         # given
-        rule = rule_dict["rules"][0]
-        # We don't really need separate classes for these building functions
         q_builder = dialect_updater.QueryBuilder()
         # when
         result_query = q_builder.build_select_query("area", rule, "word_table")
@@ -100,16 +57,13 @@ class TestQueryBuilders:
 
 
 class TestReaders:
-    """Test that constraints and blacklists are parsed
+    """Test that constraints and exemptions are parsed
     and converted to the expected SQL-query fragments.
     """
 
-    def test_parse_constraints(self):
+    def test_parse_constraints(self, rule):
         # given
-        constraints = [
-            {"field": "pos", "pattern": r"NN", "is_regex": False},
-            {"field": "feats", "pattern": r"MAS", "is_regex": True},
-        ]
+        constraints = rule["constraints"]
         reader = dialect_updater.ConstraintReader(constraints, "word_table")
         # when
         result_string, result_values = reader.get_constraints()
@@ -117,14 +71,12 @@ class TestReaders:
         assert result_values == ["NN", "MAS"]
         assert "pos = ? AND feats REGEXP ?" in result_string
 
-    @patch("lexupdater.dialect_updater.BlacklistValidator.validate")
-    def test_parse_blacklists(self, patched_validator):
+    def test_parse_exemptions(self):
         # given
-        input_blacklists = {"ruleset": "test", "words": ["garn", "klarne"]}
-        reader = dialect_updater.BlacklistReader(input_blacklists)
+        input_exemptions = {"ruleset": "test", "words": ["garn", "klarne"]}
+        reader = dialect_updater.ExemptionReader(input_exemptions)
         # when
         result_string, result_values = reader.get_blacklist()
         # then
         assert result_string == " wordform NOT IN (?,?)"
         assert result_values == ["garn", "klarne"]
-        patched_validator.assert_called()

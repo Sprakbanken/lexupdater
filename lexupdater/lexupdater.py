@@ -1,7 +1,14 @@
 import datetime
 
+from .config import (
+    dialects,
+    word_table,
+    database,
+    rules,
+    exemptions,
+    output_dir
+)
 from .db_handler import DatabaseUpdater
-from .config import dialects, word_table, database, rules, blacklists, output_dir
 
 
 def get_base(connection):
@@ -34,7 +41,7 @@ def main(print_dialects, print_base):
 
     The variable base contains the original state of the lexicon.
     exp contains the modified lexicon based on the rules and
-    blacklists specified in the config file. Note that all modifications
+    exemptions specified in the config file. Note that all modifications
     in the backend db target temp tables, so the db isn"t modified.
 
     The modifications to the lexicon are written to new, dialect-specific
@@ -51,7 +58,7 @@ def main(print_dialects, print_base):
     begin_time = datetime.datetime.now()
 
     updateobj = DatabaseUpdater(
-        database, rules, dialects, word_table, blacklists=blacklists
+        database, rules, dialects, word_table, exemptions=exemptions
     )
     connection = updateobj.get_connection()
     updateobj.update()
