@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # coding=utf-8
+from typing import List
 
 
 class QueryBuilder(object):
@@ -22,9 +23,9 @@ class UpdateQueryBuilder(QueryBuilder):
         self._query = f"UPDATE {area} SET nofabet = REGREPLACE(?,?,nofabet)"
         self._values = [self._pattern, self._repl]
         if self._constrained_query:
-            cstr, cvals = ConstraintReader(
+            cstr, cvals = parse_constraints(
                 self._constraints, self._word_table
-            ).get_constraints()
+            )
             self._query += cstr
             self._values = self._values + cvals
 
@@ -41,45 +42,60 @@ class SelectQueryBuilder(QueryBuilder):
     pass
 
 
-class ConstraintReader(object):
-    """Replacement rules can be constrained to certain grammatical categories
-    or other information from the word table. This class reads such constraints
-    and converts them to SQL WHERE clauses.
+def parse_constraints(constraints: List, word_table: str):
+    """Extract constraint values from replacement rules
+    and construct SQL WHERE queries based on them.
+
+    Grammatical categories and features that are given in the word table of
+    the lexicon can be used to narrow down the scope of words that the
+    replacement rule applies to.
+
+    Parameters
+    ----------
+    constraints: list[dict]
+        list of dictionaries with `field`, `pattern`, and `is_regex` keys
+    word_table: str
+
+    Returns
+    -------
+    tuple[str, list]
+        SQL clause fragment and list of feature values
+        for the words that the rule applies to
     """
-
-    def __init__(self, constraints, word_table):
-        self._word_table = word_table
-        self._constraints = constraints
-        self._constraintstring = (
-            f" WHERE word_id IN (SELECT word_id FROM {self._word_table} WHERE "
+    values = []
+    constraint_string = (
+            f" WHERE word_id IN (SELECT word_id FROM {word_table} WHERE "
         )
-        self._values = []
+    for n, const in enumerate(constraints):
+        pattern = const["pattern"]
+        values.append(pattern)
 
-    def _parse_constraints(self):
-        for n, const in enumerate(self._constraints):
-            field = const["field"]
-            pattern = const["pattern"]
-            operator = "=" if not const["is_regex"] else "REGEXP"
-            self._constraintstring += f"{field} {operator} ?"
-            self._values.append(pattern)
-            if n != len(self._constraints) - 1:
-                self._constraintstring += " AND "
+        field = const["field"]
+        operator = "=" if not const["is_regex"] else "REGEXP"
+        constraint_string += f"{field} {operator} ?"
 
-    def get_constraints(self):
-        self._parse_constraints()
-        return self._constraintstring, self._values
+        if n != len(constraints) - 1:
+            constraint_string += " AND "
+
+    return constraint_string, values
 
 
-class ExemptionReader(object):
-    """parses exemptions and converts them to SQL WHERE clause fragments"""
+def parse_exemptions(exemption):
+    """Parse an exemption dictionary and convert to a WHERE clause fragment
 
-    def __init__(self, bldict):
-        self._bldict = bldict
-        self._values = bldict["words"]
-        self._blstring = (
-            f" wordform NOT IN ("
-            f"{','.join(['?' for _ in range(len(self._values))])})"
-        )
+    Parameters
+    ----------
+    exemption: dict
+        dictionary with `ruleset` and `words` keys
 
-    def get_blacklist(self):
-        return self._blstring, self._values
+    Returns
+    -------
+    tuple[str, list]
+        SQL fragment and a list of words that are exempt
+    """
+    values = exemption["words"]
+    exemption_string = (
+        f" wordform NOT IN ({','.join(['?' for _ in values])})"
+    )
+    return exemption_string, values
+

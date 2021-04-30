@@ -6,6 +6,7 @@ import pytest
 
 @pytest.mark.skip("Not implemented yet")
 class TestNewwordUpdater:
+
     def test_newword_list(self):
         """Test that the list of new words meet the criteria we've set"""
         # given
