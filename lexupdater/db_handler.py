@@ -6,15 +6,8 @@ import sqlite3
 
 from schema import Schema
 
-from .config import rule_schema, exemption_schema, dialect_schema
-from .dialect_updater import (
-    UpdateQueryBuilder,
-    SelectQueryBuilder,
-    parse_exemptions,
-)
-
-
-# Regex checker, to be used in SQL queries
+from .dialect_updater import UpdateQueryBuilder, parse_exemptions
+from .config.constants import rule_schema, exemption_schema, dialect_schema
 
 
 def regexp(regpat, item):
@@ -107,50 +100,71 @@ class DatabaseUpdater(object):
             self._connection.commit()
 
     def _construct_update_queries(self):
-        # TODO: refactor to handle variable updates in separate functions
-        self._updates = []
+        """Create a list of sqlite3 update queries for the rules in
+        self._rulesets, in order to update the relevant entries.
+
+        The "query" strings in the resulting dictionaries contain SQL-style
+        formatting variables "?", which are replaced with the strings in
+        "values", in positional order, when they are executed with the sqlite3
+        db connection cursor.
+
+        Returns
+        -------
+        list[list[dict]]]
+            innermost dictionary is in this format:
+            {
+                "query": str,
+                "values": list[str],
+                "is_constrained": bool,
+            }
+        """
+        rule_exemption_mapping = {
+            exemption["ruleset"]: exemption["words"]
+            for exemption in self._exemptions
+        }
+        updates = []
+        # iterate over ruleset list
         for ruleset in self._rulesets:
-            name = ruleset["name"]
-            rule_dialects = self.validate_dialects(ruleset["areas"])
-            self._bl_str = ""
-            self._bl_values = []
-            for blist in self._exemptions:
-                if blist["ruleset"] == name:
-                    self._bl_str, self._bl_values = parse_exemptions(blist)
-                    break
+            rule_name = ruleset["name"]
+            # validate rule dialects against instance dialects
+            rule_dialects = Schema(self._dialects).validate(ruleset["areas"])
+            # define the exemption string fragment
+            exempt_words = rule_exemption_mapping.get(rule_name, [])
+            exempt_str = parse_exemptions(exempt_words) if exempt_words else ""
+
+            # suggestion: add_exemptions_to_query
+            # suggestion: add_constraints_to_query
             rules = []
-            for r in ruleset["rules"]:
+            for rule in ruleset["rules"]:
                 for dialect in rule_dialects:
-                    builder = UpdateQueryBuilder(
-                        dialect, r, self._word_table
+                    (
+                        query, values, is_constrained
+                    ) = UpdateQueryBuilder(
+                        dialect, rule, self._word_table
                     ).get_update_query()
-                    mydict = {
-                        "query": builder[0],
-                        "values": builder[1],
-                        "is_constrained": builder[2],
-                    }
-                    if not mydict["is_constrained"]:
-                        if self._bl_str == "":
-                            mydict["query"] = mydict["query"] + ";"
+                    # update query based on constraints
+                    if not is_constrained:
+                        if exempt_str == "":
+                            query += ";"
                         else:
-                            mydict["query"] = (
-                                f"{mydict['query']} "
-                                f"WHERE word_id IN "
-                                f"(SELECT word_id "
-                                f"FROM {self._word_table} "
-                                f"WHERE{self._bl_str});"
+                            query += (
+                                f" WHERE word_id IN (SELECT word_id FROM "
+                                f"{self._word_table} WHERE {exempt_str});"
                             )
-                            mydict["values"] = mydict["values"] + self._bl_values
-                    else:
-                        if self._bl_str == "":
-                            mydict["query"] = mydict["query"] + ");"
+                            values += exempt_words
+                    elif is_constrained:
+                        if exempt_str == "":
+                            query += ");"
                         else:
-                            mydict["query"] = (
-                                mydict["query"] + " AND" + self._bl_str + ");"
-                            )
-                            mydict["values"] = mydict["values"] + self._bl_values
-                    rules.append(mydict)
-            self._updates.append(rules)
+                            query += f" AND {exempt_str});"
+                            values += exempt_words
+                    rules.append({
+                        "query": query,
+                        "values": values,
+                        "is_constrained": is_constrained,
+                    })
+                updates.append(rules)
+        return updates
 
     def update(self):
         """Connects to db and creates temp tables. Then reads dialect

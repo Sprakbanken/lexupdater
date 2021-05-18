@@ -80,22 +80,20 @@ def parse_constraints(constraints: List, word_table: str):
     return constraint_string, values
 
 
-def parse_exemptions(exemption):
+def parse_exemptions(exemption_words):
     """Parse an exemption dictionary and convert to a WHERE clause fragment
 
     Parameters
     ----------
-    exemption: dict
-        dictionary with `ruleset` and `words` keys
+    exemption_words: list
+        list of words to exclude from the word search
 
     Returns
     -------
     tuple[str, list]
         SQL fragment and a list of words that are exempt
     """
-    values = exemption["words"]
     exemption_string = (
-        f" wordform NOT IN ({','.join(['?' for _ in values])})"
+        f" wordform NOT IN ({','.join(['?' for _ in exemption_words])})"
     )
-    return exemption_string, values
-
+    return exemption_string
