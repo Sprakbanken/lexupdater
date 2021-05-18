@@ -18,62 +18,55 @@ from .dialect_updater import (
 
 
 def regexp(regpat, item):
-    """True if regex match, else False."""
+    """Check whether a regex pattern matches a string item.
+    To be used in SQL queries.
+
+    Parameters
+    ----------
+    regpat: str
+        regex pattern, typically an r-string
+    item: str
+
+    Returns
+    -------
+    bool
+        True if regpat matches item, else False.
+    """
     mypattern = re.compile(regpat)
     return mypattern.search(item) is not None
 
 
-# Create temporary table_expressions
+CREATE_DIALECT_TABLE_STMT = """CREATE TEMPORARY TABLE {dialect} (
+pron_row_id INTEGER PRIMARY KEY AUTOINCREMENT,
+pron_id INTEGER NOT NULL,
+word_id INTEGER NOT NULL,
+nofabet TEXT NOT NULL,
+certainty INTEGER NOT NULL,
+FOREIGN KEY(word_id) REFERENCES words(word_id)
+ON UPDATE CASCADE);
+"""
 
+CREATE_WORD_TABLE_STMT = """CREATE TEMPORARY TABLE {word_table_name} (
+word_row_id INTEGER PRIMARY KEY AUTOINCREMENT,
+word_id INTEGER NOT NULL,
+wordform TEXT NOT NULL,
+pos TEXT,
+feats TEXT,
+source TEXT,
+decomp_ort TEXT,
+decomp_pos TEXT,
+garbage TEXT,
+domain TEXT,
+abbr TEXT,
+set_name TEXT,
+style_status TEXT,
+inflector_role TEXT,
+inflector_rule TEXT,
+morph_label TEXT,
+compounder_code TEXT,
+update_info TEXT);"""
 
-def create_dialect_table_stmts(dialectlist):
-    """Create a temp table for each dialect in the dialect list
-    (to be supplied from the config file), and make it mirror base,
-    the table containing the original pronunciations.
-    """
-    stmts = []
-    for d in dialectlist:
-        create_stmt = f"""CREATE TEMPORARY TABLE {d} (
-                    pron_row_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    pron_id INTEGER NOT NULL,
-                    word_id INTEGER NOT NULL,
-                    nofabet TEXT NOT NULL,
-                    certainty INTEGER NOT NULL,
-                    FOREIGN KEY(word_id) REFERENCES words(word_id)
-                    ON UPDATE CASCADE);"""
-        insert_stmt = f"INSERT INTO {d} SELECT * FROM base;"
-        stmts.append((create_stmt, insert_stmt))
-    return stmts
-
-
-def create_word_table_stmts(word_table_name):
-    """Create a temp table that mirrors the "words" table,
-    i.e. the table with ortographic forms and word metadata.
-    The name should be supplied in the configuration file.
-    New words should be added to this table.
-    """
-    create_stmt = f"""CREATE TEMPORARY TABLE {word_table_name} (
-                    word_row_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    word_id INTEGER NOT NULL,
-                    wordform TEXT NOT NULL,
-                    pos TEXT,
-                    feats TEXT,
-                    source TEXT,
-                    decomp_ort TEXT,
-                    decomp_pos TEXT,
-                    garbage TEXT,
-                    domain TEXT,
-                    abbr TEXT,
-                    set_name TEXT,
-                    style_status TEXT,
-                    inflector_role TEXT,
-                    inflector_rule TEXT,
-                    morph_label TEXT,
-                    compounder_code TEXT,
-                    update_info TEXT);"""
-    insert_stmt = f"INSERT INTO {word_table_name} SELECT * FROM words;"
-    return create_stmt, insert_stmt
-
+INSERT_STMT = "INSERT INTO {table_name} SELECT * FROM {other_table};"
 
 class DatabaseUpdater(object):
     """Class for handling the db connection and
@@ -84,11 +77,11 @@ class DatabaseUpdater(object):
         if exemptions is None:
             exemptions = []
         self._db = db
-        # Validate the config values before instantiating the DatabaseUpdater
+        self._word_table = word_tbl
+        # Validate the config values before assigning the attributes
         self._rulesets = rule_schema.validate(rulesets)
         self._exemptions = exemption_schema.validate(exemptions)
         self._dialects = dialect_schema.validate(dialect_names)
-        self._word_table = word_tbl
         self._establish_connection()
 
     def validate_dialects(self, ruleset_dialects):
@@ -99,15 +92,17 @@ class DatabaseUpdater(object):
         self._connection.create_function("REGEXP", 2, regexp)
         self._connection.create_function("REGREPLACE", 3, re.sub)
         self._cursor = self._connection.cursor()
-        (self._word_create_stmt, self._word_update_stmt) = create_word_table_stmts(
-            self._word_table
+        self._cursor.execute(
+            CREATE_WORD_TABLE_STMT.format(word_table_name=self._word_table)
         )
-        self._cursor.execute(self._word_create_stmt)
-        self._cursor.execute(self._word_update_stmt)
+        self._cursor.execute(
+            INSERT_STMT.format(table_name=self._word_table, other_table="words")
+        )
         self._connection.commit()
-        dialect_stmts = create_dialect_table_stmts(self._dialects)
-        for create_stmt, insert_stmt in dialect_stmts:
+        for d in self._dialects:
+            create_stmt = CREATE_DIALECT_TABLE_STMT.format(dialect=d)
             self._cursor.execute(create_stmt)
+            insert_stmt = INSERT_STMT.format(table_name=d, other_table="base")
             self._cursor.execute(insert_stmt)
             self._connection.commit()
 
