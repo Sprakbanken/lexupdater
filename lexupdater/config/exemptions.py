@@ -12,4 +12,4 @@ exemption2 = {
     "words": ["søknader", "søknadene", "dugnader", "dugnadene"],
 }
 
-exemption_list = [_ for _ in locals() if not _.startswith("_")]
+exemption_list = [exemption1, exemption2]

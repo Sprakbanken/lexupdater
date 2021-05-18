@@ -14,9 +14,6 @@ __all__ = [
     "rules",
     "exemptions",
     "output_dir",
-    "rule_schema",
-    "exemption_schema",
-    "dialect_schema",
 ]
 
 

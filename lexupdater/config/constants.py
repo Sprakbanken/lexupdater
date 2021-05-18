@@ -1,4 +1,4 @@
-from schema import Schema
+from schema import Schema, And, Or, Optional
 
 
 # Validation schema for dialects:
@@ -27,7 +27,11 @@ rule_schema = Schema(
                     "pattern": str,
                     "repl": str,
                     "constraints": [
-                        {"field": str, "pattern": str, "is_regex": bool}
+                        Optional({
+                            "field": str,
+                            "pattern": str,
+                            "is_regex": bool
+                        })
                     ],
                 }
             ],

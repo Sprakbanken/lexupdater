@@ -49,4 +49,4 @@ test2 = {
     ],
 }
 
-rule_list = [_ for _ in locals() if not _.startswith("_")]
+rule_list = [test1, test2]
