@@ -11,3 +11,5 @@ exemption2 = {
     "ruleset": "masc",
     "words": ["søknader", "søknadene", "dugnader", "dugnadene"],
 }
+
+exemption_list = [_ for _ in locals() if not _.startswith("_")]

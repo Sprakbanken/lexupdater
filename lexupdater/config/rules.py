@@ -48,3 +48,5 @@ test2 = {
         },
     ],
 }
+
+rule_list = [_ for _ in locals() if not _.startswith("_")]

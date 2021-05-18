@@ -1,10 +1,16 @@
 #!/usr/bin/env python
 # coding=utf-8
 
+from .exemptions import exemption_list
+from .rules import rule_list
+from .constants import dialect_schema, rule_schema, exemption_schema
+
+# When config is imported in another module,
+# these are the variables available for import
 __all__ = [
-    "dialects",
     "word_table",
     "database",
+    "dialects",
     "rules",
     "exemptions",
     "output_dir",
@@ -13,13 +19,9 @@ __all__ = [
     "dialect_schema",
 ]
 
-from schema import Schema
 
-from .exemptions import exemption1, exemption2
-from .rules import test1, test2
-
-# Name of the temp table containing all
-# words and word metadata in the backend db
+# Name of the temp table to be created
+# containing words and word metadata in the backend db
 word_table = "words_tmp"
 
 # Path to the backend db
@@ -30,23 +32,8 @@ output_dir = "./data/output"
 
 # List of dialects which update rules can target.
 # Corresponds to names of pronunciation temp tables
-# created in the backend db
-dialects = [
-    "e_spoken",
-    "e_written",
-    "sw_spoken",
-    "sw_written",
-    "w_spoken",
-    "w_written",
-    "t_spoken",
-    "t_written",
-    "n_spoken",
-    "n_written",
-]
-# Validation schema for dialects:
-# The dialect variable is not reused here,
-# to allow configurability of the list
-dialect_schema = Schema([
+# created in the backend db.
+dialects = dialect_schema.validate([
     "e_spoken",
     "e_written",
     "sw_spoken",
@@ -63,28 +50,7 @@ dialect_schema = Schema([
 # multiple rules may affect the same
 # pronunciations, and that the ordering
 # of the rules may matter.
-rules = [test1, test2]
-
-# Validation schema for the rulesets
-rule_schema = Schema(
-    [
-        {
-            "areas": dialects,
-            "name": str,
-            "rules": [
-                {
-                    "pattern": str,
-                    "repl": str,
-                    "constraints": [
-                        {"field": str, "pattern": str, "is_regex": bool}
-                    ],
-                }
-            ],
-        }
-    ]
-)
+rules = rule_schema.validate(rule_list)
 
 # List of words to be exempted from the rules
-exemptions = [exemption1, exemption2]
-# Validation schema for the rulesets
-exemption_schema = Schema([{"ruleset": str, "words": list}])
+exemptions = exemption_schema.validate(exemption_list)
