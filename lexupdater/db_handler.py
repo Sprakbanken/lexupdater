@@ -78,6 +78,21 @@ def create_word_table_stmts(word_table_name):
 class DatabaseUpdater(object):
     """Class for handling the db connection and
     running the updates on temp tables.
+
+    Parameters
+    ----------
+    db: str
+        Name of database to connect to, e.g. file path to the local db on disk
+    rulesets: list
+        List of ruleset dictionaries, which are validated with
+        rule_schema from the config.constants module
+    dialect_names: list
+        List of dialects to update transcription entries for
+    word_tbl: str
+        Name of temporary table to be created for the word entries
+    exemptions:
+        List of exemption dictionaries, containing words
+        that are exempt from a given ruleset, and the name of the ruleset
     """
 
     def __init__(self, db, rulesets, dialect_names, word_tbl, exemptions=None):
@@ -95,6 +110,9 @@ class DatabaseUpdater(object):
         return Schema(self._dialects).validate(ruleset_dialects)
 
     def _establish_connection(self):
+        """Connect to db and create temporary tables for the transformation
+        rules to be applied on.
+        """
         self._connection = sqlite3.connect(self._db)
         self._connection.create_function("REGEXP", 2, regexp)
         self._connection.create_function("REGREPLACE", 3, re.sub)
@@ -175,20 +193,25 @@ class DatabaseUpdater(object):
         return self._connection
 
     def get_results(self):
-        """Retrieves a dict with the updated state of the lexicon for
-        each dialect.
+        """Fetch the state of the lexicon for each dialect
+
+        Returns
+        -------
+        results: dict
+            Dialect names are keys, and the resulting collection of values
+            from each field in the database are the values
         """
-        self._results = {d: [] for d in self._dialects}
+        results = {d: [] for d in self._dialects}
         for d in self._dialects:
             stmt = f"""SELECT w.word_id, w.wordform, w.pos, w.feats, w.source,
-                    w.decomp_ort, w.decomp_pos,w.garbage, w.domain, w.abbr,
+                    w.decomp_ort, w.decomp_pos, w.garbage, w.domain, w.abbr,
                     w.set_name, w.style_status, w.inflector_role,
                     w.inflector_rule, w.morph_label, w.compounder_code,
                     w.update_info, p.pron_id, p.nofabet, p.certainty
                     FROM {self._word_table} w
                     LEFT JOIN {d} p ON p.word_id = w.word_id;"""
-            self._results[d] = self._cursor.execute(stmt).fetchall()
-        return self._results
+            results[d] = self._cursor.execute(stmt).fetchall()
+        return results
 
     def close_connection(self):
         self._connection.close()
