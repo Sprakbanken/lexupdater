@@ -4,7 +4,6 @@
 import re
 import sqlite3
 
-from schema import Schema
 
 from .config.constants import rule_schema, exemption_schema, dialect_schema
 from dialect_updater import (
@@ -90,7 +89,8 @@ class DatabaseUpdater(object):
         self._establish_connection()
 
     def validate_dialects(self, ruleset_dialects):
-        return Schema(self._dialects).validate(ruleset_dialects)
+        valid_dialects = [d for d in ruleset_dialects if d in self._dialects]
+        return valid_dialects
 
     def _establish_connection(self):
         self._connection = sqlite3.connect(self._db)
@@ -132,6 +132,8 @@ class DatabaseUpdater(object):
         for ruleset in self._rulesets:
             rule_name = ruleset["name"]
             rule_dialects = self.validate_dialects(ruleset["areas"])
+            if not rule_dialects:
+                continue
 
             exempt_words = rule_exemptions.get(rule_name, [])
             exempt_str = parse_exemptions(exempt_words)
