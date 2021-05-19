@@ -6,27 +6,12 @@ import sqlite3
 
 from schema import Schema
 
-from .dialect_updater import UpdateQueryBuilder, parse_exemptions
 from .config.constants import rule_schema, exemption_schema, dialect_schema
-
-
-def regexp(regpat, item):
-    """Check whether a regex pattern matches a string item.
-    To be used in SQL queries.
-
-    Parameters
-    ----------
-    regpat: str
-        regex pattern, typically an r-string
-    item: str
-
-    Returns
-    -------
-    bool
-        True if regpat matches item, else False.
-    """
-    mypattern = re.compile(regpat)
-    return mypattern.search(item) is not None
+from dialect_updater import (
+    map_rule_exemptions,
+    parse_exemptions,
+    parse_constraints,
+)
 
 
 CREATE_DIALECT_TABLE_STMT = """CREATE TEMPORARY TABLE {dialect} (
@@ -60,6 +45,33 @@ compounder_code TEXT,
 update_info TEXT);"""
 
 INSERT_STMT = "INSERT INTO {table_name} SELECT * FROM {other_table};"
+
+UPDATE_QUERY = """UPDATE {dialect} SET nofabet = REGREPLACE(?,?,nofabet) 
+{where_word_in_stmt};"""
+
+WHERE_WORD_IN_STMT = """WHERE word_id IN 
+(SELECT word_id FROM {word_table} 
+WHERE {constraints}{exemptions})"""
+
+
+def regexp(reg_pat, item):
+    """Check whether a regex pattern matches a string item.
+    To be used in SQL queries.
+
+    Parameters
+    ----------
+    reg_pat: str
+        regex pattern, typically an r-string
+    item: str
+
+    Returns
+    -------
+    bool
+        True if reg_pat matches item, else False.
+    """
+    reg_pattern = re.compile(reg_pat)
+    return reg_pattern.search(item) is not None
+
 
 class DatabaseUpdater(object):
     """Class for handling the db connection and
@@ -99,86 +111,71 @@ class DatabaseUpdater(object):
             self._cursor.execute(insert_stmt)
             self._connection.commit()
 
-    def _construct_update_queries(self):
-        """Create a list of sqlite3 update queries for the rules in
+    def construct_update_queries(self):
+        """Create sqlite3 update queries for the rules in
         self._rulesets, in order to update the relevant entries.
 
-        The "query" strings in the resulting dictionaries contain SQL-style
-        formatting variables "?", which are replaced with the strings in
-        "values", in positional order, when they are executed with the sqlite3
-        db connection cursor.
+        The "query" strings contain SQL-style formatting variables "?",
+        which are replaced with the strings in the "values" tuple,
+        in positional order,
+        when they are executed with the sqlite3 db connection cursor.
 
-        Returns
-        -------
-        list[list[dict]]]
-            innermost dictionary is in this format:
-            {
-                "query": str,
-                "values": list[str],
-                "is_constrained": bool,
-            }
+        Yields
+        ------
+        tuple[str, list[str]]
+            query: the update query with "?" placeholders
+            values: list of positional values to be slotted into placeholders
         """
-        rule_exemption_mapping = {
-            exemption["ruleset"]: exemption["words"]
-            for exemption in self._exemptions
-        }
-        updates = []
-        # iterate over ruleset list
+
+        rule_exemptions = map_rule_exemptions(self._exemptions)
+
         for ruleset in self._rulesets:
             rule_name = ruleset["name"]
-            # validate rule dialects against instance dialects
-            rule_dialects = Schema(self._dialects).validate(ruleset["areas"])
-            # define the exemption string fragment
-            exempt_words = rule_exemption_mapping.get(rule_name, [])
-            exempt_str = parse_exemptions(exempt_words) if exempt_words else ""
+            rule_dialects = self.validate_dialects(ruleset["areas"])
 
-            # suggestion: add_exemptions_to_query
-            # suggestion: add_constraints_to_query
-            rules = []
+            exempt_words = rule_exemptions.get(rule_name, [])
+            exempt_str = parse_exemptions(exempt_words)
+
             for rule in ruleset["rules"]:
+
+                constraints = rule["constraints"]
+                is_constrained = bool(constraints)
+                constraint_str, constraint_values = parse_constraints(
+                    constraints)
+
+                values = [rule["pattern"], rule["repl"]]
+                values += constraint_values + exempt_words
+
+                if not is_constrained and not exempt_words:
+                    where_word_in_stmt = ""
+                else:
+                    where_word_in_stmt = WHERE_WORD_IN_STMT.format(
+                        word_table=self._word_table,
+                        constraints=constraint_str,
+                        exemptions=(
+                            f" AND {exempt_str}"
+                            if is_constrained and exempt_str
+                            else exempt_str
+                        )
+                    )
+
                 for dialect in rule_dialects:
-                    (
-                        query, values, is_constrained
-                    ) = UpdateQueryBuilder(
-                        dialect, rule, self._word_table
-                    ).get_update_query()
-                    # update query based on constraints
-                    if not is_constrained:
-                        if exempt_str == "":
-                            query += ";"
-                        else:
-                            query += (
-                                f" WHERE word_id IN (SELECT word_id FROM "
-                                f"{self._word_table} WHERE {exempt_str});"
-                            )
-                            values += exempt_words
-                    elif is_constrained:
-                        if exempt_str == "":
-                            query += ");"
-                        else:
-                            query += f" AND {exempt_str});"
-                            values += exempt_words
-                    rules.append({
-                        "query": query,
-                        "values": values,
-                        "is_constrained": is_constrained,
-                    })
-                updates.append(rules)
-        return updates
+                    yield (
+                        UPDATE_QUERY.format(
+                            dialect=dialect,
+                            where_word_in_stmt=where_word_in_stmt
+                        ),
+                        tuple(values)
+                    )
 
     def update(self):
-        """Connects to db and creates temp tables. Then reads dialect
-        update rules and applies them to the temp tables.
+        """Generate SQL update queries with the configured rules and
+        exemptions, and apply them to the dialect temp tables.
         """
-        self._fullqueries = []
-        self._establish_connection()
-        self._construct_update_queries()
-        for u in self._updates:
-            for rule in u:
-                self._cursor.execute(rule["query"], tuple(rule["values"]))
-                self._connection.commit()
-                self._fullqueries.append((rule["query"], tuple(rule["values"])))
-        return self._fullqueries  # Test: embed call in a print
+        updates = self.construct_update_queries()
+        for query, values in updates:
+            self._cursor.execute(query, values)
+            self._connection.commit()
 
     def get_connection(self):
         return self._connection

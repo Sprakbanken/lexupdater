@@ -3,46 +3,7 @@
 from typing import List
 
 
-class QueryBuilder(object):
-    """Parent class for querybuilder classes."""
-
-    def __init__(self, area, rule, word_table):
-        self._area = area
-        self._word_table = word_table
-        self._pattern = rule["pattern"]
-        self._repl = rule["repl"]
-        self._constraints = rule["constraints"]
-        self._constrained_query = self._constraints != []
-
-
-class UpdateQueryBuilder(QueryBuilder):
-    """Build an sql update query string """
-
-    def __init__(self, area, rule, word_table):
-        QueryBuilder.__init__(self, area, rule, word_table)
-        self._query = f"UPDATE {area} SET nofabet = REGREPLACE(?,?,nofabet)"
-        self._values = [self._pattern, self._repl]
-        if self._constrained_query:
-            cstr, cvals = parse_constraints(
-                self._constraints, self._word_table
-            )
-            self._query += cstr
-            self._values = self._values + cvals
-
-    def get_update_query(self):
-        return self._query, self._values, self._constrained_query
-
-
-class SelectQueryBuilder(QueryBuilder):
-    """Not yet implemented. The idea is that
-    it should build a select query that retrieves all entries
-    that fits the search pattern, making it easier to test and debug.
-    """
-
-    pass
-
-
-def parse_constraints(constraints: List, word_table: str):
+def parse_constraints(constraints: List):
     """Extract constraint values from replacement rules
     and construct SQL WHERE queries based on them.
 
@@ -54,7 +15,6 @@ def parse_constraints(constraints: List, word_table: str):
     ----------
     constraints: list[dict]
         list of dictionaries with `field`, `pattern`, and `is_regex` keys
-    word_table: str
 
     Returns
     -------
@@ -63,20 +23,13 @@ def parse_constraints(constraints: List, word_table: str):
         for the words that the rule applies to
     """
     values = []
-    constraint_string = (
-            f" WHERE word_id IN (SELECT word_id FROM {word_table} WHERE "
-        )
-    for n, const in enumerate(constraints):
-        pattern = const["pattern"]
-        values.append(pattern)
-
-        field = const["field"]
+    constraint_fragments = []
+    for const in constraints:
         operator = "=" if not const["is_regex"] else "REGEXP"
-        constraint_string += f"{field} {operator} ?"
+        constraint_fragments.append(f"{const['field']} {operator} ?")
+        values.append(const["pattern"])
 
-        if n != len(constraints) - 1:
-            constraint_string += " AND "
-
+    constraint_string = " AND ".join(constraint_fragments)
     return constraint_string, values
 
 
@@ -94,6 +47,34 @@ def parse_exemptions(exemption_words):
         SQL fragment and a list of words that are exempt
     """
     exemption_string = (
-        f" wordform NOT IN ({','.join(['?' for _ in exemption_words])})"
-    )
+        f"wordform NOT IN ({','.join(['?' for _ in exemption_words])})"
+    ) if exemption_words != [] else ""
     return exemption_string
+
+
+def map_rule_exemptions(exemptions):
+    """Reduce the list of exemption dictionaries to a single dictionary,
+    where the name of the corresponding ruleset is the key, and the exempt
+    words are the value.
+
+    Parameters
+    ----------
+    exemptions: list
+        list of strings, which should correspond
+
+    Returns
+    -------
+    dict
+    """
+    return {
+        exemption["ruleset"]: exemption["words"]
+        for exemption in exemptions
+    }
+
+
+def construct_select_queries(rule, exemptions, dialects):
+    """Not yet implemented.
+    Build a select query that retrieves all entries
+    that fits the search pattern, making it easier to test and debug.
+    """
+    pass
