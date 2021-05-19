@@ -122,4 +122,4 @@ def db_updater_obj(ruleset_fixture, all_dialects, exemptions_fixture):
         exemptions_fixture,
     )
     yield updater_obj
-    updater_obj._connection.close()
+    updater_obj.close_connection()

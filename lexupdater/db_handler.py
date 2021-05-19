@@ -6,7 +6,7 @@ import sqlite3
 
 
 from .config.constants import rule_schema, exemption_schema, dialect_schema
-from dialect_updater import (
+from .dialect_updater import (
     map_rule_exemptions,
     parse_exemptions,
     parse_constraints,
@@ -45,12 +45,15 @@ update_info TEXT);"""
 
 INSERT_STMT = "INSERT INTO {table_name} SELECT * FROM {other_table};"
 
-UPDATE_QUERY = """UPDATE {dialect} SET nofabet = REGREPLACE(?,?,nofabet) 
-{where_word_in_stmt};"""
+UPDATE_QUERY = (
+    "UPDATE {dialect} SET nofabet = REGREPLACE(?,?,nofabet) " 
+    "{where_word_in_stmt};"
+)
 
-WHERE_WORD_IN_STMT = """WHERE word_id IN 
-(SELECT word_id FROM {word_table} 
-WHERE {constraints}{exemptions})"""
+WHERE_WORD_IN_STMT = (
+    "WHERE word_id IN (SELECT word_id FROM {word_table} "
+    "WHERE {constraints}{exemptions})"
+)
 
 
 def regexp(reg_pat, item):
