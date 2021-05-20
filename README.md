@@ -9,12 +9,11 @@ transkripsjoner.
 
 ## Kom i gang
 ### 1. Sett opp kode-miljøet
-Sørg for at du har aktivert et virtuelt miljø med `python>=3.6`, f.eks. via 
-`anaconda` eller [`pyenv virtualenv`](https://github.com/pyenv/pyenv-virtualenv)
+Sørg for at du har versjon `3.6` eller høyere av `python`.
+Sett opp et virtuelt kodemiljø ved hjelp av `Makefile`: 
 
-Installér eksterne python-pakker med `pip`:  
 ```shell
-pip install -r requirements.txt 
+make setup
 ```
 
 ### 2. Last ned data
