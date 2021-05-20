@@ -28,4 +28,4 @@ lint:
 	. .venv/bin/activate
 	PYTHONPATH=. pylint lexupdater -j 4 --reports=y
 
-check: test
+check: test lint mypy

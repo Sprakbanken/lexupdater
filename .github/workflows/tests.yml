@@ -10,4 +10,4 @@ jobs:
         python-version: 3.7
         architecture: x64
     - run: make setup
-    - run: make check
+    - run: make test
