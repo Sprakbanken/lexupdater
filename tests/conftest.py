@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 from lexupdater import config
@@ -117,7 +119,7 @@ def db_updater_obj(ruleset_fixture, all_dialects,
     if the config values are changed.
     """
     updater_obj = DatabaseUpdater(
-        'tests/dummy_data.db',
+        str(Path('tests') / 'dummy_data.db'),  # Ensure file path is OS agnostic
         ruleset_fixture,
         all_dialects,
         config.word_table,
