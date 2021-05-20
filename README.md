@@ -62,7 +62,7 @@ python -m lexupdater -b
 ## Test koden
 Kjør automatiske enhets- og integrasjonstester med `pytest`: 
 ```shell
-python -m pytest
+python -m pytest -v tests --cov=lexupdater --cov-report=term-missing
 ```
 
 Oppsett for kvalitativ testing av leksikonoppdateringene 
