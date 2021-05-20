@@ -60,13 +60,19 @@ python -m lexupdater -b
 ```
 
 ## Test koden
-Kjør automatiske enhets- og integrasjonstester med `pytest`: 
+Kjør automatiske enhets- og integrasjonstester: 
 ```shell
-python -m pytest -v tests --cov=lexupdater --cov-report=term-missing
+make test
 ```
-
 Oppsett for kvalitativ testing av leksikonoppdateringene 
 vil komme på plass senere. 
+
+## Sjekk kodekvalitet
+Kjør en linter på koden for å se hvordan den forholder seg til 
+pep8-konvensjonene: 
+```shell
+make lint
+```
 
 ## Installér `lexupdater` som en python-pakke 
 Du kan lage en pip-installérbar python-pakke 
