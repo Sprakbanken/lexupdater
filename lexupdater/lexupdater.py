@@ -58,7 +58,7 @@ def main(print_dialects, print_base):
     begin_time = datetime.datetime.now()
 
     updateobj = DatabaseUpdater(
-        database, rules, dialects, word_table, exemptions=exemptions
+        database, rules, print_dialects, word_table, exemptions=exemptions
     )
     connection = updateobj.get_connection()
     updateobj.update()

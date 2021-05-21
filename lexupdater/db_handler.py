@@ -4,75 +4,75 @@
 import re
 import sqlite3
 
-from schema import Schema
 
-from .config import rule_schema, exemption_schema, dialect_schema
+from .config.constants import rule_schema, exemption_schema, dialect_schema
 from .dialect_updater import (
-    UpdateQueryBuilder,
-    SelectQueryBuilder,
+    map_rule_exemptions,
     parse_exemptions,
+    parse_constraints,
 )
 
 
-# Regex checker, to be used in SQL queries
+CREATE_DIALECT_TABLE_STMT = """CREATE TEMPORARY TABLE {dialect} (
+pron_row_id INTEGER PRIMARY KEY AUTOINCREMENT,
+pron_id INTEGER NOT NULL,
+word_id INTEGER NOT NULL,
+nofabet TEXT NOT NULL,
+certainty INTEGER NOT NULL,
+FOREIGN KEY(word_id) REFERENCES words(word_id)
+ON UPDATE CASCADE);
+"""
+
+CREATE_WORD_TABLE_STMT = """CREATE TEMPORARY TABLE {word_table_name} (
+word_row_id INTEGER PRIMARY KEY AUTOINCREMENT,
+word_id INTEGER NOT NULL,
+wordform TEXT NOT NULL,
+pos TEXT,
+feats TEXT,
+source TEXT,
+decomp_ort TEXT,
+decomp_pos TEXT,
+garbage TEXT,
+domain TEXT,
+abbr TEXT,
+set_name TEXT,
+style_status TEXT,
+inflector_role TEXT,
+inflector_rule TEXT,
+morph_label TEXT,
+compounder_code TEXT,
+update_info TEXT);"""
+
+INSERT_STMT = "INSERT INTO {table_name} SELECT * FROM {other_table};"
+
+UPDATE_QUERY = (
+    "UPDATE {dialect} SET nofabet = REGREPLACE(?,?,nofabet) " 
+    "{where_word_in_stmt};"
+)
+
+WHERE_WORD_IN_STMT = (
+    "WHERE word_id IN (SELECT word_id FROM {word_table} "
+    "WHERE {constraints}{exemptions})"
+)
 
 
-def regexp(regpat, item):
-    """True if regex match, else False."""
-    mypattern = re.compile(regpat)
-    return mypattern.search(item) is not None
+def regexp(reg_pat, item):
+    """Check whether a regex pattern matches a string item.
+    To be used in SQL queries.
 
+    Parameters
+    ----------
+    reg_pat: str
+        regex pattern, typically an r-string
+    item: str
 
-# Create temporary table_expressions
-
-
-def create_dialect_table_stmts(dialectlist):
-    """Create a temp table for each dialect in the dialect list
-    (to be supplied from the config file), and make it mirror base,
-    the table containing the original pronunciations.
+    Returns
+    -------
+    bool
+        True if reg_pat matches item, else False.
     """
-    stmts = []
-    for d in dialectlist:
-        create_stmt = f"""CREATE TEMPORARY TABLE {d} (
-                    pron_row_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    pron_id INTEGER NOT NULL,
-                    word_id INTEGER NOT NULL,
-                    nofabet TEXT NOT NULL,
-                    certainty INTEGER NOT NULL,
-                    FOREIGN KEY(word_id) REFERENCES words(word_id)
-                    ON UPDATE CASCADE);"""
-        insert_stmt = f"INSERT INTO {d} SELECT * FROM base;"
-        stmts.append((create_stmt, insert_stmt))
-    return stmts
-
-
-def create_word_table_stmts(word_table_name):
-    """Create a temp table that mirrors the "words" table,
-    i.e. the table with ortographic forms and word metadata.
-    The name should be supplied in the configuration file.
-    New words should be added to this table.
-    """
-    create_stmt = f"""CREATE TEMPORARY TABLE {word_table_name} (
-                    word_row_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    word_id INTEGER NOT NULL,
-                    wordform TEXT NOT NULL,
-                    pos TEXT,
-                    feats TEXT,
-                    source TEXT,
-                    decomp_ort TEXT,
-                    decomp_pos TEXT,
-                    garbage TEXT,
-                    domain TEXT,
-                    abbr TEXT,
-                    set_name TEXT,
-                    style_status TEXT,
-                    inflector_role TEXT,
-                    inflector_rule TEXT,
-                    morph_label TEXT,
-                    compounder_code TEXT,
-                    update_info TEXT);"""
-    insert_stmt = f"INSERT INTO {word_table_name} SELECT * FROM words;"
-    return create_stmt, insert_stmt
+    reg_pattern = re.compile(reg_pat)
+    return reg_pattern.search(item) is not None
 
 
 class DatabaseUpdater(object):
@@ -84,92 +84,103 @@ class DatabaseUpdater(object):
         if exemptions is None:
             exemptions = []
         self._db = db
-        # Validate the config values before instantiating the DatabaseUpdater
+        self._word_table = word_tbl
+        # Validate the config values before assigning the attributes
         self._rulesets = rule_schema.validate(rulesets)
         self._exemptions = exemption_schema.validate(exemptions)
         self._dialects = dialect_schema.validate(dialect_names)
-        self._word_table = word_tbl
         self._establish_connection()
 
     def validate_dialects(self, ruleset_dialects):
-        return Schema(self._dialects).validate(ruleset_dialects)
+        valid_dialects = [d for d in ruleset_dialects if d in self._dialects]
+        return valid_dialects
 
     def _establish_connection(self):
         self._connection = sqlite3.connect(self._db)
         self._connection.create_function("REGEXP", 2, regexp)
         self._connection.create_function("REGREPLACE", 3, re.sub)
         self._cursor = self._connection.cursor()
-        (self._word_create_stmt, self._word_update_stmt) = create_word_table_stmts(
-            self._word_table
+        self._cursor.execute(
+            CREATE_WORD_TABLE_STMT.format(word_table_name=self._word_table)
         )
-        self._cursor.execute(self._word_create_stmt)
-        self._cursor.execute(self._word_update_stmt)
+        self._cursor.execute(
+            INSERT_STMT.format(table_name=self._word_table, other_table="words")
+        )
         self._connection.commit()
-        dialect_stmts = create_dialect_table_stmts(self._dialects)
-        for create_stmt, insert_stmt in dialect_stmts:
+        for d in self._dialects:
+            create_stmt = CREATE_DIALECT_TABLE_STMT.format(dialect=d)
             self._cursor.execute(create_stmt)
+            insert_stmt = INSERT_STMT.format(table_name=d, other_table="base")
             self._cursor.execute(insert_stmt)
             self._connection.commit()
 
-    def _construct_update_queries(self):
-        # TODO: refactor to handle variable updates in separate functions
-        self._updates = []
+    def construct_update_queries(self):
+        """Create sqlite3 update queries for the rules in
+        self._rulesets, in order to update the relevant entries.
+
+        The "query" strings contain SQL-style formatting variables "?",
+        which are replaced with the strings in the "values" tuple,
+        in positional order,
+        when they are executed with the sqlite3 db connection cursor.
+
+        Yields
+        ------
+        tuple[str, list[str]]
+            query: the update query with "?" placeholders
+            values: list of positional values to be slotted into placeholders
+        """
+
+        rule_exemptions = map_rule_exemptions(self._exemptions)
+
         for ruleset in self._rulesets:
-            name = ruleset["name"]
+            rule_name = ruleset["name"]
             rule_dialects = self.validate_dialects(ruleset["areas"])
-            self._bl_str = ""
-            self._bl_values = []
-            for blist in self._exemptions:
-                if blist["ruleset"] == name:
-                    self._bl_str, self._bl_values = parse_exemptions(blist)
-                    break
-            rules = []
-            for r in ruleset["rules"]:
+            if not rule_dialects:
+                continue
+
+            exempt_words = rule_exemptions.get(rule_name, [])
+            exempt_str = parse_exemptions(exempt_words)
+
+            for rule in ruleset["rules"]:
+
+                constraints = rule["constraints"]
+                is_constrained = bool(constraints)
+                constraint_str, constraint_values = parse_constraints(
+                    constraints)
+
+                values = [rule["pattern"], rule["repl"]]
+                values += constraint_values + exempt_words
+
+                if not is_constrained and not exempt_words:
+                    where_word_in_stmt = ""
+                else:
+                    where_word_in_stmt = WHERE_WORD_IN_STMT.format(
+                        word_table=self._word_table,
+                        constraints=constraint_str,
+                        exemptions=(
+                            f" AND {exempt_str}"
+                            if is_constrained and exempt_str
+                            else exempt_str
+                        )
+                    )
+
                 for dialect in rule_dialects:
-                    builder = UpdateQueryBuilder(
-                        dialect, r, self._word_table
-                    ).get_update_query()
-                    mydict = {
-                        "query": builder[0],
-                        "values": builder[1],
-                        "is_constrained": builder[2],
-                    }
-                    if not mydict["is_constrained"]:
-                        if self._bl_str == "":
-                            mydict["query"] = mydict["query"] + ";"
-                        else:
-                            mydict["query"] = (
-                                f"{mydict['query']} "
-                                f"WHERE word_id IN "
-                                f"(SELECT word_id "
-                                f"FROM {self._word_table} "
-                                f"WHERE{self._bl_str});"
-                            )
-                            mydict["values"] = mydict["values"] + self._bl_values
-                    else:
-                        if self._bl_str == "":
-                            mydict["query"] = mydict["query"] + ");"
-                        else:
-                            mydict["query"] = (
-                                mydict["query"] + " AND" + self._bl_str + ");"
-                            )
-                            mydict["values"] = mydict["values"] + self._bl_values
-                    rules.append(mydict)
-            self._updates.append(rules)
+                    yield (
+                        UPDATE_QUERY.format(
+                            dialect=dialect,
+                            where_word_in_stmt=where_word_in_stmt
+                        ),
+                        tuple(values)
+                    )
 
     def update(self):
-        """Connects to db and creates temp tables. Then reads dialect
-        update rules and applies them to the temp tables.
+        """Generate SQL update queries with the configured rules and
+        exemptions, and apply them to the dialect temp tables.
         """
-        self._fullqueries = []
-        self._establish_connection()
-        self._construct_update_queries()
-        for u in self._updates:
-            for rule in u:
-                self._cursor.execute(rule["query"], tuple(rule["values"]))
-                self._connection.commit()
-                self._fullqueries.append((rule["query"], tuple(rule["values"])))
-        return self._fullqueries  # Test: embed call in a print
+        updates = self.construct_update_queries()
+        for query, values in updates:
+            self._cursor.execute(query, values)
+            self._connection.commit()
 
     def get_connection(self):
         return self._connection

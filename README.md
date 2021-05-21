@@ -9,7 +9,7 @@ transkripsjoner.
 
 ## Kom i gang
 ### 1. Sett opp kode-miljøet
-Sørg for at du har versjon `3.6` eller høyere av `python`.
+Sørg for at du har versjon `3.7` eller høyere av `python`.
 Sett opp et virtuelt kodemiljø ved hjelp av `Makefile`: 
 
 ```shell

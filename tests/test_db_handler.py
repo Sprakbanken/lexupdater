@@ -24,32 +24,6 @@ def test_regexp(regex_pattern, expected):
     assert result == expected
 
 
-def test_create_dialect_table_stmts():
-    # given
-    # deliberately choosing dialect names we don't use in the tool
-    input_list = [
-        "trøndersk",
-        "bergensk",
-    ]
-    # when
-    result = db_handler.create_dialect_table_stmts(input_list)
-    # then
-    assert "CREATE TEMPORARY TABLE trøndersk" in result[0][0]
-    assert "INSERT INTO trøndersk" in result[0][1]
-    assert "CREATE TEMPORARY TABLE bergensk" in result[1][0]
-    assert "INSERT INTO bergensk" in result[1][1]
-
-
-def test_create_word_table_stmts():
-    # given
-    input_word = "word_table_name"
-    # when
-    result_c, result_i = db_handler.create_word_table_stmts(input_word)
-    # then
-    assert "CREATE TEMPORARY TABLE word_table_name" in result_c
-    assert "INSERT INTO word_table_name" in result_i
-
-
 class TestDatabaseUpdater:
     """
     Test suite for the DatabaseUpdater class
@@ -80,7 +54,9 @@ class TestDatabaseUpdater:
             db_handler.DatabaseUpdater._establish_connection.assert_called()
 
     @pytest.mark.parametrize(
-        "invalid_config_values", ["rules", "exemptions", "dialects"], indirect=True
+        "invalid_config_values",
+        ["rules", "exemptions", "dialects"],
+        indirect=True
     )
     def test_invalid_config_values_raises_error(self, invalid_config_values):
         """Test validation of rules and exemptions
@@ -112,10 +88,9 @@ class TestDatabaseUpdater:
         # given
         input_dialects = some_dialects + ["bergensk"]
         # when
-        with pytest.raises(SchemaError):
-            result = db_updater_obj.validate_dialects(input_dialects)
-            # then
-            assert result is None
+        result = db_updater_obj.validate_dialects(input_dialects)
+        # then
+        assert result == some_dialects
 
     def test_establish_connection(
         self, ruleset_fixture, some_dialects, exemptions_fixture
@@ -126,16 +101,8 @@ class TestDatabaseUpdater:
         # patch functions that are called by _establish_connection
         with patch(
             "lexupdater.db_handler.sqlite3", autospec=True
-        ) as patched_sqlite, patch(
-            "lexupdater.db_handler.create_word_table_stmts", autospec=True
-        ) as p_word_tbl, patch(
-            "lexupdater.db_handler.create_dialect_table_stmts", autospec=True
-        ) as p_dialect_tbl:
+        ) as patched_sqlite:
             # given
-            p_word_tbl.return_value = ("some string here", "another string here")
-            p_dialect_tbl.return_value = [
-                ("dialect string here", "another dialect string here")
-            ] * len(some_dialects)
             patch_connection = patched_sqlite.connect.return_value
             patch_cursor = patch_connection.cursor.return_value
 
@@ -150,48 +117,42 @@ class TestDatabaseUpdater:
             # then
             # Check that the patched functions were called
             patched_sqlite.connect.assert_called_with(config.database)
-            p_word_tbl.assert_called_with(config.word_table)
-            p_dialect_tbl.assert_called_with(some_dialects)
-
             patch_connection.create_function.assert_called()
             patch_connection.cursor.assert_called()
-
-            patch_cursor.execute.assert_any_call("some string here")
-            patch_cursor.execute.assert_any_call("another string here")
-            patch_cursor.execute.assert_any_call("dialect string here")
-            patch_cursor.execute.assert_any_call("another dialect string here")
+            patch_cursor.execute.assert_called()
 
     def test_construct_update_queries(self, db_updater_obj):
         # given
-        # TODO: Refactor code so we can test smaller values at a time
-        expected = {
-            "query": "UPDATE e_spoken SET nofabet = REGREPLACE(?,?,nofabet) "
+        expected_query = (
+            "UPDATE e_spoken SET nofabet = REGREPLACE(?,?,nofabet) "
             "WHERE word_id IN (SELECT word_id "
-            "FROM words_tmp WHERE wordform NOT IN (?,?));",
-            "values": ["\\b(R)([NTD])\\\\b", "\\1 \\2", "garn", "klarne"],
-            "is_constrained": False,
-        }
-        # when
-        db_updater_obj._construct_update_queries()
-        result = db_updater_obj._updates[0][0]
-        # then
-        assert all(
-            [actual == exp for actual, exp in zip(result.items(), expected.items())]
+            "FROM words_tmp WHERE wordform NOT IN (?,?));"
         )
+        expected_values = ("\\b(R)([NTD])\\\\b", "\\1 \\2", "garn", "klarne")
+
+        # when
+        result = db_updater_obj.construct_update_queries()
+        query, values = next(result)
+        # then
+        assert query == expected_query
+        assert values == expected_values
 
     def test_update(self, db_updater_obj):
         # given
-        expected_first_item = (
+        updates = [(
             "UPDATE e_spoken SET nofabet = REGREPLACE(?,?,nofabet) "
             "WHERE word_id IN (SELECT word_id "
-            "FROM words_tmp "
-            "WHERE wordform NOT IN (?,?));",
-            ("\\b(R)([NTD])\\\\b", "\\1 \\2", "garn", "klarne"),
-        )
+            "FROM words_tmp WHERE wordform NOT IN (?,?));",
+            ("\\b(R)([NTD])\\\\b", "\\1 \\2", "garn", "klarne")
+        )]
         # when
-        result = db_updater_obj.update()
+        with patch(
+                "lexupdater.db_handler.DatabaseUpdater.construct_update_queries"
+        ) as patched_func:
+            patched_func.return_value = updates
+            db_updater_obj.update()
         # then
-        assert result[0] == expected_first_item
+        patched_func.assert_called_once()
 
     def test_get_results(self, db_updater_obj, all_dialects):
         # given

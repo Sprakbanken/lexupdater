@@ -11,3 +11,5 @@ exemption2 = {
     "ruleset": "masc",
     "words": ["søknader", "søknadene", "dugnader", "dugnadene"],
 }
+
+exemption_list = [exemption1, exemption2]
