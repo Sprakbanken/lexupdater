@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 # coding=utf-8
 
-"""
-Parse dialect-specific transformation rules, their constraints and exemptions
+"""Parse dialect-specific transformation rules.
+
+Parse their constraints and exemptions
 into variables to fill slots in SQL query templates.
 """
 
@@ -10,8 +11,7 @@ from typing import List
 
 
 def parse_constraints(constraints: List):
-    """Extract constraint values from replacement rules
-    and construct SQL WHERE queries based on them.
+    """Construct SQL WHERE queries from the replacement rule constraints.
 
     Grammatical categories and features that are given in the word table of
     the lexicon can be used to narrow down the scope of words that the
@@ -40,7 +40,7 @@ def parse_constraints(constraints: List):
 
 
 def parse_exemptions(exemption_words):
-    """Parse an exemption dictionary and convert to a WHERE clause fragment
+    """Parse an exemption dictionary and convert to a WHERE clause fragment.
 
     Parameters
     ----------
@@ -59,9 +59,10 @@ def parse_exemptions(exemption_words):
 
 
 def map_rule_exemptions(exemptions):
-    """Reduce the list of exemption dictionaries to a single dictionary,
-    where the name of the corresponding ruleset is the key, and the exempt
-    words are the value.
+    """Reduce the list of exemption dictionaries to a single dictionary.
+
+    The keys are the name of the corresponding ruleset,
+    and the exempt words are the values.
 
     Parameters
     ----------
