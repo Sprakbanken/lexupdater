@@ -1,26 +1,30 @@
-import setuptools
+from setuptools import setup, find_packages
+import pathlib
 
-with open("README.md", "r", encoding="utf-8") as fh:
-    long_description = fh.read()
 
-setuptools.setup(
+here = pathlib.Path(__file__).parent.resolve()
+long_description = (here / 'README.md').read_text(encoding='utf-8')
+
+setup(
     name="lexupdater",
-    version="0.0.1",
-    author="Per Erik Solberg",
+    version="0.0.2",
+    author="Språkbanken",
     author_email="sprakbanken@nb.no",
     description="Verktøy for å oppdatere uttaleleksikon for norske dialekter",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/peresolb/lexupdater",
-    project_urls={
-        "Bug Tracker": "https://github.com/pypa/sampleproject/issues",
-    },  # TODO Finn ut hva dette er
-    classifiers=[       # TODO: FInn ut hva dette betyr
+    classifiers=[
         "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: MIT License",
+        "License :: MIT License",
         "Operating System :: OS Independent",
+        "Natural Language :: Norwegian",
     ],
     package_dir={"": "lexupdater"},
-    packages=setuptools.find_packages(where="lexupdater"),
-    python_requires=">=3.6",
+    packages=find_packages(where="lexupdater"),
+    python_requires=">=3.7",
+    install_requires=['schema'],
+    extras_require={
+        'dev': ['pytest', 'pytest-cov', 'pylint', 'mypy', 'pigar'],
+    },
 )
