@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 from lexupdater import config
@@ -81,7 +83,8 @@ def exemptions_fixture():
 
 
 @pytest.fixture
-def invalid_config_values(request, ruleset_fixture, exemptions_fixture, some_dialects):
+def invalid_config_values(request, ruleset_fixture, exemptions_fixture,
+                          some_dialects):
     if request.param == "rules":
         return (
             ruleset_fixture + [{"unexpected_key": "unexpected_value"}],
@@ -105,7 +108,8 @@ def invalid_config_values(request, ruleset_fixture, exemptions_fixture, some_dia
 
 
 @pytest.fixture(scope="session")
-def db_updater_obj(ruleset_fixture, all_dialects, exemptions_fixture):
+def db_updater_obj(ruleset_fixture, all_dialects,
+                   exemptions_fixture):
     """Instance of the class object we want to test.
 
     Connect to the correct database, yield the DatabaseUpdater object,
@@ -115,7 +119,7 @@ def db_updater_obj(ruleset_fixture, all_dialects, exemptions_fixture):
     if the config values are changed.
     """
     updater_obj = DatabaseUpdater(
-        config.database,
+        str(Path('tests') / 'dummy_data.db'),  # Ensure file path is OS agnostic
         ruleset_fixture,
         all_dialects,
         config.word_table,

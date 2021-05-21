@@ -7,7 +7,7 @@ setuptools.setup(
     name="lexupdater",
     version="0.0.1",
     author="Per Erik Solberg",
-    author_email="per.solberg@nb.no",
+    author_email="sprakbanken@nb.no",
     description="Verktøy for å oppdatere uttaleleksikon for norske dialekter",
     long_description=long_description,
     long_description_content_type="text/markdown",
