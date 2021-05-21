@@ -13,4 +13,5 @@ exemption2 = {
     "words": ["søknader", "søknadene", "dugnader", "dugnadene"],
 }
 
-exemption_list = [exemption1, exemption2]
+EXEMPTIONS = [exemption1, exemption2]
+"""List of dictionaries with words to be exempted from the specified rulesets"""

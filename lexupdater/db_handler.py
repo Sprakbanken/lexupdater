@@ -51,7 +51,7 @@ update_info TEXT);"""
 INSERT_STMT = "INSERT INTO {table_name} SELECT * FROM {other_table};"
 
 UPDATE_QUERY = (
-    "UPDATE {dialect} SET nofabet = REGREPLACE(?,?,nofabet) " 
+    "UPDATE {dialect} SET nofabet = REGREPLACE(?,?,nofabet) "
     "{where_word_in_stmt};"
 )
 
@@ -80,7 +80,7 @@ def regexp(reg_pat, item):
     return reg_pattern.search(item) is not None
 
 
-class DatabaseUpdater(object):
+class DatabaseUpdater:
     """Class for handling the db connection and
     running the updates on temp tables.
 
@@ -112,6 +112,7 @@ class DatabaseUpdater(object):
         self._establish_connection()
 
     def validate_dialects(self, ruleset_dialects):
+        """Filter ruleset_dialects by the class instance _dialects attribute"""
         valid_dialects = [d for d in ruleset_dialects if d in self._dialects]
         return valid_dialects
 
@@ -130,10 +131,13 @@ class DatabaseUpdater(object):
             INSERT_STMT.format(table_name=self._word_table, other_table="words")
         )
         self._connection.commit()
-        for d in self._dialects:
-            create_stmt = CREATE_DIALECT_TABLE_STMT.format(dialect=d)
+        for dialect in self._dialects:
+            create_stmt = CREATE_DIALECT_TABLE_STMT.format(dialect=dialect)
             self._cursor.execute(create_stmt)
-            insert_stmt = INSERT_STMT.format(table_name=d, other_table="base")
+            insert_stmt = INSERT_STMT.format(
+                table_name=dialect,
+                other_table="base"
+            )
             self._cursor.execute(insert_stmt)
             self._connection.commit()
 
@@ -197,8 +201,10 @@ class DatabaseUpdater(object):
                     )
 
     def update(self):
-        """Generate SQL update queries with the configured rules and
-        exemptions, and apply them to the dialect temp tables.
+        """Apply SQL update queries to the dialect temp tables.
+
+        Generate the queries with the configured rules and
+        exemptions before applying them.
         """
         updates = self.construct_update_queries()
         for query, values in updates:
@@ -206,6 +212,7 @@ class DatabaseUpdater(object):
             self._connection.commit()
 
     def get_connection(self):
+        """Return the object instance's sqlite3 connection."""
         return self._connection
 
     def get_results(self):
@@ -217,17 +224,18 @@ class DatabaseUpdater(object):
             Dialect names are keys, and the resulting collection of values
             from each field in the database are the values
         """
-        results = {d: [] for d in self._dialects}
-        for d in self._dialects:
+        results = {dialect: [] for dialect in self._dialects}
+        for dialect in self._dialects:
             stmt = f"""SELECT w.word_id, w.wordform, w.pos, w.feats, w.source,
                     w.decomp_ort, w.decomp_pos, w.garbage, w.domain, w.abbr,
                     w.set_name, w.style_status, w.inflector_role,
                     w.inflector_rule, w.morph_label, w.compounder_code,
                     w.update_info, p.pron_id, p.nofabet, p.certainty
                     FROM {self._word_table} w
-                    LEFT JOIN {d} p ON p.word_id = w.word_id;"""
-            results[d] = self._cursor.execute(stmt).fetchall()
+                    LEFT JOIN {dialect} p ON p.word_id = w.word_id;"""
+            results[dialect] = self._cursor.execute(stmt).fetchall()
         return results
 
     def close_connection(self):
+        """Close the object instance's sqlite3 connection."""
         self._connection.close()
