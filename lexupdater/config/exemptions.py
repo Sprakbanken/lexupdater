@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 # coding=utf-8
 
-
-# Exemptions contains list of words
-# which should not be affected by given replacement rulesets.
+"""
+Exemptions contain list of words which should not be affected by given
+replacement rulesets.
+"""
 
 exemption1 = {"ruleset": "retrotest", "words": ["garn", "klarne"]}
 

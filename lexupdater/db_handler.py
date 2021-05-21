@@ -1,6 +1,11 @@
 #!/usr/bin/env python
 # coding=utf-8
 
+"""
+Connect to and update the sqlite3 database
+which contains the pronunciation lexicon.
+"""
+
 import re
 import sqlite3
 

@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+# coding=utf-8
+
+"""Extra utility functions that can be useful across the package"""
 
 
 def get_module_variable_names(module_name):

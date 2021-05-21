@@ -1,5 +1,11 @@
 #!/usr/bin/env python
 # coding=utf-8
+
+"""
+Parse dialect-specific transformation rules, their constraints and exemptions
+into variables to fill slots in SQL query templates.
+"""
+
 from typing import List
 
 

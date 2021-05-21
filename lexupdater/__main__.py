@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # coding=utf-8
 
+"""Parse input arguments and run lexupdater.main"""
+
 import argparse
 
 from .config import dialects
