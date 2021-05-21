@@ -9,14 +9,12 @@ which contains the pronunciation lexicon.
 import re
 import sqlite3
 
-
 from .config.constants import rule_schema, exemption_schema, dialect_schema
 from .dialect_updater import (
     map_rule_exemptions,
     parse_exemptions,
     parse_constraints,
 )
-
 
 CREATE_DIALECT_TABLE_STMT = """CREATE TEMPORARY TABLE {dialect} (
 pron_row_id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -22,7 +22,7 @@ test: clean
 
 mypy:
 	. .venv/bin/activate
-	PYTHONPATH=. mypy lexupdater
+	PYTHONPATH=.  mypy --ignore-missing-imports lexupdater
 
 lint:
 	. .venv/bin/activate

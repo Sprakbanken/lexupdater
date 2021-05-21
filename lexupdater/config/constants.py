@@ -1,6 +1,6 @@
 from schema import Schema, Optional
-from .config import DIALECTS
 
+from .config import DIALECTS
 
 dialect_schema = Schema(DIALECTS)
 """Validation schema for dialects"""
