@@ -20,65 +20,46 @@ def rule():
     }
 
 
-class TestQueryBuilders:
-    """Test that queries are constructed as intended"""
-
-    def test_query_builder(self, rule):
-        # when
-        q_builder = dialect_updater.QueryBuilder("area", rule, "word_table")
-        # then
-        assert isinstance(q_builder, dialect_updater.QueryBuilder)
-        assert q_builder._constrained_query  # direct boolean assertion
-
-    def test_update_query_builder(self, rule):
-        # given
-        q_builder = dialect_updater.UpdateQueryBuilder("area", rule, "table")
-        # when
-        query, values, constrained_bool = q_builder.get_update_query()
-        # then
-        assert "UPDATE area SET nofabet = REGREPLACE(?,?,nofabet)" in query
-        assert "WHERE word_id IN (SELECT word_id FROM table" in query
-        assert "WHERE pos = ? AND feats REGEXP ?" in query
-        assert values == [rule["pattern"], rule["repl"], "NN", "MAS"]
-        assert constrained_bool  # bool("bool") Evaluates to True
-
-    @pytest.mark.skip("Not implemented yet")
-    def test_select_query_builder(self, rule):
-        """Skeleton test for desired functionality"""
-        # given
-        q_builder = dialect_updater.QueryBuilder()
-        # when
-        result_query = q_builder.build_select_query("area", rule, "word_table")
-        # then
-        # TODO: elaborate on the desired output queries
-        assert "SELECT " in result_query
-        assert "WHERE " in result_query
-        assert rule["pattern"] in result_query
+def test_parse_constraints(rule):
+    # given
+    constraints = rule["constraints"]
+    # when
+    result_string, result_values = dialect_updater.parse_constraints(
+        constraints
+    )
+    # then
+    assert result_values == ["NN", "MAS"]
+    assert "pos = ? AND feats REGEXP ?" in result_string
 
 
-class TestReaders:
-    """Test that constraints and exemptions are parsed
-    and converted to the expected SQL-query fragments.
-    """
+def test_parse_constraints_with_empty_input():
+    result_string, result_values = dialect_updater.parse_constraints([])
+    # then
+    assert result_values == []
+    assert result_string == ""
 
-    def test_parse_constraints(self, rule):
-        # given
-        constraints = rule["constraints"]
-        # when
-        result_string, result_values = dialect_updater.parse_constraints(
-            constraints, "word_table"
-        )
-        # then
-        assert result_values == ["NN", "MAS"]
-        assert "pos = ? AND feats REGEXP ?" in result_string
 
-    def test_parse_exemptions(self):
-        # given
-        input_exemptions = {"ruleset": "test", "words": ["garn", "klarne"]}
-        # when
-        result_string, result_values = dialect_updater.parse_exemptions(
-            input_exemptions
-        )
-        # then
-        assert result_string == " wordform NOT IN (?,?)"
-        assert result_values == ["garn", "klarne"]
+@pytest.mark.parametrize(
+    "words, expected",
+    [
+        (["garn", "klarne"], "wordform NOT IN (?,?)"),
+        (["1", "2", "3"], "wordform NOT IN (?,?,?)"),
+        ([], "")
+    ]
+)
+def test_parse_exemptions(words, expected):
+    # when
+    result_string = dialect_updater.parse_exemptions(words)
+    # then
+    assert result_string == expected
+
+
+def test_map_rule_exemptions():
+    # given
+    input_exemptions = [{"ruleset": "test", "words": ["garn", "klarne"]}]
+    expected = {"test": ["garn", "klarne"]}
+    # when
+    result = dialect_updater.map_rule_exemptions(input_exemptions)
+    # then
+    assert list(result.keys()) == list(expected.keys())
+    assert list(result.values()) == list(expected.values())

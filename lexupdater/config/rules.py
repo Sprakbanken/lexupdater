@@ -57,3 +57,5 @@ test2 = {
         },
     ],
 }
+
+rule_list = [test1, test2]
