@@ -101,7 +101,7 @@ class DatabaseUpdater:
         """Set object attributes, connect to db and create temp tables."""
         if exemptions is None:
             exemptions = []
-        self.db = db
+        self._db = db
         self.word_table = word_tbl
         # Validate the config values before assigning the attributes
         self.rulesets = rule_schema.validate(rulesets)
@@ -116,7 +116,7 @@ class DatabaseUpdater:
 
     def _establish_connection(self):
         """Connect to db and create temporary tables."""
-        self._connection = sqlite3.connect(self.db)
+        self._connection = sqlite3.connect(self._db)
         self._connection.create_function("REGEXP", 2, regexp)
         self._connection.create_function("REGREPLACE", 3, re.sub)
         self._cursor = self._connection.cursor()
