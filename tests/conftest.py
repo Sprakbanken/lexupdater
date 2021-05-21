@@ -122,7 +122,7 @@ def db_updater_obj(ruleset_fixture, all_dialects,
         str(Path('tests') / 'dummy_data.db'),  # Ensure file path is OS agnostic
         ruleset_fixture,
         all_dialects,
-        config.word_table,
+        config.WORD_TABLE,
         exemptions_fixture,
     )
     yield updater_obj

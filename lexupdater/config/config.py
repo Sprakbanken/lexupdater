@@ -3,39 +3,38 @@
 
 """Configure input data to update the lexicon transcriptions."""
 
-from .exemptions import exemption_list
-from .rules import rule_list
-from .constants import dialect_schema, rule_schema, exemption_schema
+from .exemptions import EXEMPTIONS
+from .rules import RULES
 
 
 __all__ = [
-    "word_table",
-    "database",
-    "dialects",
-    "rules",
-    "exemptions",
-    "output_dir",
+    "WORD_TABLE",
+    "DATABASE",
+    "DIALECTS",
+    "RULES",
+    "EXEMPTIONS",
+    "OUTPUT_DIR",
 ]
-"""Variables that are available to be imported 
+"""Variables that are available to be imported
 by other modules.
 """
 
 
-word_table = "words_tmp"
-"""Name of the temp table containing all words and word metadata 
+WORD_TABLE = "words_tmp"
+"""Name of the temp table containing all words and word metadata
 in the backend db
 """
 
 
-database = "./data/input/backend-db02.db"
+DATABASE = "./data/input/backend-db02.db"
 """Path to the backend db"""
 
 
-output_dir = "./data/output"
+OUTPUT_DIR = "./data/output"
 """Path to the output folder for the lexica"""
 
 
-dialects = dialect_schema.validate([
+DIALECTS = [
     "e_spoken",
     "e_written",
     "sw_spoken",
@@ -46,20 +45,8 @@ dialects = dialect_schema.validate([
     "t_written",
     "n_spoken",
     "n_written",
-])
+]
 """List of dialects which update rules can target.
 
 Corresponds to names of pronunciation temp tables created in the backend db.
 """
-
-
-rules = rule_schema.validate(rule_list)
-"""List of dialect update rules. 
-
-Note that multiple rules may affect the same  pronunciations, 
-and that the ordering of the rules may matter.
-"""
-
-
-exemptions = exemption_schema.validate(exemption_list)
-"""List of dictionaries with words to be exempted from the rules"""

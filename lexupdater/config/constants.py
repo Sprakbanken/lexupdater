@@ -1,23 +1,9 @@
 from schema import Schema, Optional
+from .config import DIALECTS
 
 
-dialect_schema = Schema([
-    "e_spoken",
-    "e_written",
-    "sw_spoken",
-    "sw_written",
-    "w_spoken",
-    "w_written",
-    "t_spoken",
-    "t_written",
-    "n_spoken",
-    "n_written",
-])
-"""Validation schema for dialects
-
-The dialect variable is not reused here, 
-to allow configurability of the list.
-"""
+dialect_schema = Schema(DIALECTS)
+"""Validation schema for dialects"""
 
 
 rule_schema = Schema(
