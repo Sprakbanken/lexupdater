@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding=utf-8
 
-"""Transcription updates for a pronunciation lexicon in sqlite3 db format"""
+"""Transcription updates for a pronunciation lexicon in sqlite3 db format."""
 
 import datetime
 
@@ -17,7 +17,7 @@ from .db_handler import DatabaseUpdater
 
 def get_base(connection):
     """
-    Select the state of the lexicon before the updates
+    Select the state of the lexicon before the updates.
 
     Parameters
     ----------
@@ -82,9 +82,9 @@ def main(print_dialects, print_base):
 
     if print_base:
         base = get_base(connection)
-        with open(f"{OUTPUT_DIR}/base.txt", "w") as basefile:
+        with open(f"{OUTPUT_DIR}/base.txt", "w") as outfile:
             for item in base:
-                basefile.write(f"{item[1]}\t{item[2]}\t{item[3]}\t{item[-2]}\n")
+                outfile.write(f"{item[1]}\t{item[2]}\t{item[3]}\t{item[-2]}\n")
 
     # For calculating execution time. Remove in stable version
     filegen_end_time = datetime.datetime.now()
