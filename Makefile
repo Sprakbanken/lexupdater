@@ -26,6 +26,7 @@ mypy:
 
 lint:
 	. .venv/bin/activate
+	PYLINTRC=.pylintrc
 	PYTHONPATH=. pylint lexupdater -j 4 --reports=y
 
 check: test lint mypy

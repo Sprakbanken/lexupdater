@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # coding=utf-8
 
+"""Configure input data to update the lexicon transcriptions."""
+
 __all__ = [
     "dialects",
     "word_table",
@@ -13,24 +15,25 @@ __all__ = [
     "dialect_schema",
 ]
 
+
 from schema import Schema
 
 from .exemptions import exemption1, exemption2
 from .rules import test1, test2
 
-# Name of the temp table containing all
-# words and word metadata in the backend db
+
 word_table = "words_tmp"
+"""Name of the temp table containing all words and word metadata 
+in the backend db
+"""
 
-# Path to the backend db
 database = "./data/input/backend-db02.db"
+"""Path to the backend db"""
 
-# Path to the output folder for the lexica
 output_dir = "./data/output"
+"""Path to the output folder for the lexica"""
 
-# List of dialects which update rules can target.
-# Corresponds to names of pronunciation temp tables
-# created in the backend db
+
 dialects = [
     "e_spoken",
     "e_written",
@@ -43,9 +46,12 @@ dialects = [
     "n_spoken",
     "n_written",
 ]
-# Validation schema for dialects:
-# The dialect variable is not reused here,
-# to allow configurability of the list
+"""List of dialects which update rules can target.
+
+Corresponds to names of pronunciation temp tables created in the backend db.
+"""
+
+
 dialect_schema = Schema([
     "e_spoken",
     "e_written",
@@ -58,14 +64,20 @@ dialect_schema = Schema([
     "n_spoken",
     "n_written",
 ])
+"""Validation schema for dialects
 
-# List of dialect update rules. Note that
-# multiple rules may affect the same
-# pronunciations, and that the ordering
-# of the rules may matter.
+The dialect variable is not reused here, to allow configurability of the list
+"""
+
+
 rules = [test1, test2]
+"""List of dialect update rules. 
 
-# Validation schema for the rulesets
+Note that multiple rules may affect the same  pronunciations, 
+and that the ordering of the rules may matter.
+"""
+
+
 rule_schema = Schema(
     [
         {
@@ -83,8 +95,12 @@ rule_schema = Schema(
         }
     ]
 )
+"""Validation schema for the rulesets"""
 
-# List of words to be exempted from the rules
+
 exemptions = [exemption1, exemption2]
-# Validation schema for the rulesets
+"""List of dictionaries with words to be exempted from the rules"""
+
+
 exemption_schema = Schema([{"ruleset": str, "words": list}])
+"""Validation schema for the rulesets"""
