@@ -9,12 +9,11 @@ transkripsjoner.
 
 ## Kom i gang
 ### 1. Sett opp kode-miljøet
-Sørg for at du har aktivert et virtuelt miljø med `python>=3.6`, f.eks. via 
-`anaconda` eller [`pyenv virtualenv`](https://github.com/pyenv/pyenv-virtualenv)
+Sørg for at du har versjon `3.6` eller høyere av `python`.
+Sett opp et virtuelt kodemiljø ved hjelp av `Makefile`: 
 
-Installér eksterne python-pakker med `pip`:  
 ```shell
-pip install -r requirements.txt 
+make setup
 ```
 
 ### 2. Last ned data
@@ -60,13 +59,19 @@ python -m lexupdater -b
 ```
 
 ## Test koden
-Kjør automatiske enhets- og integrasjonstester med `pytest`: 
+Kjør automatiske enhets- og integrasjonstester: 
 ```shell
-python -m pytest
+make test
 ```
-
 Oppsett for kvalitativ testing av leksikonoppdateringene 
 vil komme på plass senere. 
+
+## Sjekk kodekvalitet
+Kjør en linter på koden for å se hvordan den forholder seg til 
+pep8-konvensjonene: 
+```shell
+make lint
+```
 
 ## Installér `lexupdater` som en python-pakke 
 Du kan lage en pip-installérbar python-pakke 
