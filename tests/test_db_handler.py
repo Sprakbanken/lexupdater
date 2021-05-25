@@ -42,10 +42,10 @@ class TestDatabaseUpdater:
         ):
             # when
             result = db_handler.DatabaseUpdater(
-                config.database,
+                config.DATABASE,
                 ruleset_fixture,
                 some_dialects,
-                config.word_table,
+                config.WORD_TABLE,
                 exemptions_fixture,
             )
             # then
@@ -69,10 +69,10 @@ class TestDatabaseUpdater:
         ):
             with pytest.raises(SchemaError):
                 db_handler.DatabaseUpdater(
-                    config.database,
+                    config.DATABASE,
                     rules,
                     dialects,
-                    config.word_table,
+                    config.WORD_TABLE,
                     exemptions,
                 )
 
@@ -108,15 +108,15 @@ class TestDatabaseUpdater:
 
             # when
             _ = db_handler.DatabaseUpdater(
-                config.database,
+                config.DATABASE,
                 ruleset_fixture,
                 some_dialects,
-                config.word_table,
+                config.WORD_TABLE,
                 exemptions_fixture,
             )
             # then
             # Check that the patched functions were called
-            patched_sqlite.connect.assert_called_with(config.database)
+            patched_sqlite.connect.assert_called_with(config.DATABASE)
             patch_connection.create_function.assert_called()
             patch_connection.cursor.assert_called()
             patch_cursor.execute.assert_called()
