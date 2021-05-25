@@ -5,7 +5,7 @@ import re
 import sqlite3
 
 
-from .config.constants import rule_schema, exemption_schema, dialect_schema
+from .config.constants import ruleset_schema, exemption_schema, dialect_schema
 from .dialect_updater import (
     map_rule_exemptions,
     parse_exemptions,
@@ -86,7 +86,9 @@ class DatabaseUpdater(object):
         self._db = db
         self._word_table = word_tbl
         # Validate the config values before assigning the attributes
-        self._rulesets = rule_schema.validate(rulesets)
+        self._rulesets = [
+            ruleset_schema.validate(ruleset) for ruleset in rulesets
+        ]
         self._exemptions = exemption_schema.validate(exemptions)
         self._dialects = dialect_schema.validate(dialect_names)
         self._establish_connection()
