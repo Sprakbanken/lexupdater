@@ -76,13 +76,13 @@ def main(print_dialects, print_base):
 
     # Write a base and exp lexicon file for each dialect area d.
     for dialect in print_dialects:
-        with open(f"{OUTPUT_DIR}/{dialect}.txt", "w") as expfile:
+        with open(OUTPUT_DIR / f"{dialect}.txt", "w") as expfile:
             for elm in exp[dialect]:
                 expfile.write(f"{elm[1]}\t{elm[2]}\t{elm[3]}\t{elm[-2]}\n")
 
     if print_base:
         base = get_base(connection)
-        with open(f"{OUTPUT_DIR}/base.txt", "w") as outfile:
+        with open(OUTPUT_DIR / f"base.txt", "w") as outfile:
             for item in base:
                 outfile.write(f"{item[1]}\t{item[2]}\t{item[3]}\t{item[-2]}\n")
 
