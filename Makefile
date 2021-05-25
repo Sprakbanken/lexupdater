@@ -22,10 +22,11 @@ test: clean
 
 mypy:
 	. .venv/bin/activate
-	PYTHONPATH=. mypy lexupdater
+	PYTHONPATH=.  mypy --ignore-missing-imports lexupdater
 
 lint:
 	. .venv/bin/activate
+	PYLINTRC=.pylintrc
 	PYTHONPATH=. pylint lexupdater -j 4 --reports=y
 
 check: test lint mypy

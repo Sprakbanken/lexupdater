@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 # coding=utf-8
 
+"""Parse input arguments and run lexupdater.main."""
+
 import argparse
 
-from .config import dialects
+from .config import DIALECTS
 from .lexupdater import main
 
 # Argument parser
@@ -15,7 +17,7 @@ parser.add_argument(
     action="store",
     type=str,
     nargs="+",
-    default=dialects,
+    default=DIALECTS,
     help="Generate lexicon files for one or more specified dialects.",
 )
 parser.add_argument(

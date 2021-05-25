@@ -1,22 +1,11 @@
-from schema import Schema, And, Or, Optional
+from schema import Schema, Optional
+
+from .config import DIALECTS
+
+dialect_schema = Schema(DIALECTS)
+"""Validation schema for dialects"""
 
 
-# Validation schema for dialects:
-# Do not change this variable!
-dialect_schema = Schema([
-    "e_spoken",
-    "e_written",
-    "sw_spoken",
-    "sw_written",
-    "w_spoken",
-    "w_written",
-    "t_spoken",
-    "t_written",
-    "n_spoken",
-    "n_written",
-])
-
-# Validation schema for the rulesets
 rule_schema = Schema(
     [
         {
@@ -38,6 +27,8 @@ rule_schema = Schema(
         }
     ]
 )
+"""Validation schema for the rulesets"""
 
-# Validation schema for the exemptions
+
 exemption_schema = Schema([{"ruleset": str, "words": list}])
+"""Validation schema for the exemptions"""
