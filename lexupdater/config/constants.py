@@ -17,26 +17,24 @@ dialect_schema = Schema([
 ])
 
 # Validation schema for the rulesets
-rule_schema = Schema(
-    [
-        {
-            "areas": dialect_schema.schema,
-            "name": str,
-            "rules": [
-                {
-                    "pattern": str,
-                    "repl": str,
-                    "constraints": [
-                        Optional({
-                            "field": str,
-                            "pattern": str,
-                            "is_regex": bool
-                        })
-                    ],
-                }
-            ],
-        }
-    ]
+ruleset_schema = Schema(
+    {
+        "areas": dialect_schema.schema,
+        "name": str,
+        "rules": [
+            {
+                "pattern": str,
+                "repl": str,
+                "constraints": [
+                    Optional({
+                        "field": str,
+                        "pattern": str,
+                        "is_regex": bool
+                    })
+                ],
+            }
+        ],
+    }
 )
 
 # Validation schema for the exemptions

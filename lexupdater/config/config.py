@@ -3,7 +3,7 @@
 
 from .exemptions import exemption_list
 from .rules import rule_list
-from .constants import dialect_schema, rule_schema, exemption_schema
+from .constants import dialect_schema, ruleset_schema, exemption_schema
 
 # When config is imported in another module,
 # these are the variables available for import
@@ -47,7 +47,7 @@ dialects = dialect_schema.validate([
 # multiple rules may affect the same
 # pronunciations, and that the ordering
 # of the rules may matter.
-rules = rule_schema.validate(rule_list)
+rules = [ruleset_schema.validate(ruleset) for ruleset in rule_list]
 
 # List of words to be exempted from the rules
 exemptions = exemption_schema.validate(exemption_list)

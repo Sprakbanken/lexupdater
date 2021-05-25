@@ -70,11 +70,3 @@ def map_rule_exemptions(exemptions):
         exemption["ruleset"]: exemption["words"]
         for exemption in exemptions
     }
-
-
-def construct_select_queries(rule, exemptions, dialects):
-    """Not yet implemented.
-    Build a select query that retrieves all entries
-    that fits the search pattern, making it easier to test and debug.
-    """
-    pass
