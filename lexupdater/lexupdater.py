@@ -82,7 +82,7 @@ def main(print_dialects, print_base):
 
     if print_base:
         base = get_base(connection)
-        with open(OUTPUT_DIR / f"base.txt", "w") as outfile:
+        with open(OUTPUT_DIR / "base.txt", "w") as outfile:
             for item in base:
                 outfile.write(f"{item[1]}\t{item[2]}\t{item[3]}\t{item[-2]}\n")
 
