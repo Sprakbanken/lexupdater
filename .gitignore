@@ -141,3 +141,7 @@ cython_debug/
 # Data
 data/input/*
 data/output/*
+
+
+# pycharm
+.idea/

@@ -1,19 +1,23 @@
+#!/usr/bin/env python
+# coding=utf-8
+
+"""Transcription updates for a pronunciation lexicon in sqlite3 db format."""
+
 import datetime
 
 from .config import (
-    dialects,
-    word_table,
-    database,
-    rules,
-    exemptions,
-    output_dir
+    WORD_TABLE,
+    DATABASE,
+    RULES,
+    EXEMPTIONS,
+    OUTPUT_DIR
 )
 from .db_handler import DatabaseUpdater
 
 
 def get_base(connection):
     """
-    Select the state of the lexicon before the updates
+    Select the state of the lexicon before the updates.
 
     Parameters
     ----------
@@ -57,13 +61,13 @@ def main(print_dialects, print_base):
     # For calculating execution time. Remove in stable version
     begin_time = datetime.datetime.now()
 
-    updateobj = DatabaseUpdater(
-        database, rules, print_dialects, word_table, exemptions=exemptions
+    update_obj = DatabaseUpdater(
+        DATABASE, RULES, print_dialects, WORD_TABLE, exemptions=EXEMPTIONS
     )
-    connection = updateobj.get_connection()
-    updateobj.update()
-    exp = updateobj.get_results()
-    updateobj.close_connection()
+    connection = update_obj.get_connection()
+    update_obj.update()
+    exp = update_obj.get_results()
+    update_obj.close_connection()
 
     # For calculating execution time. Remove in stable version
     update_end_time = datetime.datetime.now()
@@ -71,16 +75,16 @@ def main(print_dialects, print_base):
     print(f"Database updated. Time: {updatetime}")
 
     # Write a base and exp lexicon file for each dialect area d.
-    for d in print_dialects:
-        with open(f"{output_dir}/{d}.txt", "w") as expfile:
-            for elm in exp[d]:
+    for dialect in print_dialects:
+        with open(OUTPUT_DIR / f"{dialect}.txt", "w") as expfile:
+            for elm in exp[dialect]:
                 expfile.write(f"{elm[1]}\t{elm[2]}\t{elm[3]}\t{elm[-2]}\n")
 
     if print_base:
         base = get_base(connection)
-        with open(f"{output_dir}/base.txt", "w") as basefile:
-            for el in base:
-                basefile.write(f"{el[1]}\t{el[2]}\t{el[3]}\t{el[-2]}\n")
+        with open(OUTPUT_DIR / "base.txt", "w") as outfile:
+            for item in base:
+                outfile.write(f"{item[1]}\t{item[2]}\t{item[3]}\t{item[-2]}\n")
 
     # For calculating execution time. Remove in stable version
     filegen_end_time = datetime.datetime.now()
