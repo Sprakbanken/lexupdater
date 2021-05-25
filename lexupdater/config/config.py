@@ -2,6 +2,7 @@
 # coding=utf-8
 
 """Configure input data to update the lexicon transcriptions."""
+from pathlib import Path
 
 from .exemptions import EXEMPTIONS
 from .rules import RULES
@@ -24,13 +25,13 @@ WORD_TABLE = "words_tmp"
 """Name of the temp table containing all words and word metadata
 in the backend db
 """
+DATA_DIR = Path("data")
 
-
-DATABASE = "./data/input/backend-db02.db"
+DATABASE = DATA_DIR / "input" / "backend-db02.db"
 """Path to the backend db"""
 
 
-OUTPUT_DIR = "./data/output"
+OUTPUT_DIR = DATA_DIR / "output"
 """Path to the output folder for the lexica"""
 
 
