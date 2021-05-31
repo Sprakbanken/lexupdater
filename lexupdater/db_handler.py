@@ -67,8 +67,8 @@ class DatabaseUpdater:
         self.word_table = word_tbl
         self.dialects = dialect_schema.validate(dialect_names)
         self.parsed_rules = parse_rules(
-            rulesets,
             self.dialects,
+            rulesets,
             exemptions
         )
         self.results = {dialect: [] for dialect in self.dialects}
