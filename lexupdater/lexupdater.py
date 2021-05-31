@@ -4,6 +4,9 @@
 """Transcription updates for a pronunciation lexicon in sqlite3 db format."""
 
 import datetime
+import logging
+import pprint
+from typing import Iterable
 
 from .config import (
     WORD_TABLE,
@@ -16,8 +19,7 @@ from .db_handler import DatabaseUpdater
 
 
 def get_base(connection):
-    """
-    Select the state of the lexicon before the updates.
+    """Select the state of the lexicon before the updates.
 
     Parameters
     ----------
@@ -40,7 +42,24 @@ def get_base(connection):
     return result
 
 
-def main(print_dialects, print_base):
+def write_lexicon(output_file: str, data: Iterable):
+    """Write a simple txt file with the results of the SQL queries.
+
+    Parameters
+    ----------
+    output_file: str
+        Name of the file to write data to
+    data: Iterable[dict]
+        A collection of dictionaries,
+        where the 1st, 2nd, 3rd and 2nd to last elements are saved to disk
+    """
+    logging.info(f"Writing lexicon data to {output_file}")
+    with open(output_file, "w") as outfile:
+        for item in data:
+            outfile.write(f"{item[1]}\t{item[2]}\t{item[3]}\t{item[-2]}\n")
+
+
+def main(user_dialects, write_base, match_words):
     """Apply the replacement rules from the config on the base lexicon.
 
     The variable base contains the original state of the lexicon.
@@ -53,40 +72,40 @@ def main(print_dialects, print_base):
 
     Parameters
     ----------
-    print_dialects: list
+    user_dialects: list
         List of dialects to write updated lexicon .txt-files for
-    print_base: bool
+    write_base: bool
         If True, write the base lexicon as a .txt-file
+    match_words: bool
+        If True, only fetch a list of the matching
     """
-    # For calculating execution time. Remove in stable version
     begin_time = datetime.datetime.now()
+    logging.debug(f"Started lexupdater process at {begin_time.isoformat()}")
 
     update_obj = DatabaseUpdater(
-        DATABASE, RULES, print_dialects, WORD_TABLE, exemptions=EXEMPTIONS
+        DATABASE, RULES, user_dialects, WORD_TABLE, exemptions=EXEMPTIONS
     )
     connection = update_obj.get_connection()
-    update_obj.update()
-    exp = update_obj.get_results()
+    if match_words:
+        update_obj.select_words_matching_rules()
+        for dialect in user_dialects:
+            logging.info(f"--- Dialect: {dialect} ---")
+            pprint.pprint(update_obj.results[dialect])
+    else:
+        update_obj.update()
+        for dialect, updated_values in update_obj.results.items():
+            write_lexicon(OUTPUT_DIR / f"{dialect}.txt", updated_values)
     update_obj.close_connection()
 
-    # For calculating execution time. Remove in stable version
+    # Calculating execution time
     update_end_time = datetime.datetime.now()
-    updatetime = update_end_time - begin_time
-    print(f"Database updated. Time: {updatetime}")
+    update_time = update_end_time - begin_time
+    logging.debug(f"Database updated. Time: {update_time}")
 
-    # Write a base and exp lexicon file for each dialect area d.
-    for dialect in print_dialects:
-        with open(OUTPUT_DIR / f"{dialect}.txt", "w") as expfile:
-            for elm in exp[dialect]:
-                expfile.write(f"{elm[1]}\t{elm[2]}\t{elm[3]}\t{elm[-2]}\n")
+    if write_base:
+        write_lexicon(OUTPUT_DIR / "base.txt", get_base(connection))
 
-    if print_base:
-        base = get_base(connection)
-        with open(OUTPUT_DIR / "base.txt", "w") as outfile:
-            for item in base:
-                outfile.write(f"{item[1]}\t{item[2]}\t{item[3]}\t{item[-2]}\n")
-
-    # For calculating execution time. Remove in stable version
-    filegen_end_time = datetime.datetime.now()
-    filegentime = filegen_end_time - update_end_time
-    print(f"Files generated. Time: {filegentime}")
+        # For calculating execution time
+        file_gen_end_time = datetime.datetime.now()
+        file_gen_time = file_gen_end_time - update_end_time
+        logging.debug(f"Files generated. Time: {file_gen_time}")
