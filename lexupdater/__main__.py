@@ -4,9 +4,13 @@
 """Parse input arguments and run lexupdater.main."""
 
 import argparse
+import logging
 
 from .config import DIALECTS
 from .lexupdater import main
+
+
+logging.basicConfig(level=logging.DEBUG)
 
 # Argument parser
 parser = argparse.ArgumentParser()
