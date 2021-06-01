@@ -1,6 +1,7 @@
 """
 Test suite for all the classes in the dialect_updater.py module
 """
+from typing import Generator
 
 import pytest
 
@@ -42,8 +43,8 @@ def test_parse_constraints_with_empty_input():
 @pytest.mark.parametrize(
     "words, expected",
     [
-        (["garn", "klarne"], "wordform NOT IN (?,?)"),
-        (["1", "2", "3"], "wordform NOT IN (?,?,?)"),
+        (["garn", "klarne"], "w.wordform NOT IN (?,?)"),
+        (["1", "2", "3"], "w.wordform NOT IN (?,?,?)"),
         ([], "")
     ]
 )
@@ -63,3 +64,63 @@ def test_map_rule_exemptions():
     # then
     assert list(result.keys()) == list(expected.keys())
     assert list(result.values()) == list(expected.values())
+
+
+def test_filter_list_by_list_all_valid(some_dialects, all_dialects):
+    # given
+    input_dialects = some_dialects + ["e_spoken"]
+    # when
+    result = dialect_updater.filter_list_by_list(input_dialects, all_dialects)
+    # then
+    assert result == input_dialects
+
+
+def test_filter_list_by_list_not_valid(some_dialects, all_dialects):
+    # given
+    input_dialects = some_dialects + ["bergensk"]
+    # when
+    result = dialect_updater.filter_list_by_list(input_dialects, all_dialects)
+    # then
+    assert result == some_dialects
+
+
+def test_parse_conditions(rule):
+    # given
+    input_exemptions = ["biler", "båter"]
+    expected = (
+        "pos = ? AND feats REGEXP ? AND w.wordform NOT IN (?,?)",
+        ['NN', 'MAS', 'biler', 'båter']
+    )
+    # when
+    result = dialect_updater.parse_conditions(rule, input_exemptions)
+    # then
+    assert result == expected
+
+
+def test_parse_conditions_without_conditions(rule):
+    # given
+    input_rule = rule.copy()
+    input_rule["constraints"] = []
+    input_exemptions = []
+    # when
+    result = dialect_updater.parse_conditions(input_rule, input_exemptions)
+    # then
+    assert result == ("", [])
+
+
+def test_parse_rules(some_dialects, ruleset_fixture, exemptions_fixture):
+    # given
+    expected_first_item = (
+        "e_spoken",
+        r"\b(R)([NTD])\\b",
+        r"\1 \2",
+        "w.wordform NOT IN (?,?)",
+        ["garn", "klarne"]
+    )
+    # when
+    result = dialect_updater.parse_rules(
+        some_dialects, ruleset_fixture, exemptions_fixture
+    )
+    # then
+    assert isinstance(result, Generator)
+    assert list(result)[0] == expected_first_item

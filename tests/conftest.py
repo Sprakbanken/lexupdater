@@ -1,9 +1,15 @@
+"""Configuration values for the unit tests."""
+
 from pathlib import Path
+import logging
 
 import pytest
 
 from lexupdater import config
 from lexupdater.db_handler import DatabaseUpdater
+
+
+logging.basicConfig(level=logging.DEBUG)
 
 
 @pytest.fixture(scope="session")
@@ -107,9 +113,8 @@ def invalid_config_values(request, ruleset_fixture, exemptions_fixture,
         raise ValueError("invalid internal test config")
 
 
-@pytest.fixture(scope="session")
-def db_updater_obj(ruleset_fixture, all_dialects,
-                   exemptions_fixture):
+@pytest.fixture(scope="function")
+def db_updater_obj(ruleset_fixture, all_dialects, exemptions_fixture):
     """Instance of the class object we want to test.
 
     Connect to the correct database, yield the DatabaseUpdater object,

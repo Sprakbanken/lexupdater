@@ -27,13 +27,13 @@ Lagre databasen lokalt i data-mappen: `./data/input/backend-db02.db`
 ### 3. Konfigurér oppdateringen av leksikonet
 
 Hovedskriptet til `lexupdater` konfigureres i `config/config.py`, 
-hvor man bl.a. spesifiserer følgende variabler: 
+hvor man bl.a. spesifiserer følgende variabler:
 
-* `dialects`: navnet på dialektområdene
-* `database`: stien til backend-databasen i filstrukturen
-* `output_dir`: filmappen hvor output blir lagret
-* `rules`: regelfiler med søk-erstatt-regelsett 
-* `blacklists`: svartelister for ord som er unntatt regel-oppdateringene
+* `DATABASE`: stien til backend-databasen i filstrukturen
+* `OUTPUT_DIR`: filmappen hvor output blir lagret
+* `DIALECTS`: navnet på dialektområdene
+* `RULES`: liste med søk-erstatt-regelsett 
+* `EXEMPTIONS`: lister over ord som er unntatt regel-oppdateringene
 
 
 ## Oppdatér leksikonet
