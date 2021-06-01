@@ -115,14 +115,16 @@ class DatabaseUpdater:
             ) if conditional else ""
 
             query = SELECT_WORDS_QUERY.format(
-                        word_table=self.word_table,
-                        dialect=dialect,
-                        where_word_in_stmt=where_word
-                    )
+                word_table=self.word_table,
+                dialect=dialect,
+                where_word_in_stmt=where_word
+            )
             values = tuple([pattern] + conditions)
+            logging.debug(f"Execute SQL Query: {query}, {values}")
             word_match = self._cursor.execute(query, values).fetchall()
-            logging.info(f"Words affected by {values[0]}: {word_match}")
-            self.results[dialect] = word_match
+            logging.info(f"Words covered by regex pattern {values[0]}: "
+                         f"\n{word_match}")
+            self.results[dialect] += word_match
 
     def update(self):
         """Apply SQL UPDATE queries to the dialect temp tables.
@@ -140,9 +142,10 @@ class DatabaseUpdater:
                 where_word_in_stmt=where_word
             )
             values = tuple([pattern, replacement] + conditions)
+            logging.debug(f"Execute SQL Query: {query}, {values}")
             self._cursor.execute(query, values)
             self._connection.commit()
-            self.update_results()
+        self.update_results()
 
     def get_connection(self):
         """Return the object instance's sqlite3 connection."""
