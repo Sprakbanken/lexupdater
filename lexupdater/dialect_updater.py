@@ -7,7 +7,9 @@ Parse their constraints and exemptions
 into variables to fill slots in SQL query templates.
 """
 
-from typing import List
+from typing import List, Generator
+
+from .config.constants import ruleset_schema, exemption_schema, WORD_NOT_IN
 
 
 def parse_constraints(constraints: List):
@@ -53,7 +55,7 @@ def parse_exemptions(exemption_words):
         SQL fragment and a list of words that are exempt
     """
     exemption_string = (
-        f"wordform NOT IN ({','.join(['?' for _ in exemption_words])})"
+        f"{WORD_NOT_IN} ({','.join(['?' for _ in exemption_words])})"
     ) if exemption_words != [] else ""
     return exemption_string
 
@@ -77,3 +79,68 @@ def map_rule_exemptions(exemptions):
         exemption["ruleset"]: exemption["words"]
         for exemption in exemptions
     }
+
+
+def parse_conditions(rule: dict, exempt_words: list) -> tuple:
+    """Create an SQL WHERE-query fragment based on constraints and exemptions.
+
+    The conditional fragment is meant to be inserted in
+    a SELECT or UPDATE query, along with the values
+    that fill the placeholder slots.
+    """
+
+    constraints = rule["constraints"]
+    is_constrained = bool(constraints)
+    if not is_constrained and not exempt_words:
+        return "", []
+
+    constraint_str, constraint_values = parse_constraints(constraints)
+    exempt_str = parse_exemptions(exempt_words)
+
+    conditions = [string for string in (constraint_str, exempt_str) if string]
+    values = constraint_values + exempt_words
+
+    return " AND ".join(conditions), values
+
+
+def parse_rules(
+    filter_dialects: list,
+    rulesets: list,
+    exemptions: list,
+) -> Generator:
+    """Parse rulesets, and yield the values needed to construct SQL queries.
+
+    Yields
+    ------
+    tuple[list, str]
+        dialect affected by the rule,
+        regex pattern,
+        replacement string,
+        conditional query fragment,
+        conditional values to fill placeholders
+    """
+    rule_exemptions = map_rule_exemptions(exemption_schema.validate(exemptions))
+
+    for ruleset in rulesets:
+        ruleset = ruleset_schema.validate(ruleset)
+        exempt_words = rule_exemptions.get(ruleset["name"], [])
+        rule_dialects = filter_list_by_list(ruleset["areas"], filter_dialects)
+
+        for rule in ruleset["rules"]:
+            cond_string, cond_values = parse_conditions(
+                rule, exempt_words
+            )
+            for dialect in rule_dialects:
+                yield (
+                    dialect,
+                    rule["pattern"],
+                    rule["repl"],
+                    cond_string,
+                    cond_values
+                )
+
+
+def filter_list_by_list(check_list, filter_list):
+    """Keep only elements from check_list if they exist in the filter_list."""
+    filtered = [_ for _ in check_list if _ in filter_list]
+    return filtered

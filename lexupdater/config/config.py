@@ -2,6 +2,7 @@
 # coding=utf-8
 
 """Configure input data to update the lexicon transcriptions."""
+
 from pathlib import Path
 
 from .exemptions import EXEMPTIONS
