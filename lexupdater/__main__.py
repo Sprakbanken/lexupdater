@@ -9,7 +9,6 @@ import logging
 from .config import DIALECTS
 from .lexupdater import main
 
-
 logging.basicConfig(level=logging.DEBUG)
 
 # Argument parser
