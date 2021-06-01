@@ -42,8 +42,8 @@ def test_parse_constraints_with_empty_input():
 @pytest.mark.parametrize(
     "words, expected",
     [
-        (["garn", "klarne"], "wordform NOT IN (?,?)"),
-        (["1", "2", "3"], "wordform NOT IN (?,?,?)"),
+        (["garn", "klarne"], "w.wordform NOT IN (?,?)"),
+        (["1", "2", "3"], "w.wordform NOT IN (?,?,?)"),
         ([], "")
     ]
 )
