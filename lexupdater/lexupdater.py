@@ -93,8 +93,9 @@ def main(user_dialects, write_base, match_words):
             pprint.pprint(update_obj.results[dialect])
     else:
         update_obj.update()
-        for dialect, updated_values in update_obj.results.items():
-            write_lexicon(OUTPUT_DIR / f"{dialect}.txt", updated_values)
+        for dialect in user_dialects:
+            output_filename = OUTPUT_DIR / f"{dialect}.txt"
+            write_lexicon(output_filename, update_obj.results[dialect])
     update_obj.close_connection()
 
     # Calculating execution time
