@@ -70,9 +70,11 @@ UPDATE_QUERY = (
 )
 
 WHERE_WORD_IN_STMT = (
-    "WHERE word_id IN (SELECT word_id FROM {word_table} "
+    "WHERE word_id IN (SELECT w.word_id FROM {word_table} w "
     "WHERE {conditions})"
 )
+
+WORD_NOT_IN = "w.wordform NOT IN"
 
 SELECT_MATCH_QUERY = (
         "SELECT * FROM {table_name} "

@@ -105,8 +105,13 @@ class DatabaseUpdater:
         """
         # The replacement string _ is not used for this query
         for dialect, pattern, _, conditional, conditions in self.parsed_rules:
-            where_word = WHERE_WORD_IN_STMT.format(
-                word_table=self.word_table, conditions=conditional
+            where_word = re.sub(
+                "WHERE word_id",
+                "AND w.word_id",
+                WHERE_WORD_IN_STMT.format(
+                    word_table=self.word_table, conditions=conditional
+                ),
+                1
             ) if conditional else ""
 
             query = SELECT_WORDS_QUERY.format(

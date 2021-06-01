@@ -10,7 +10,7 @@ into variables to fill slots in SQL query templates.
 import logging
 from typing import List, Generator
 
-from .config.constants import ruleset_schema, exemption_schema
+from .config.constants import ruleset_schema, exemption_schema, WORD_NOT_IN
 
 
 def parse_constraints(constraints: List):
@@ -56,7 +56,7 @@ def parse_exemptions(exemption_words):
         SQL fragment and a list of words that are exempt
     """
     exemption_string = (
-        f"wordform NOT IN ({','.join(['?' for _ in exemption_words])})"
+        f"{WORD_NOT_IN} ({','.join(['?' for _ in exemption_words])})"
     ) if exemption_words != [] else ""
     return exemption_string
 
