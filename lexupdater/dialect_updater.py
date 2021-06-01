@@ -7,7 +7,6 @@ Parse their constraints and exemptions
 into variables to fill slots in SQL query templates.
 """
 
-import logging
 from typing import List, Generator
 
 from .config.constants import ruleset_schema, exemption_schema, WORD_NOT_IN
