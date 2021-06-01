@@ -120,10 +120,11 @@ class DatabaseUpdater:
                 where_word_in_stmt=where_word
             )
             values = tuple([pattern] + conditions)
-            logging.debug(f"Execute SQL Query: {query}, {values}")
+            logging.debug("Execute SQL Query: %s %s", query, values)
             word_match = self._cursor.execute(query, values).fetchall()
-            logging.info(f"Words covered by regex pattern {values[0]}: "
-                         f"\n{word_match}")
+            logging.info(
+                "Words covered by regex pattern %s: %s", values[0], word_match
+            )
             self.results[dialect] += word_match
 
     def update(self):
@@ -142,7 +143,7 @@ class DatabaseUpdater:
                 where_word_in_stmt=where_word
             )
             values = tuple([pattern, replacement] + conditions)
-            logging.debug(f"Execute SQL Query: {query}, {values}")
+            logging.debug("Execute SQL Query: %s %s", query, values)
             self._cursor.execute(query, values)
             self._connection.commit()
         self.update_results()

@@ -53,7 +53,7 @@ def write_lexicon(output_file: str, data: Iterable):
         A collection of dictionaries,
         where the 1st, 2nd, 3rd and 2nd to last elements are saved to disk
     """
-    logging.info(f"Writing lexicon data to {output_file}")
+    logging.info("Writing lexicon data to %s", output_file)
     with open(output_file, "w") as outfile:
         for item in data:
             outfile.write(f"{item[1]}\t{item[2]}\t{item[3]}\t{item[-2]}\n")
@@ -80,7 +80,7 @@ def main(user_dialects, write_base, match_words):
         If True, only fetch a list of the matching
     """
     begin_time = datetime.datetime.now()
-    logging.debug(f"Started lexupdater process at {begin_time.isoformat()}")
+    logging.debug("Started lexupdater process at %s", begin_time.isoformat())
 
     update_obj = DatabaseUpdater(
         DATABASE, RULES, user_dialects, WORD_TABLE, exemptions=EXEMPTIONS
@@ -89,7 +89,7 @@ def main(user_dialects, write_base, match_words):
     if match_words:
         update_obj.select_words_matching_rules()
         for dialect in user_dialects:
-            logging.info(f"--- Dialect: {dialect} ---")
+            logging.info("--- Dialect: %s ---", dialect)
             pprint.pprint(update_obj.results[dialect])
     else:
         update_obj.update()
@@ -101,7 +101,7 @@ def main(user_dialects, write_base, match_words):
     # Calculating execution time
     update_end_time = datetime.datetime.now()
     update_time = update_end_time - begin_time
-    logging.debug(f"Database updated. Time: {update_time}")
+    logging.debug("Database updated. Time: %s", update_time)
 
     if write_base:
         write_lexicon(OUTPUT_DIR / "base.txt", get_base(connection))
@@ -109,4 +109,4 @@ def main(user_dialects, write_base, match_words):
         # For calculating execution time
         file_gen_end_time = datetime.datetime.now()
         file_gen_time = file_gen_end_time - update_end_time
-        logging.debug(f"Files generated. Time: {file_gen_time}")
+        logging.debug("Files generated. Time: %s", file_gen_time)
