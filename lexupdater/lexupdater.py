@@ -39,6 +39,9 @@ def get_base(connection):
             p.word_id = w.word_id;"""
     cursor = connection.cursor()
     result = cursor.execute(stmt).fetchall()
+    logging.debug(
+        "Fetched %s results from the base lexicon with SQL query: \n%s ",
+        len(result), stmt)
     return result
 
 
@@ -87,11 +90,15 @@ def main(user_dialects, write_base, match_words):
     )
     connection = update_obj.get_connection()
     if match_words:
+        logging.info("LEXUPDATER: Only print words matching the rule patterns")
         update_obj.select_words_matching_rules()
         for dialect in user_dialects:
             logging.info("--- Dialect: %s ---", dialect)
             pprint.pprint(update_obj.results[dialect])
     else:
+        logging.info(
+            "LEXUPDATER: Apply rules and update lexicon transcriptions"
+        )
         update_obj.update()
         for dialect in user_dialects:
             output_filename = OUTPUT_DIR / f"{dialect}.txt"
