@@ -101,10 +101,10 @@ def parse_conditions(rule: dict, exempt_words: list) -> tuple:
     exempt_str = parse_exemptions(exempt_words)
 
     conditions = [string for string in (constraint_str, exempt_str) if string]
-    conditions = " AND ".join(conditions)
+    cond_str = " AND ".join(conditions)
     values = constraint_values + exempt_words
-    logging.debug("Conditions: %s \nValues: %s", conditions, values)
-    return conditions, values
+    logging.debug("Conditions: %s \nValues: %s", cond_str, values)
+    return cond_str, values
 
 
 def parse_rules(
