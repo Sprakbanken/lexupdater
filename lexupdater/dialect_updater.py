@@ -6,7 +6,7 @@
 Parse their constraints and exemptions
 into variables to fill slots in SQL query templates.
 """
-
+import logging
 from typing import List, Generator
 
 from .config.constants import ruleset_schema, exemption_schema, WORD_NOT_IN
@@ -38,6 +38,7 @@ def parse_constraints(constraints: List):
         values.append(const["pattern"])
 
     constraint_string = " AND ".join(constraint_fragments)
+    logging.debug("Constraint: %s \nValues: %s", constraint_string, values)
     return constraint_string, values
 
 
@@ -57,6 +58,8 @@ def parse_exemptions(exemption_words):
     exemption_string = (
         f"{WORD_NOT_IN} ({','.join(['?' for _ in exemption_words])})"
     ) if exemption_words != [] else ""
+    logging.debug(
+        "Exemption: %s \nWords: %s", exemption_string, exemption_words)
     return exemption_string
 
 
@@ -98,9 +101,10 @@ def parse_conditions(rule: dict, exempt_words: list) -> tuple:
     exempt_str = parse_exemptions(exempt_words)
 
     conditions = [string for string in (constraint_str, exempt_str) if string]
+    conditions = " AND ".join(conditions)
     values = constraint_values + exempt_words
-
-    return " AND ".join(conditions), values
+    logging.debug("Conditions: %s \nValues: %s", conditions, values)
+    return conditions, values
 
 
 def parse_rules(
@@ -122,9 +126,11 @@ def parse_rules(
     rule_exemptions = map_rule_exemptions(exemption_schema.validate(exemptions))
 
     for ruleset in rulesets:
+        logging.info("Parsing rule set %s", ruleset.get("name"))
         ruleset = ruleset_schema.validate(ruleset)
         exempt_words = rule_exemptions.get(ruleset["name"], [])
         rule_dialects = filter_list_by_list(ruleset["areas"], filter_dialects)
+        logging.debug("Dialects covered by this rule set: %s", rule_dialects)
 
         for rule in ruleset["rules"]:
             cond_string, cond_values = parse_conditions(
