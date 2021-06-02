@@ -37,26 +37,22 @@ hvor man bl.a. spesifiserer følgende variabler:
 
 
 ## Oppdatér leksikonet
-Hovedprogramsnutten er i fila `lexupdater/lexupdater.py`. 
+Hovedprogramsnutten er i fila `lexupdater/lexupdater.py`, som kan kjøres med 
+`python -m lexupdater` og med kommandolinje-argumenter som beskrevet under. 
+Der det ikke angis "gyldige verdier" er flagget et boolsk argument som slås 
+"på" .  
 
-* Kjører man `lexupdater` uten argumenter, 
-  genereres leksikonfiler for alle dialektområdene. 
-```shell
-python -m lexupdater 
-```
+Flagg | Forklaring  | Gyldige verdier
+---   | ---          | ---
+`-d`  | Generer leksikonfiler bare for spesifikke dialektområder  | `e_spoken, e_written, sw_spoken, sw_written, w_spoken, w_written, t_spoken, t_written, n_spoken, n_written`
+`-b`  | Skriv ut base-leksikonet, altså NST | 
+`-m`  | Dersom man bare vil se listene over hvilke ord som blir dekket av hver regel | 
+`-v`  | Skriv ut mer detaljerte debug-beskjeder i loggen | 
 
-* Om man kun vil generere leksikonfiler for noen dialektområder, 
-bruker man argumentet -d og så dialektene man vil ha leksika for.
-(Dette gir samme resultat som eksempelet over, hvor default-verdiene brukes.) 
+Kjører man `lexupdater` uten argumenter, 
+genereres leksikonfiler med oppdaterte transkripsjoner for alle 
+dialektområdene.
 
-```shell
-python -m lexupdater -d e_spoken, e_written, sw_spoken, sw_written, w_spoken, w_written, t_spoken, t_written, n_spoken, n_written
-```
-
-* Om man også vil skrive ut base-leksikonet (altså NST), bruker man -b.
-```shell
-python -m lexupdater -b
-```
 
 ## Test koden
 Kjør automatiske enhets- og integrasjonstester: 
