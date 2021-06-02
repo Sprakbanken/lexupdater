@@ -9,7 +9,6 @@ import logging
 from .config import DIALECTS
 from .lexupdater import main
 
-logging.basicConfig(level=logging.DEBUG)
 
 # Argument parser
 parser = argparse.ArgumentParser()
@@ -41,6 +40,20 @@ parser.add_argument(
         "given dialects"
     )
 )
+parser.add_argument(
+    "--verbose",
+    "-v",
+    action="store_true",
+    help=(
+        "Print logging messages at the debugging level. "
+        "See https://docs.python.org/3/library/logging.html#logging.debug"
+    )
+)
 args = parser.parse_args()
+
+if args.verbose:
+    logging.basicConfig(level=logging.DEBUG)
+else:
+    logging.basicConfig(level=logging.INFO)
 
 main(args.dialects, args.write_base, args.match_words)
