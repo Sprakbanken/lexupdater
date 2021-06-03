@@ -126,7 +126,7 @@ def parse_rules(
     rule_exemptions = map_rule_exemptions(exemption_schema.validate(exemptions))
 
     for ruleset in rulesets:
-        logging.info("Parsing rule set %s", ruleset.get("name"))
+        logging.debug("Parsing rule set %s", ruleset.get("name"))
         ruleset = ruleset_schema.validate(ruleset)
         exempt_words = rule_exemptions.get(ruleset["name"], [])
         rule_dialects = filter_list_by_list(ruleset["areas"], filter_dialects)
