@@ -5,16 +5,13 @@
 
 from pathlib import Path
 
-from .exemptions import EXEMPTIONS
-from .rules import RULES
-
 
 __all__ = [
     "WORD_TABLE",
     "DATABASE",
     "DIALECTS",
-    "RULES",
-    "EXEMPTIONS",
+    "RULES_FILE",
+    "EXEMPTIONS_FILE",
     "OUTPUT_DIR",
 ]
 """Variables that are available to be imported
@@ -34,6 +31,16 @@ DATABASE = DATA_DIR / "input" / "backend-db02.db"
 
 OUTPUT_DIR = DATA_DIR / "output"
 """Path to the output folder for the lexica"""
+
+RULES_FILE = "rules.py"
+"""Path to file with dialect update rules.
+
+Note that multiple rules may affect the same  pronunciations,
+and that the ordering of the rules may matter.
+"""
+
+EXEMPTIONS_FILE = "exemptions.py"
+"""Path to file with exemption dicts"""
 
 
 DIALECTS = [

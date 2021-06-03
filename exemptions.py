@@ -10,4 +10,4 @@ exemption2 = {
     "words": ["søknader", "søknadene", "dugnader", "dugnadene"],
 }
 
-EXEMPTIONS = [exemption1, exemption2]
+exemptions_list = [exemption1, exemption2]

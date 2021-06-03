@@ -58,7 +58,7 @@ test2 = {
     ],
 }
 
-RULES = [test1, test2]
+ruleset_list = [test1, test2]
 """List of dialect update rules.
 
 Note that multiple rules may affect the same  pronunciations,
