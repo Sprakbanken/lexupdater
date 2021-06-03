@@ -1,8 +1,0 @@
-pigar==0.10.0       # To update requirements.txt from script dependencies
-mypy==0.812         # Type checking
-pylint==2.8.2       # Code linting
-pycodestyle==2.7.0
-pydocstyle==6.0.0
-pytest==6.2.3       # Testing code
-pytest-cov==2.12.0
-Sphinx==4.0.1       # Create documentation
