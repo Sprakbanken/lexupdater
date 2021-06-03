@@ -63,13 +63,13 @@ parser.add_argument(
 args = parser.parse_args()
 
 if args.verbose:
-    logging_level = logging.DEBUG
+    LOGGING_LEVEL = logging.DEBUG
 else:
-    logging_level = logging.INFO
+    LOGGING_LEVEL = logging.INFO
 
 logging.basicConfig(
     filename=args.log_file if args.log_file else None,
-    level=logging_level,
+    level=LOGGING_LEVEL,
     format='%(asctime)s | %(levelname)s | %(module)s | %(message)s',
     datefmt='%Y-%m-%d %H:%M')
 
