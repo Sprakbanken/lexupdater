@@ -4,7 +4,6 @@
 """Connect to and update the database containing the pronunciation lexicon."""
 
 import logging
-import pprint
 import re
 import sqlite3
 
@@ -126,9 +125,7 @@ class DatabaseUpdater:
             values = tuple([pattern] + conditions)
             logging.debug("Execute SQL Query: %s %s", query, values)
             word_match = self._cursor.execute(query, values).fetchall()
-            print(f"Words covered by regex pattern {values[0]}:")
-            pprint.pprint(word_match)
-            self.results[dialect] += word_match
+            self.results[dialect] += [(pattern, word_match)]
 
     def update(self):
         """Apply SQL UPDATE queries to the dialect temp tables.
