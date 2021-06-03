@@ -49,11 +49,28 @@ parser.add_argument(
         "See https://docs.python.org/3/library/logging.html#logging.debug"
     )
 )
+parser.add_argument(
+    "--log_file",
+    "-l",
+    action="store",
+    type=str,
+    nargs="?",
+    help=(
+        "Save all logging messages to a file. "
+        "See https://docs.python.org/3/library/logging.html#logging.debug"
+    ),
+)
 args = parser.parse_args()
 
 if args.verbose:
-    logging.basicConfig(level=logging.DEBUG)
+    logging_level = logging.DEBUG
 else:
-    logging.basicConfig(level=logging.INFO)
+    logging_level = logging.INFO
+
+logging.basicConfig(
+    filename=args.log_file if args.log_file else None,
+    level=logging_level,
+    format='%(asctime)s | %(levelname)s | %(module)s | %(message)s',
+    datefmt='%Y-%m-%d %H:%M')
 
 main(args.dialects, args.write_base, args.match_words)

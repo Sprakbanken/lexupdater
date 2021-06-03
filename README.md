@@ -42,12 +42,13 @@ Hovedprogramsnutten er i fila `lexupdater/lexupdater.py`, som kan kjøres med
 Der det ikke angis "gyldige verdier" er flagget et boolsk argument som slås 
 "på" .  
 
-Flagg | Forklaring  | Gyldige verdier
+Flagg | Forklaring  | Gyldige verdier/eksempler
 ---   | ---          | ---
 `-d`  | Generer leksikonfiler bare for spesifikke dialektområder  | `e_spoken, e_written, sw_spoken, sw_written, w_spoken, w_written, t_spoken, t_written, n_spoken, n_written`
 `-b`  | Skriv ut base-leksikonet, altså NST | 
 `-m`  | Dersom man bare vil se listene over hvilke ord som blir dekket av hver regel | 
 `-v`  | Skriv ut mer detaljerte debug-beskjeder i loggen | 
+`-l`  | Angi et filnavn som loggen skrives til. Om ikke -l spesifiseres, skrives alt til terminalen. | `log.txt`
 
 Kjører man `lexupdater` uten argumenter, 
 genereres leksikonfiler med oppdaterte transkripsjoner for alle 
