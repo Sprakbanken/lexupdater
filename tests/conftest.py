@@ -1,13 +1,12 @@
 """Configuration values for the unit tests."""
 
-from pathlib import Path
 import logging
+from pathlib import Path
 
 import pytest
 
-from lexupdater import config
+from config import WORD_TABLE
 from lexupdater.db_handler import DatabaseUpdater
-
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -127,7 +126,7 @@ def db_updater_obj(ruleset_fixture, all_dialects, exemptions_fixture):
         str(Path('tests') / 'dummy_data.db'),  # Ensure file path is OS agnostic
         ruleset_fixture,
         all_dialects,
-        config.WORD_TABLE,
+        WORD_TABLE,
         exemptions_fixture,
     )
     yield updater_obj

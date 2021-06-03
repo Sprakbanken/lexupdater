@@ -6,7 +6,7 @@
 import argparse
 import logging
 
-from .config import DIALECTS
+from config import DIALECTS
 from .lexupdater import main
 
 
@@ -38,8 +38,8 @@ parser.add_argument(
     "-m",
     action="store_true",
     help=(
-        "Print list of the words that will be affected by update rules for the "
-        "given dialects"
+        "Print list of the words that will be affected by update rules "
+        "for the given dialects"
     )
 )
 args = parser.parse_args()

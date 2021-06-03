@@ -6,7 +6,7 @@ import logging
 import re
 import sqlite3
 
-from .config.constants import (
+from .constants import (
     dialect_schema,
     CREATE_DIALECT_TABLE_STMT,
     CREATE_WORD_TABLE_STMT,
