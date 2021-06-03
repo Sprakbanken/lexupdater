@@ -93,8 +93,14 @@ def main(user_dialects, write_base, match_words):
         logging.info("LEXUPDATER: Only print words matching the rule patterns")
         update_obj.select_words_matching_rules()
         for dialect in user_dialects:
-            logging.info("--- Dialect: %s ---", dialect)
-            pprint.pprint(update_obj.results[dialect])
+            logging.info("Dialect: %s ", dialect)
+            for pattern, words in update_obj.results[dialect]:
+                logging.info(
+                    "Regex pattern '%s' covers %s matching words \n%s \n-----",
+                    pattern,
+                    len(words),
+                    pprint.pformat(words),
+                )
     else:
         logging.info(
             "LEXUPDATER: Apply rules and update lexicon transcriptions"
@@ -117,3 +123,4 @@ def main(user_dialects, write_base, match_words):
         file_gen_end_time = datetime.datetime.now()
         file_gen_time = file_gen_end_time - update_end_time
         logging.debug("Files generated. Time: %s", file_gen_time)
+    logging.info("Done.")
