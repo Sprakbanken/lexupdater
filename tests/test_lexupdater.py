@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
-import lexupdater
+from lexupdater import lexupdater
 
 
 def test_get_base(db_updater_obj):
