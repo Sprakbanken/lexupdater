@@ -1,15 +1,11 @@
 """Configuration values for the unit tests."""
 
 from pathlib import Path
-import logging
 
 import pytest
 
 from lexupdater import config
 from lexupdater.db_handler import DatabaseUpdater
-
-
-logging.basicConfig(level=logging.DEBUG)
 
 
 @pytest.fixture(scope="session")

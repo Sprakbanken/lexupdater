@@ -22,41 +22,44 @@ og må lastes ned i forkant.
 Kontakt [Per Erik Solberg](https://github.com/peresolb) for å få tilgang 
 til denne fila. 
 
-Lagre databasen lokalt i data-mappen: `./data/input/backend-db02.db`
+Lagre databasen lokalt i inndata-mappen `data/input/` og oppdater 
+`DATABASE`-verdien i `config.py` til riktig database-filnavn, som foreløpig 
+(juni 2021) er `backend-db02.db`.
+
 
 ### 3. Konfigurér oppdateringen av leksikonet
 
 Hovedskriptet til `lexupdater` konfigureres i `config/config.py`, 
 hvor man bl.a. spesifiserer følgende variabler:
 
-* `DATABASE`: stien til backend-databasen i filstrukturen
-* `OUTPUT_DIR`: filmappen hvor output blir lagret
-* `DIALECTS`: navnet på dialektområdene
-* `RULES`: liste med søk-erstatt-regelsett 
-* `EXEMPTIONS`: lister over ord som er unntatt regel-oppdateringene
+Variabelnavn | Forklaring | Default-verdi
+---|---|---
+`DATABASE`  | filnavnet til backend-databasen i filstrukturen | `data / input / backend-db02.db`
+`WORD_TABLE` | navnet på den midlertidige tabellen med ord fra leksikon-databasen | `"words_tmp"` 
+`OUTPUT_DIR` | filmappen hvor output blir lagret | `data / output`
+`DIALECTS` | navnet på gyldige dialektområder | `e_spoken, e_written, sw_spoken, sw_written, w_spoken, w_written, t_spoken, t_written, n_spoken, n_written`
+`RULES` | liste med søk-erstatt-regelsett | listen som defineres i `rules.py` og importeres i `config.py`
+`EXEMPTIONS` | lister over ord som er unntatt regel-oppdateringene | listen som defineres i `exemptions.py` og importeres i `config.py` 
 
 
 ## Oppdatér leksikonet
-Hovedprogramsnutten er i fila `lexupdater/lexupdater.py`. 
+Hovedprogramsnutten er i fila `lexupdater/lexupdater.py`, som kan kjøres med 
+`python -m lexupdater` og med kommandolinje-argumenter som beskrevet under. 
+Der det ikke angis "gyldige verdier" er flagget et boolsk argument som slås 
+"på" .  
 
-* Kjører man `lexupdater` uten argumenter, 
-  genereres leksikonfiler for alle dialektområdene. 
-```shell
-python -m lexupdater 
-```
+Flagg | Forklaring  | Gyldige verdier/eksempler
+---   | ---          | ---
+`-d`  | Generer leksikonfiler bare for spesifikke dialektområder  | `e_spoken, e_written, sw_spoken, sw_written, w_spoken, w_written, t_spoken, t_written, n_spoken, n_written`
+`-b`  | Skriv ut base-leksikonet, altså NST | 
+`-m`  | Skrive ut hvilke ord som blir dekket av hver regel | 
+`-v`  | Skriv ut mer detaljerte debug-beskjeder i loggen | 
+`-l`  | Angi et filnavn som loggen skrives til. Om ikke -l spesifiseres, skrives alt til terminalen. | `log.txt`
 
-* Om man kun vil generere leksikonfiler for noen dialektområder, 
-bruker man argumentet -d og så dialektene man vil ha leksika for.
-(Dette gir samme resultat som eksempelet over, hvor default-verdiene brukes.) 
+Kjører man `lexupdater` uten argumenter, 
+genereres leksikonfiler med oppdaterte transkripsjoner for alle 
+dialektområdene.
 
-```shell
-python -m lexupdater -d e_spoken, e_written, sw_spoken, sw_written, w_spoken, w_written, t_spoken, t_written, n_spoken, n_written
-```
-
-* Om man også vil skrive ut base-leksikonet (altså NST), bruker man -b.
-```shell
-python -m lexupdater -b
-```
 
 ## Test koden
 Kjør automatiske enhets- og integrasjonstester: 
