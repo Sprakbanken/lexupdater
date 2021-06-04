@@ -1,3 +1,5 @@
+import lexupdater
+
 import importlib.util
 import sys
 
