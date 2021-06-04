@@ -26,9 +26,12 @@ WORD_TABLE = "words_tmp"
 """Name of the temp table containing all words and word metadata
 in the backend db
 """
+
 DATA_DIR = Path("data")
 
-DATABASE = DATA_DIR / "input" / "backend-db02.db"
+INPUT_DIR = DATA_DIR / "input"
+
+DATABASE = INPUT_DIR / "backend-db02.db"
 """Path to the backend db"""
 
 

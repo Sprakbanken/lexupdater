@@ -6,7 +6,7 @@
 import argparse
 import logging
 
-from .config import DIALECTS
+from .config import DIALECTS, OUTPUT_DIR
 from .lexupdater import main
 
 
@@ -46,7 +46,7 @@ parser.add_argument(
     action="store_true",
     help=(
         "Print logging messages at the debugging level. "
-        "See https://docs.python.org/3/library/logging.html#logging.debug"
+        "See python documentation on logging for more info."
     )
 )
 parser.add_argument(
@@ -55,10 +55,7 @@ parser.add_argument(
     action="store",
     type=str,
     nargs="?",
-    help=(
-        "Save all logging messages to a file. "
-        "See https://docs.python.org/3/library/logging.html#logging.debug"
-    ),
+    help="Save all logging messages to the given file. ",
 )
 args = parser.parse_args()
 
@@ -68,7 +65,7 @@ else:
     LOGGING_LEVEL = logging.INFO
 
 logging.basicConfig(
-    filename=args.log_file if args.log_file else None,
+    filename=(OUTPUT_DIR / args.log_file) if args.log_file else None,
     level=LOGGING_LEVEL,
     format='%(asctime)s | %(levelname)s | %(module)s | %(message)s',
     datefmt='%Y-%m-%d %H:%M')
