@@ -2,6 +2,7 @@
 # coding=utf-8
 
 """Connect to and update the database containing the pronunciation lexicon."""
+
 import logging
 import re
 import sqlite3
@@ -76,10 +77,12 @@ class DatabaseUpdater:
 
     def _establish_connection(self):
         """Connect to db and create temporary tables."""
+        logging.debug("Connecting to the database %s", self._db)
         self._connection = sqlite3.connect(self._db)
         self._connection.create_function("REGEXP", 2, regexp)
         self._connection.create_function("REGREPLACE", 3, re.sub)
         self._cursor = self._connection.cursor()
+        logging.debug("Creating temporary tables")
         self._cursor.execute(
             CREATE_WORD_TABLE_STMT.format(word_table_name=self.word_table)
         )
@@ -122,10 +125,7 @@ class DatabaseUpdater:
             values = tuple([pattern] + conditions)
             logging.debug("Execute SQL Query: %s %s", query, values)
             word_match = self._cursor.execute(query, values).fetchall()
-            logging.info(
-                "Words covered by regex pattern %s: %s", values[0], word_match
-            )
-            self.results[dialect] += word_match
+            self.results[dialect] += [(pattern, word_match)]
 
     def update(self):
         """Apply SQL UPDATE queries to the dialect temp tables.
@@ -170,6 +170,7 @@ class DatabaseUpdater:
                     FROM {self.word_table} w
                     LEFT JOIN {dialect} p ON p.word_id = w.word_id;"""
             self.results[dialect] = self._cursor.execute(stmt).fetchall()
+            logging.debug("Update results for %s ", dialect)
 
     def close_connection(self):
         """Close the object instance's sqlite3 connection."""
