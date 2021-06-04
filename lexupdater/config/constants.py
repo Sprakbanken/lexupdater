@@ -76,14 +76,17 @@ WHERE_WORD_IN_STMT = (
 
 WORD_NOT_IN = "w.wordform NOT IN"
 
-SELECT_MATCH_QUERY = (
-        "SELECT * FROM {table_name} "
+SELECT_WORDS_QUERY = (
+        "SELECT w.wordform, p.nofabet "
+        "FROM {word_table} w "
+        "LEFT JOIN {dialect} p ON p.word_id = w.word_id "
         "WHERE REGEXP(?,nofabet) "
         "{where_word_in_stmt};"
     )
 
-SELECT_WORDS_QUERY = (
-    "SELECT w.word_id, w.wordform, w.pos, w.feats, w.update_info, "
+SELECT_MATCH_QUERY= (
+    "SELECT w.word_id, w.wordform, w.pos, w.feats, "
+    # "w.update_info, "
     # "w.source, w.decomp_ort, w.decomp_pos, w.garbage, "
     # "w.domain, w.abbr, w.set_name, w.style_status, w.inflector_role, "
     # "w.inflector_rule, w.morph_label, w.compounder_code, "
