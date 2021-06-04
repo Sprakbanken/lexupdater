@@ -10,3 +10,6 @@ module = importlib.util.module_from_spec(spec)
 sys.modules[MODULE_NAME] = module
 exec_module = getattr(spec.loader, "exec_module")
 exec_module(module)
+
+# Ensure the output directory exists
+config.OUTPUT_DIR.mkdir(parents=True, exist_ok=True)

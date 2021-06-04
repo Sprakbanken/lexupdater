@@ -22,6 +22,7 @@ def test_get_base(db_updater_obj):
 
 @pytest.fixture
 def dir_path(tmp_path):
+    """Temporary test path to an output directory."""
     dir_path = tmp_path / "sub"
     dir_path.mkdir()
     return dir_path
