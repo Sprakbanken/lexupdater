@@ -5,7 +5,6 @@
 
 import datetime
 import logging
-import pprint
 from typing import Iterable
 
 from .config import (
