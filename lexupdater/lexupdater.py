@@ -93,14 +93,21 @@ def main(user_dialects, write_base, match_words):
         logging.info("LEXUPDATER: Only print words matching the rule patterns")
         update_obj.select_words_matching_rules()
         for dialect in user_dialects:
-            logging.info("Dialect: %s ", dialect)
-            for pattern, words in update_obj.results[dialect]:
-                logging.info(
-                    "Regex pattern '%s' covers %s matching words \n%s \n-----",
-                    pattern,
-                    len(words),
-                    pprint.pformat(words),
-                )
+            matching_words = update_obj.results[dialect]
+            if not matching_words:
+                continue
+            output_file = OUTPUT_DIR / f"words_matching_rules_for_{dialect}.txt"
+            logging.info(
+                "Writing words that match rule patterns to %s", output_file)
+            with open(output_file, "w") as outfile:
+                for pattern, words in matching_words:
+                    logging.info(
+                        "Regex pattern '%s' covers %s matching words ",
+                        pattern,
+                        len(words)
+                    )
+                    for item in words:
+                        outfile.write(",".join([pattern] + list(item)) + "\n")
     else:
         logging.info(
             "LEXUPDATER: Apply rules and update lexicon transcriptions"
