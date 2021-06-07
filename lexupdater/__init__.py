@@ -1,9 +1,8 @@
-import lexupdater
-
 import importlib.util
 import sys
 
 import config
+
 FILE_PATH = config.__file__
 MODULE_NAME = config.__name__
 

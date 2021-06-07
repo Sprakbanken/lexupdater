@@ -76,18 +76,31 @@ pep8-konvensjonene:
 make lint
 ```
 
-## Installér `lexupdater` som en python-pakke 
-Du kan lage en pip-installérbar python-pakke 
-(komprimerte filer med `.tar.gz`, `.egg`, `.whl` suffiks) 
-via `setup.py`-skriptet: 
+## Bygg `lexupdater` som en python-pakke
+Ferdig-bygde Python-pakker er installérbare, og tillater å dele verktøyet 
+som en vanlig fil, samt installere filen med `pip`. 
 
+### Windows 
 ```shell
-python setup.py install     # Installer direkte fra repoet 
+python setup.py bdist --formats=wininst
 ```
-Dette lagrer en `.egg`-fil i en ny mappe `dist`. 
-Denne fila kan deles med andre python-brukere, 
-og de kan installere pakken med pip: 
+
+### Linux 
+```shell
+python setup.py bdist --formats=gztar
+```
+
+### OS-uavhengig (ikke ferdig testet)
+```shell
+python -m build .
+```
+
+## Installér `lexupdater` som en python-pakke 
+Etter at python-pakken er bygget, vil den ligge i `dist`-mappen. Den kan nå 
+installeres med `pip` (velg bare én av kommanoene under): 
 
 ```shell
-pip install ./lexupdater-0.0.1-py3.7.egg
+pip install dist/lexupdater-0.0.3.linux-x86_64.tar.gz   # Linux
+pip install dist/lexupdater-0.0.3.linux-x86_64.exe      # Windows
+pip install dist/lexupdater-0.0.3-py3-none-any.whl      # OS-uavhengig
 ```
