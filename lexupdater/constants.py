@@ -4,10 +4,9 @@
 * SQL query template strings to create tables, insert values, update entries
 and select entries.
 """
-
 from schema import Schema, Optional
 
-from .config import DIALECTS
+from config import DIALECTS
 
 dialect_schema = Schema(DIALECTS)
 
