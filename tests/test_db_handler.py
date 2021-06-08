@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 from schema import SchemaError
 
-from lexupdater import config
+from config import DATABASE, WORD_TABLE
 from lexupdater import db_handler
 
 
@@ -42,10 +42,10 @@ class TestDatabaseUpdater:
         ):
             # when
             result = db_handler.DatabaseUpdater(
-                config.DATABASE,
+                DATABASE,
                 ruleset_fixture,
                 some_dialects,
-                config.WORD_TABLE,
+                WORD_TABLE,
                 exemptions_fixture,
             )
             # then
@@ -70,10 +70,10 @@ class TestDatabaseUpdater:
         ):
             with pytest.raises(SchemaError):
                 db_handler.DatabaseUpdater(
-                    config.DATABASE,
+                    DATABASE,
                     rules,
                     dialects,
-                    config.WORD_TABLE,
+                    WORD_TABLE,
                     exemptions,
                 )
 
@@ -93,15 +93,15 @@ class TestDatabaseUpdater:
 
             # when
             _ = db_handler.DatabaseUpdater(
-                config.DATABASE,
+                DATABASE,
                 ruleset_fixture,
                 some_dialects,
-                config.WORD_TABLE,
+                WORD_TABLE,
                 exemptions_fixture,
             )
             # then
             # Check that the patched functions were called
-            patched_sqlite.connect.assert_called_with(config.DATABASE)
+            patched_sqlite.connect.assert_called_with(DATABASE)
             patch_connection.create_function.assert_called()
             patch_connection.cursor.assert_called()
             patch_cursor.execute.assert_called()

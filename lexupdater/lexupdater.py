@@ -5,13 +5,14 @@
 
 import datetime
 import logging
+from runpy import run_path
 from typing import Iterable
 
-from .config import (
+from config import (
     WORD_TABLE,
     DATABASE,
-    RULES,
-    EXEMPTIONS,
+    RULES_FILE,
+    EXEMPTIONS_FILE,
     OUTPUT_DIR
 )
 from .db_handler import DatabaseUpdater
@@ -84,8 +85,11 @@ def main(user_dialects, write_base, match_words):
     begin_time = datetime.datetime.now()
     logging.debug("Started lexupdater process at %s", begin_time.isoformat())
 
+    rules = run_path(RULES_FILE).get("ruleset_list")
+    exemptions = run_path(EXEMPTIONS_FILE).get("exemptions_list")
+
     update_obj = DatabaseUpdater(
-        DATABASE, RULES, user_dialects, WORD_TABLE, exemptions=EXEMPTIONS
+        DATABASE, rules, user_dialects, WORD_TABLE, exemptions=exemptions
     )
     connection = update_obj.get_connection()
     if match_words:

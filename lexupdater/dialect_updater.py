@@ -9,7 +9,7 @@ into variables to fill slots in SQL query templates.
 import logging
 from typing import List, Generator
 
-from .config.constants import ruleset_schema, exemption_schema, WORD_NOT_IN
+from .constants import ruleset_schema, exemption_schema, WORD_NOT_IN
 
 
 def parse_constraints(constraints: List):
@@ -92,7 +92,6 @@ def parse_conditions(rule: dict, exempt_words: list) -> tuple:
     a SELECT or UPDATE query, along with the values
     that fill the placeholder slots.
     """
-
     constraints = rule["constraints"]
     is_constrained = bool(constraints)
     if not is_constrained and not exempt_words:
