@@ -32,7 +32,7 @@ def write_lexicon(output_file: str, data: Iterable):
     logging.info("Writing lexicon data to %s", output_file)
     with open(output_file, "w") as outfile:
         for item in data:
-            outfile.write(f"{item[1]}\t{item[2]}\t{item[3]}\t{item[-2]}\n")
+            outfile.write("\t".join(item) + "\n")
 
 
 def main(user_dialects, write_base, match_words):
@@ -64,7 +64,7 @@ def main(user_dialects, write_base, match_words):
     update_obj = DatabaseUpdater(
         DATABASE, rules, user_dialects, WORD_TABLE, exemptions=exemptions
     )
-    connection = update_obj.get_connection()
+    base = update_obj.get_base()
     if match_words:
         logging.info("LEXUPDATER: Only print words matching the rule patterns")
         update_obj.select_words_matching_rules()
@@ -100,7 +100,7 @@ def main(user_dialects, write_base, match_words):
     logging.debug("Database updated. Time: %s", update_time)
 
     if write_base:
-        write_lexicon(OUTPUT_DIR / "base.txt", get_base(connection))
+        write_lexicon(OUTPUT_DIR / "base.txt", base)
 
         # For calculating execution time
         file_gen_end_time = datetime.datetime.now()
