@@ -42,7 +42,6 @@ ON UPDATE CASCADE);
 """
 
 CREATE_WORD_TABLE_STMT = """CREATE TEMPORARY TABLE {word_table_name} (
-word_row_id INTEGER PRIMARY KEY AUTOINCREMENT,
 word_id INTEGER NOT NULL,
 wordform TEXT NOT NULL,
 pos TEXT,
@@ -59,15 +58,15 @@ inflector_role TEXT,
 inflector_rule TEXT,
 morph_label TEXT,
 compounder_code TEXT,
-update_info TEXT
-lang_code TEXT
-expansion TEXT
-set_id TEXT
-lemma TEXT
-sem_code TEXT
-frequency TEXT
-orig_wf TEXT
-comment TEXT
+update_info TEXT,
+lang_code TEXT,
+expansion TEXT,
+set_id TEXT,
+lemma TEXT,
+sem_code TEXT,
+frequency TEXT,
+orig_wf TEXT,
+comment TEXT,
 unique_id VARCHAR NOT NULL
 );"""
 
