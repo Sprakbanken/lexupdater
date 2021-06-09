@@ -130,6 +130,12 @@ class DatabaseUpdater:
             values = tuple([pattern] + conditions)
             logging.debug("Execute SQL Query: %s %s", query, values)
             word_match = self._cursor.execute(query, values).fetchall()
+            logging.info(
+                "Regex pattern '%s' covers %s matching words for dialect %s",
+                pattern,
+                len(word_match),
+                dialect
+            )
             self.results[dialect] += [(pattern, word_match)]
 
     def update(self):
