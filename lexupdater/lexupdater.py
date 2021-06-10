@@ -18,33 +18,6 @@ from config import (
 from .db_handler import DatabaseUpdater
 
 
-def get_base(connection):
-    """Select the state of the lexicon before the updates.
-
-    Parameters
-    ----------
-    connection: sqlite3.connect
-        A connection to the open sqlite database
-
-    Returns
-    -------
-    result: list
-        The full contents of the base lexicon
-    """
-    stmt = """SELECT w.word_id, w.wordform, w.pos, w.feats, w.source,
-            w.decomp_ort, w.decomp_pos, w.garbage, w.domain, w.abbr,
-            w.set_name, w.style_status, w.inflector_role, w.inflector_rule,
-            w.morph_label, w.compounder_code, w.update_info, p.pron_id,
-            p.nofabet, p.certainty FROM words w LEFT JOIN base p ON
-            p.word_id = w.word_id;"""
-    cursor = connection.cursor()
-    result = cursor.execute(stmt).fetchall()
-    logging.debug(
-        "Fetched %s results from the base lexicon with SQL query: \n%s ",
-        len(result), stmt)
-    return result
-
-
 def write_lexicon(output_file: str, data: Iterable):
     """Write a simple txt file with the results of the SQL queries.
 
@@ -59,7 +32,7 @@ def write_lexicon(output_file: str, data: Iterable):
     logging.info("Writing lexicon data to %s", output_file)
     with open(output_file, "w") as outfile:
         for item in data:
-            outfile.write(f"{item[1]}\t{item[2]}\t{item[3]}\t{item[-2]}\n")
+            outfile.write("\t".join(item) + "\n")
 
 
 def main(user_dialects, write_base, match_words):
@@ -80,7 +53,7 @@ def main(user_dialects, write_base, match_words):
     write_base: bool
         If True, write the base lexicon as a .txt-file
     match_words: bool
-        If True, only fetch a list of the matching
+        If True, only fetch a list of words that match the rule patterns
     """
     begin_time = datetime.datetime.now()
     logging.debug("Started lexupdater process at %s", begin_time.isoformat())
@@ -91,7 +64,7 @@ def main(user_dialects, write_base, match_words):
     update_obj = DatabaseUpdater(
         DATABASE, rules, user_dialects, WORD_TABLE, exemptions=exemptions
     )
-    connection = update_obj.get_connection()
+    base = update_obj.get_base()
     if match_words:
         logging.info("LEXUPDATER: Only print words matching the rule patterns")
         update_obj.select_words_matching_rules()
@@ -127,7 +100,7 @@ def main(user_dialects, write_base, match_words):
     logging.debug("Database updated. Time: %s", update_time)
 
     if write_base:
-        write_lexicon(OUTPUT_DIR / "base.txt", get_base(connection))
+        write_lexicon(OUTPUT_DIR / "base.txt", base)
 
         # For calculating execution time
         file_gen_end_time = datetime.datetime.now()

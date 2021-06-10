@@ -8,18 +8,6 @@ import pytest
 from lexupdater import lexupdater
 
 
-def test_get_base(db_updater_obj):
-    # given
-    input_connection = db_updater_obj.get_connection()
-    # when
-    result = lexupdater.get_base(input_connection)
-    # then
-    assert result is not None
-    assert isinstance(result, list)
-    assert result != []
-    assert result[0] is not None
-
-
 @pytest.fixture
 def dir_path(tmp_path):
     """Temporary test path to an output directory."""
