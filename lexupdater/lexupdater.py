@@ -30,31 +30,26 @@ def write_lexicon(output_file: str, data: Iterable):
         A collection of dictionaries,
         where the 1st, 2nd, 3rd and 2nd to last elements are saved to disk
     """
-    logging.info("Writing lexicon data to %s", output_file)
+    logging.info("Write lexicon data to %s", output_file)
     with open(OUTPUT_DIR / output_file, 'w', newline='') as csvfile:
         out_writer = csv.writer(csvfile, delimiter='\t')
         for item in data:
             out_writer.writerow(item)
 
 
-def write_match_results(output_file, data):
-    """Write a simple txt file with the results of the SQL queries.
+def flatten_match_results(data):
+    """Flatten a nested list of rule pattern matches.
 
     Parameters
     ----------
-    output_file: str
-        Name of the file to write data to
     data: Iterable[tuple]
         A collection of tuples, where the first element is the rule pattern,
         the second is the collection of lexicon rows
         that match the rule pattern
     """
-    logging.info("Writing words that match rule patterns to %s", output_file)
-    with open(OUTPUT_DIR / output_file, 'w', newline='') as csvfile:
-        out_writer = csv.writer(csvfile, delimiter='\t')
-        for pattern, words in data:
-            for item in words:
-                out_writer.writerow([pattern] + list(item))
+    for pattern, words in data:
+        for item in words:
+            yield [pattern] + list(item)
 
 
 def main(user_dialects, write_base, match_words):
@@ -109,7 +104,8 @@ def main(user_dialects, write_base, match_words):
         if not results:
             continue
         if match_words:
-            write_match_results(f"words_matching_rules_for_{dialect}.txt", results)
+            flat_matches = flatten_match_results(results)
+            write_lexicon(f"words_matching_rules_{dialect}.txt", flat_matches)
         else:
             write_lexicon(f"updated_lexicon_{dialect}.txt", results)
 
