@@ -28,7 +28,7 @@ DATA_DIR = Path("data")
 
 INPUT_DIR = DATA_DIR / "input"
 
-DATABASE = INPUT_DIR / "backend-db02.db"
+DATABASE = INPUT_DIR / "backend-db03.db"
 """Path to the backend db"""
 
 

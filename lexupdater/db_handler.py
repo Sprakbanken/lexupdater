@@ -14,7 +14,10 @@ from .constants import (
     INSERT_STMT,
     UPDATE_QUERY,
     WHERE_WORD_IN_STMT,
-    SELECT_WORDS_QUERY,
+    SELECT_QUERY,
+    COL_WORD_PRON,
+    WHERE_REGEXP,
+    COL_WORD_POS_FEATS_PRON,
 )
 from .dialect_updater import parse_rules
 
@@ -109,17 +112,19 @@ class DatabaseUpdater:
         # The replacement string _ is not used for this query
         for dialect, pattern, _, conditional, conditions in self.parsed_rules:
             where_word = re.sub(
-                "WHERE word_id",
-                "AND w.word_id",
+                "WHERE unique_id",
+                "AND w.unique_id",
                 WHERE_WORD_IN_STMT.format(
                     word_table=self.word_table, conditions=conditional
                 ),
                 1
             ) if conditional else ""
 
-            query = SELECT_WORDS_QUERY.format(
+            query = SELECT_QUERY.format(
+                columns=COL_WORD_PRON,
                 word_table=self.word_table,
-                dialect=dialect,
+                pron_table=dialect,
+                where_regex=WHERE_REGEXP,
                 where_word_in_stmt=where_word
             )
             values = tuple([pattern] + conditions)
@@ -148,29 +153,54 @@ class DatabaseUpdater:
             self._connection.commit()
         self.update_results()
 
-    def get_connection(self):
-        """Return the object instance's sqlite3 connection."""
-        return self._connection
-
     def update_results(self):
-        """Fetch the state of the lexicon for each dialect.
+        """Assign updated lexicon state to the results attribute.
 
-        Returns
-        -------
+        For each dialect, fetch the state of the lexicon
+        after the rules have been applied,
+        and update the results dictionary with the new values.
+
         results: dict
             Dialect names are keys, and the resulting collection of values
             from each field in the database are the values
         """
         for dialect in self.dialects:
-            stmt = f"""SELECT w.word_id, w.wordform, w.pos, w.feats, w.source,
-                    w.decomp_ort, w.decomp_pos, w.garbage, w.domain, w.abbr,
-                    w.set_name, w.style_status, w.inflector_role,
-                    w.inflector_rule, w.morph_label, w.compounder_code,
-                    w.update_info, p.pron_id, p.nofabet, p.certainty
-                    FROM {self.word_table} w
-                    LEFT JOIN {dialect} p ON p.word_id = w.word_id;"""
+            stmt = SELECT_QUERY.format(
+                columns=COL_WORD_POS_FEATS_PRON,
+                word_table=self.word_table,
+                pron_table=dialect,
+                where_regex='',
+                where_word_in_stmt=''
+            )
             self.results[dialect] = self._cursor.execute(stmt).fetchall()
             logging.debug("Update results for %s ", dialect)
+
+    def get_base(self):
+        """Select the state of the lexicon before the updates.
+
+        Returns
+        -------
+        result: list
+            The full contents of the base lexicon
+        """
+        stmt = SELECT_QUERY.format(
+                columns=COL_WORD_POS_FEATS_PRON,
+                word_table="words",
+                pron_table="base",
+                where_regex='',
+                where_word_in_stmt=''
+            )
+        result = self._cursor.execute(stmt).fetchall()
+        logging.debug(
+            "Fetched %s results from the base lexicon with SQL query: \n%s ",
+            len(result),
+            stmt
+        )
+        return result
+
+    def get_connection(self):
+        """Return the object instance's sqlite3 connection."""
+        return self._connection
 
     def close_connection(self):
         """Close the object instance's sqlite3 connection."""
