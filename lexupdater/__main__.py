@@ -6,7 +6,7 @@
 import argparse
 import logging
 
-from config import DIALECTS, OUTPUT_DIR
+from .constants import DIALECTS, OUTPUT_DIR
 from .lexupdater import main
 
 

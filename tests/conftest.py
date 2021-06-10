@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from config import WORD_TABLE
+from lexupdater.constants import WORD_TABLE
 from lexupdater.db_handler import DatabaseUpdater
 
 
