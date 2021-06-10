@@ -6,20 +6,20 @@
 WORD_TABLE = "words_tmp"
 """Name of the temp table to contain all words and metadata in the database."""
 
-DATABASE = "../data/input/backend-db02.db"
+DATABASE = "data/input/backend-db02.db"
 """Path to the backend db"""
 
-OUTPUT_DIR = "../data/output"
+OUTPUT_DIR = "data/output"
 """Path to the output folder for the lexica"""
 
-RULES_FILE = "../rules.py"
+RULES_FILE = "rules.py"
 """Path to file with dialect update rules.
 
 Note that multiple rules may affect the same  pronunciations,
 and that the ordering of the rules may matter.
 """
 
-EXEMPTIONS_FILE = "../exemptions.py"
+EXEMPTIONS_FILE = "exemptions.py"
 """Path to file with exemption dicts"""
 
 

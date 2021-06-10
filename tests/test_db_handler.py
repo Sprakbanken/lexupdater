@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 from schema import SchemaError
 
-from config import DATABASE, WORD_TABLE
+from lexupdater.constants import DATABASE, WORD_TABLE
 from lexupdater import db_handler
 
 

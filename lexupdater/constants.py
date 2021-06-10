@@ -1,13 +1,34 @@
 """Constant values used by lexupdater.
 
+* Load config values into python structures
 * Validation schemas for the configurable input rules, exemptions and dialects.
 * SQL query template strings to create tables, insert values, update entries
 and select entries.
 """
+from pathlib import Path
+from runpy import run_path
+
 from schema import Schema, Optional
 
-from config import DIALECTS
+from . import config
 
+
+# Load values from config "pointers" into python data structures
+DATABASE = Path(config.DATABASE)
+OUTPUT_DIR = Path(config.OUTPUT_DIR)
+
+RULES = run_path(config.RULES_FILE).get("ruleset_list")
+EXEMPTIONS = run_path(config.EXEMPTIONS_FILE).get("exemptions_list")
+
+WORD_TABLE = config.WORD_TABLE
+
+DIALECTS = config.DIALECTS
+
+# Ensure the output directory exists
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+
+# Define validation Schemas
 dialect_schema = Schema(DIALECTS)
 
 constraint_schema = Schema({
@@ -28,9 +49,10 @@ ruleset_schema = Schema({
     "rules": [rule_schema.schema],
 })
 
-
 exemption_schema = Schema([{"ruleset": str, "words": list}])
 
+
+# Define SQL query templates
 CREATE_DIALECT_TABLE_STMT = """CREATE TEMPORARY TABLE {dialect} (
 pron_row_id INTEGER PRIMARY KEY AUTOINCREMENT,
 pron_id INTEGER NOT NULL,
