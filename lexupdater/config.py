@@ -3,46 +3,23 @@
 
 """Configure input data to update the lexicon transcriptions."""
 
-from pathlib import Path
-
-
-__all__ = [
-    "WORD_TABLE",
-    "DATABASE",
-    "DIALECTS",
-    "RULES_FILE",
-    "EXEMPTIONS_FILE",
-    "OUTPUT_DIR",
-]
-"""Variables that are available to be imported
-by other modules.
-"""
-
-
 WORD_TABLE = "words_tmp"
-"""Name of the temp table containing all words and word metadata
-in the backend db
-"""
+"""Name of the temp table to contain all words and metadata in the database."""
 
-DATA_DIR = Path("data")
-
-INPUT_DIR = DATA_DIR / "input"
-
-DATABASE = INPUT_DIR / "backend-db02.db"
+DATABASE = "../data/input/backend-db02.db"
 """Path to the backend db"""
 
-
-OUTPUT_DIR = DATA_DIR / "output"
+OUTPUT_DIR = "../data/output"
 """Path to the output folder for the lexica"""
 
-RULES_FILE = "rules.py"
+RULES_FILE = "../rules.py"
 """Path to file with dialect update rules.
 
 Note that multiple rules may affect the same  pronunciations,
 and that the ordering of the rules may matter.
 """
 
-EXEMPTIONS_FILE = "exemptions.py"
+EXEMPTIONS_FILE = "../exemptions.py"
 """Path to file with exemption dicts"""
 
 
