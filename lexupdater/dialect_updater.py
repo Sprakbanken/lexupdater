@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# coding=utf-8
-
 """Parse dialect-specific transformation rules.
 
 Parse their constraints and exemptions
