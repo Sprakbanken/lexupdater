@@ -54,18 +54,16 @@ exemption_schema = Schema([{"ruleset": str, "words": list}])
 
 # Define SQL query templates
 CREATE_DIALECT_TABLE_STMT = """CREATE TEMPORARY TABLE {dialect} (
-pron_row_id INTEGER PRIMARY KEY AUTOINCREMENT,
 pron_id INTEGER NOT NULL,
-word_id INTEGER NOT NULL,
 nofabet TEXT NOT NULL,
 certainty INTEGER NOT NULL,
-FOREIGN KEY(word_id) REFERENCES words(word_id)
+unique_id VARCHAR NOT NULL,
+FOREIGN KEY(unique_id) REFERENCES words(unique_id)
 ON UPDATE CASCADE);
 """
 
 CREATE_WORD_TABLE_STMT = """CREATE TEMPORARY TABLE {word_table_name} (
-word_row_id INTEGER PRIMARY KEY AUTOINCREMENT,
-word_id INTEGER NOT NULL,
+word_id INTEGER PRIMARY KEY AUTOINCREMENT,
 wordform TEXT NOT NULL,
 pos TEXT,
 feats TEXT,
@@ -81,39 +79,80 @@ inflector_role TEXT,
 inflector_rule TEXT,
 morph_label TEXT,
 compounder_code TEXT,
-update_info TEXT);"""
+update_info TEXT,
+lang_code TEXT,
+expansion TEXT,
+set_id TEXT,
+lemma TEXT,
+sem_code TEXT,
+frequency TEXT,
+orig_wf TEXT,
+comment TEXT,
+unique_id VARCHAR NOT NULL
+);"""
 
 INSERT_STMT = "INSERT INTO {table_name} SELECT * FROM {other_table};"
+
+WHERE_WORD_IN_STMT = (
+    "WHERE unique_id IN (SELECT w.unique_id FROM {word_table} w "
+    "WHERE {conditions})"
+)
+
+WHERE_REGEXP = "WHERE REGEXP(?,nofabet)"
+
+WORD_NOT_IN = "w.wordform NOT IN"
+
+COL_WORD_PRON = "w.wordform, p.nofabet "
+
+COL_ID_WORD_FEATS_PRON = (
+    "w.unique_id, w.wordform, w.pos, w.feats, p.nofabet"
+)
+
+COL_WORD_POS_FEATS_PRON = "w.wordform, w.pos, w.feats, p.nofabet"
+
+COL_ALL = (
+    "w.word_id, "
+    "w.wordform, "
+    "w.pos, "
+    "w.feats, "
+    "w.source, "
+    "w.decomp_ort, "
+    "w.decomp_pos, "
+    "w.garbage, "
+    "w.domain, "
+    "w.abbr, "
+    "w.set_name, "
+    "w.style_status, "
+    "w.inflector_role, "
+    "w.inflector_rule, "
+    "w.morph_label, "
+    "w.compounder_code, "
+    "w.update_info, "
+    "w.lang_code, "
+    "w.expansion, "
+    "w.set_id, "
+    "w.lemma, "
+    "w.sem_code, "
+    "w.frequency, "
+    "w.orig_wf, "
+    "w.comment, "
+    "p.pron_id, "
+    "p.nofabet, "
+    "p.certainty, "
+    "p.unique_id "
+)
 
 UPDATE_QUERY = (
     "UPDATE {dialect} SET nofabet = REGREPLACE(?,?,nofabet) "
     "{where_word_in_stmt};"
 )
 
-WHERE_WORD_IN_STMT = (
-    "WHERE word_id IN (SELECT w.word_id FROM {word_table} w "
-    "WHERE {conditions})"
-)
-
-WORD_NOT_IN = "w.wordform NOT IN"
-
-SELECT_WORDS_QUERY = (
-        "SELECT w.wordform, p.nofabet "
-        "FROM {word_table} w "
-        "LEFT JOIN {dialect} p ON p.word_id = w.word_id "
-        "WHERE REGEXP(?,nofabet) "
-        "{where_word_in_stmt};"
-    )
-
-SELECT_MATCH_QUERY= (
-    "SELECT w.word_id, w.wordform, w.pos, w.feats, "
-    # "w.update_info, "
-    # "w.source, w.decomp_ort, w.decomp_pos, w.garbage, "
-    # "w.domain, w.abbr, w.set_name, w.style_status, w.inflector_role, "
-    # "w.inflector_rule, w.morph_label, w.compounder_code, "
-    "p.pron_id, p.nofabet, p.certainty "
+SELECT_QUERY = (
+    "SELECT "
+    "{columns} "
     "FROM {word_table} w "
-    "LEFT JOIN {dialect} p ON p.word_id = w.word_id "
-    "WHERE REGEXP(?,nofabet) "
+    "LEFT JOIN {pron_table} p "
+    "ON p.unique_id = w.unique_id "
+    "{where_regex} "
     "{where_word_in_stmt};"
 )

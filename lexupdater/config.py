@@ -6,7 +6,7 @@
 WORD_TABLE = "words_tmp"
 """Name of the temp table to contain all words and metadata in the database."""
 
-DATABASE = "data/input/backend-db02.db"
+DATABASE = "data/input/backend-db03.db"
 """Path to the backend db"""
 
 OUTPUT_DIR = "data/output"
