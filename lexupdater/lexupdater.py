@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# coding=utf-8
-
 """Transcription updates for a pronunciation lexicon in sqlite3 db format."""
 
 import csv

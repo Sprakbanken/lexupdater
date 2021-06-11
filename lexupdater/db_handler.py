@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# coding=utf-8
-
 """Connect to and update the database containing the pronunciation lexicon."""
 
 import logging

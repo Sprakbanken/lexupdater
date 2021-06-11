@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# coding=utf-8
-
 """Configure input data to update the lexicon transcriptions."""
 
 WORD_TABLE = "words_tmp"
