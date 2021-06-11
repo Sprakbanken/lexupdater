@@ -1,16 +1,20 @@
 """Transcription updates for a pronunciation lexicon in sqlite3 db format."""
 
+import argparse
 import csv
 import datetime
 import logging
 from typing import Iterable
+
+import click
 
 from .constants import (
     WORD_TABLE,
     DATABASE,
     RULES,
     EXEMPTIONS,
-    OUTPUT_DIR
+    OUTPUT_DIR,
+    DIALECTS
 )
 from .db_handler import DatabaseUpdater
 
@@ -48,7 +52,58 @@ def flatten_match_results(data):
             yield [pattern] + list(item)
 
 
-def main(user_dialects, write_base, match_words):
+
+
+@click.command()
+@click.option("--count", default=1, help="Number of greetings.")
+@click.option("--name", prompt="Your name", help="The person to greet.")
+
+
+@click.option(
+    "-d",
+    "--dialects",
+    action="store",
+    type=str,
+    nargs="+",
+    default=DIALECTS,
+    help="Apply replacement rules on one or more specified dialects.",
+)
+@click.option(
+    "--write_base",
+    "-b",
+    action="store_true",
+    help=(
+        "Generate a base lexicon file, containing the state of the lexicon "
+        "prior to updates."
+    )
+)
+@click.option(
+    "--match_words",
+    "-m",
+    action="store_true",
+    help=(
+        "Print list of the words that will be affected by update rules "
+        "for the given dialects"
+    )
+)
+@click.option(
+    "--verbose",
+    "-v",
+    action="store_true",
+    help=(
+        "Print logging messages at the debugging level. "
+        "See python documentation on logging for more info."
+    )
+)
+@click.option(
+    "--log_file",
+    "-l",
+    action="store",
+    type=str,
+    nargs="?",
+    help="Save all logging messages to the given file. ",
+)
+def main():
     """Apply the replacement rules from the config on the base lexicon.
 
     The variable base contains the original state of the lexicon.
@@ -68,6 +123,67 @@ def main(user_dialects, write_base, match_words):
     match_words: bool
         If True, only fetch a list of words that match the rule patterns
     """
+
+    # Argument parser
+    parser = argparse.ArgumentParser()
+
+"""    parser.add_argument(
+        "--dialects",
+        "-d",
+        action="store",
+        type=str,
+        nargs="+",
+        default=DIALECTS,
+        help="Apply replacement rules on one or more specified dialects.",
+    )
+    parser.add_argument(
+        "--write_base",
+        "-b",
+        action="store_true",
+        help=(
+            "Generate a base lexicon file, containing the state of the lexicon "
+            "prior to updates."
+        )
+    )
+    parser.add_argument(
+        "--match_words",
+        "-m",
+        action="store_true",
+        help=(
+            "Print list of the words that will be affected by update rules "
+            "for the given dialects"
+        )
+    )
+    parser.add_argument(
+        "--verbose",
+        "-v",
+        action="store_true",
+        help=(
+            "Print logging messages at the debugging level. "
+            "See python documentation on logging for more info."
+        )
+    )
+    parser.add_argument(
+        "--log_file",
+        "-l",
+        action="store",
+        type=str,
+        nargs="?",
+        help="Save all logging messages to the given file. ",
+    )"""
+    args = parser.parse_args()
+
+    if args.verbose:
+        logging_level = logging.DEBUG
+    else:
+        logging_level = logging.INFO
+
+    logging.basicConfig(
+        filename=(OUTPUT_DIR / args.log_file) if args.log_file else None,
+        level=logging_level,
+        format='%(asctime)s | %(levelname)s | %(module)s | %(message)s',
+        datefmt='%Y-%m-%d %H:%M')
+
     begin_time = datetime.datetime.now()
     logging.debug("Started lexupdater process at %s", begin_time.isoformat())
 
