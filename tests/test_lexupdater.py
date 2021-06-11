@@ -8,18 +8,6 @@ import pytest
 from lexupdater import lexupdater
 
 
-def test_get_base(db_updater_obj):
-    # given
-    input_connection = db_updater_obj.get_connection()
-    # when
-    result = lexupdater.get_base(input_connection)
-    # then
-    assert result is not None
-    assert isinstance(result, list)
-    assert result != []
-    assert result[0] is not None
-
-
 @pytest.fixture
 def dir_path(tmp_path):
     """Temporary test path to an output directory."""
@@ -40,14 +28,23 @@ def test_main_script_some_dialects(some_dialects, write_base, dir_path):
             lexupdater.main(some_dialects, write_base, match_words=write_base)
 
             # Ensure we are comparing only filenames, not full paths
-            expected_files = [f"{dialect}.txt" for dialect in some_dialects]
+            expected_update_files = [
+                f"updated_lexicon_{dialect}.txt" for dialect in some_dialects
+            ]
+            expected_match_files = [
+                f"words_matching_rules_{dialect}.txt" for dialect in some_dialects
+            ]
             result_files = [file_path.name for file_path in dir_path.iterdir()]
             # then
             assert result_files != []
             for file in result_files:
                 assert file.endswith(".txt")
-            # dialect files are only written if match_words is False
+            # updated lexicon files are only written if match_words is False
             assert all(
-                [file in result_files for file in expected_files]
+                [file in result_files for file in expected_update_files]
             ) != write_base
+            # while matching words files are written if match_words is True
+            assert all(
+                [file in result_files for file in expected_match_files]
+            ) == write_base
             assert ("base.txt" in result_files) == write_base

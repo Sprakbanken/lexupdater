@@ -130,4 +130,13 @@ class TestDatabaseUpdater:
         # then
         assert isinstance(db_updater_obj.results, dict)
         assert sorted(db_updater_obj.results.keys()) == sorted(all_dialects)
-        assert len(db_updater_obj.results.get(test_dialect_name)[0]) == 20
+        assert len(db_updater_obj.results.get(test_dialect_name)[0]) == 4
+
+    def test_get_base(self, db_updater_obj):
+        # when
+        result = db_updater_obj.get_base()
+        # then
+        assert result is not None
+        assert isinstance(result, list)
+        assert result != []
+        assert result[0] is not None

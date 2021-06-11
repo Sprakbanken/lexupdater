@@ -3,6 +3,7 @@
 
 """Transcription updates for a pronunciation lexicon in sqlite3 db format."""
 
+import csv
 import datetime
 import logging
 from typing import Iterable
@@ -17,33 +18,6 @@ from .constants import (
 from .db_handler import DatabaseUpdater
 
 
-def get_base(connection):
-    """Select the state of the lexicon before the updates.
-
-    Parameters
-    ----------
-    connection: sqlite3.connect
-        A connection to the open sqlite database
-
-    Returns
-    -------
-    result: list
-        The full contents of the base lexicon
-    """
-    stmt = """SELECT w.word_id, w.wordform, w.pos, w.feats, w.source,
-            w.decomp_ort, w.decomp_pos, w.garbage, w.domain, w.abbr,
-            w.set_name, w.style_status, w.inflector_role, w.inflector_rule,
-            w.morph_label, w.compounder_code, w.update_info, p.pron_id,
-            p.nofabet, p.certainty FROM words w LEFT JOIN base p ON
-            p.word_id = w.word_id;"""
-    cursor = connection.cursor()
-    result = cursor.execute(stmt).fetchall()
-    logging.debug(
-        "Fetched %s results from the base lexicon with SQL query: \n%s ",
-        len(result), stmt)
-    return result
-
-
 def write_lexicon(output_file: str, data: Iterable):
     """Write a simple txt file with the results of the SQL queries.
 
@@ -55,10 +29,26 @@ def write_lexicon(output_file: str, data: Iterable):
         A collection of dictionaries,
         where the 1st, 2nd, 3rd and 2nd to last elements are saved to disk
     """
-    logging.info("Writing lexicon data to %s", output_file)
-    with open(output_file, "w") as outfile:
+    logging.info("Write lexicon data to %s", output_file)
+    with open(OUTPUT_DIR / output_file, 'w', newline='') as csvfile:
+        out_writer = csv.writer(csvfile, delimiter='\t')
         for item in data:
-            outfile.write(f"{item[1]}\t{item[2]}\t{item[3]}\t{item[-2]}\n")
+            out_writer.writerow(item)
+
+
+def flatten_match_results(data):
+    """Flatten a nested list of rule pattern matches.
+
+    Parameters
+    ----------
+    data: Iterable[tuple]
+        A collection of tuples, where the first element is the rule pattern,
+        the second is the collection of lexicon rows
+        that match the rule pattern
+    """
+    for pattern, words in data:
+        for item in words:
+            yield [pattern] + list(item)
 
 
 def main(user_dialects, write_base, match_words):
@@ -79,7 +69,7 @@ def main(user_dialects, write_base, match_words):
     write_base: bool
         If True, write the base lexicon as a .txt-file
     match_words: bool
-        If True, only fetch a list of the matching
+        If True, only fetch a list of words that match the rule patterns
     """
     begin_time = datetime.datetime.now()
     logging.debug("Started lexupdater process at %s", begin_time.isoformat())
@@ -87,46 +77,36 @@ def main(user_dialects, write_base, match_words):
     update_obj = DatabaseUpdater(
         DATABASE, RULES, user_dialects, WORD_TABLE, exemptions=EXEMPTIONS
     )
-    connection = update_obj.get_connection()
+    if write_base:
+        base = update_obj.get_base()
     if match_words:
-        logging.info("LEXUPDATER: Only print words matching the rule patterns")
+        logging.info("LEXUPDATER: Fetch words that match the rule patterns")
         update_obj.select_words_matching_rules()
-        for dialect in user_dialects:
-            matching_words = update_obj.results[dialect]
-            if not matching_words:
-                continue
-            output_file = OUTPUT_DIR / f"words_matching_rules_for_{dialect}.txt"
-            logging.info(
-                "Writing words that match rule patterns to %s", output_file)
-            with open(output_file, "w") as outfile:
-                for pattern, words in matching_words:
-                    logging.info(
-                        "Regex pattern '%s' covers %s matching words ",
-                        pattern,
-                        len(words)
-                    )
-                    for item in words:
-                        outfile.write(",".join([pattern] + list(item)) + "\n")
     else:
-        logging.info(
-            "LEXUPDATER: Apply rules and update lexicon transcriptions"
-        )
+        logging.info("LEXUPDATER: Apply rule patterns, update transcriptions")
         update_obj.update()
-        for dialect in user_dialects:
-            output_filename = OUTPUT_DIR / f"{dialect}.txt"
-            write_lexicon(output_filename, update_obj.results[dialect])
     update_obj.close_connection()
 
     # Calculating execution time
     update_end_time = datetime.datetime.now()
     update_time = update_end_time - begin_time
-    logging.debug("Database updated. Time: %s", update_time)
+    logging.debug("Database closed. Time: %s", update_time)
 
     if write_base:
-        write_lexicon(OUTPUT_DIR / "base.txt", get_base(connection))
+        write_lexicon("base.txt", base)
 
-        # For calculating execution time
-        file_gen_end_time = datetime.datetime.now()
-        file_gen_time = file_gen_end_time - update_end_time
-        logging.debug("Files generated. Time: %s", file_gen_time)
+    for dialect in user_dialects:
+        results = update_obj.results[dialect]
+        if not results:
+            continue
+        if match_words:
+            flat_matches = flatten_match_results(results)
+            write_lexicon(f"words_matching_rules_{dialect}.txt", flat_matches)
+        else:
+            write_lexicon(f"updated_lexicon_{dialect}.txt", results)
+
+    # For calculating execution time
+    file_gen_end_time = datetime.datetime.now()
+    file_gen_time = file_gen_end_time - update_end_time
+    logging.debug("Files generated. Time: %s", file_gen_time)
     logging.info("Done.")
