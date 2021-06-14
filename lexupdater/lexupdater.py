@@ -4,7 +4,7 @@ import argparse
 import csv
 import datetime
 import logging
-from typing import Iterable
+from typing import Iterable, Tuple
 
 import click
 
@@ -37,7 +37,7 @@ def write_lexicon(output_file: str, data: Iterable):
             out_writer.writerow(item)
 
 
-def flatten_match_results(data):
+def flatten_match_results(data: Iterable) -> Tuple:
     """Flatten a nested list of rule pattern matches.
 
     Parameters
@@ -52,58 +52,49 @@ def flatten_match_results(data):
             yield [pattern] + list(item)
 
 
-
-
-@click.command()
-@click.option("--count", default=1, help="Number of greetings.")
-@click.option("--name", prompt="Your name", help="The person to greet.")
-
-
+@click.command(context_settings={"help_option_names": ['-h', '--help']})
 @click.option(
     "-d",
     "--dialects",
-    action="store",
     type=str,
-    nargs="+",
+    #nargs="+",
+    multiple=True,
     default=DIALECTS,
+    show_default=True,
     help="Apply replacement rules on one or more specified dialects.",
 )
 @click.option(
-    "--write_base",
     "-b",
-    action="store_true",
-    help=(
-        "Generate a base lexicon file, containing the state of the lexicon "
-        "prior to updates."
-    )
+    "--write_base",
+    is_flag=True,
+    default=False,
+    help="Write a lexicon file with the state of the lexicon prior to updates."
 )
 @click.option(
-    "--match_words",
     "-m",
-    action="store_true",
+    "--match_words",
+    is_flag=True,
+    default=False,
     help=(
         "Print list of the words that will be affected by update rules "
         "for the given dialects"
     )
 )
 @click.option(
-    "--verbose",
     "-v",
-    action="store_true",
-    help=(
-        "Print logging messages at the debugging level. "
-        "See python documentation on logging for more info."
-    )
+    "--verbose",
+    is_flag=True,
+    default=False,
+    help="Print logging messages at the debugging level."
 )
 @click.option(
-    "--log_file",
     "-l",
-    action="store",
+    "--log_file",
     type=str,
-    nargs="?",
-    help="Save all logging messages to the given file. ",
+    nargs=1,
+    help="Write all logging messages to log_file instead of the terminal."
 )
-def main():
+def main(**kwargs):
     """Apply the replacement rules from the config on the base lexicon.
 
     The variable base contains the original state of the lexicon.
@@ -113,80 +104,26 @@ def main():
 
     The modifications to the lexicon are written to new, dialect-specific
     files.
-
-    Parameters
-    ----------
-    user_dialects: list
-        List of dialects to write updated lexicon .txt-files for
-    write_base: bool
-        If True, write the base lexicon as a .txt-file
-    match_words: bool
-        If True, only fetch a list of words that match the rule patterns
     """
+    # Parse arguments
+    user_dialects = list(kwargs.get("dialects"))
+    write_base = kwargs.get("write_base")
+    match_words = kwargs.get("match_words")
+    log_file = kwargs.get("log_file")
+    verbose = kwargs.get("verbose")
 
-    # Argument parser
-    parser = argparse.ArgumentParser()
-
-"""    parser.add_argument(
-        "--dialects",
-        "-d",
-        action="store",
-        type=str,
-        nargs="+",
-        default=DIALECTS,
-        help="Apply replacement rules on one or more specified dialects.",
-    )
-    parser.add_argument(
-        "--write_base",
-        "-b",
-        action="store_true",
-        help=(
-            "Generate a base lexicon file, containing the state of the lexicon "
-            "prior to updates."
-        )
-    )
-    parser.add_argument(
-        "--match_words",
-        "-m",
-        action="store_true",
-        help=(
-            "Print list of the words that will be affected by update rules "
-            "for the given dialects"
-        )
-    )
-    parser.add_argument(
-        "--verbose",
-        "-v",
-        action="store_true",
-        help=(
-            "Print logging messages at the debugging level. "
-            "See python documentation on logging for more info."
-        )
-    )
-    parser.add_argument(
-        "--log_file",
-        "-l",
-        action="store",
-        type=str,
-        nargs="?",
-        help="Save all logging messages to the given file. ",
-    )"""
-    args = parser.parse_args()
-
-    if args.verbose:
-        logging_level = logging.DEBUG
-    else:
-        logging_level = logging.INFO
-
+    # Set up logging config
     logging.basicConfig(
-        filename=(OUTPUT_DIR / args.log_file) if args.log_file else None,
-        level=logging_level,
+        filename=(OUTPUT_DIR / log_file) if log_file else None,
+        level=logging.DEBUG if verbose else logging.INFO,
         format='%(asctime)s | %(levelname)s | %(module)s | %(message)s',
         datefmt='%Y-%m-%d %H:%M')
 
+    # Log starting time
     begin_time = datetime.datetime.now()
     logging.debug("Started lexupdater process at %s", begin_time.isoformat())
 
+    # Initiate the database connection
     update_obj = DatabaseUpdater(
         DATABASE, RULES, user_dialects, WORD_TABLE, exemptions=EXEMPTIONS
     )
