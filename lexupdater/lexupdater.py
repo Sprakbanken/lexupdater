@@ -17,39 +17,8 @@ from .constants import (
     DIALECTS
 )
 from .db_handler import DatabaseUpdater
-
-
-def write_lexicon(output_file: str, data: Iterable):
-    """Write a simple txt file with the results of the SQL queries.
-
-    Parameters
-    ----------
-    output_file: str
-        Name of the file to write data to
-    data: Iterable[dict]
-        A collection of dictionaries,
-        where the 1st, 2nd, 3rd and 2nd to last elements are saved to disk
-    """
-    logging.info("Write lexicon data to %s", output_file)
-    with open(OUTPUT_DIR / output_file, 'w', newline='') as csvfile:
-        out_writer = csv.writer(csvfile, delimiter='\t')
-        for item in data:
-            out_writer.writerow(item)
-
-
-def flatten_match_results(data: Iterable) -> Tuple:
-    """Flatten a nested list of rule pattern matches.
-
-    Parameters
-    ----------
-    data: Iterable[tuple]
-        A collection of tuples, where the first element is the rule pattern,
-        the second is the collection of lexicon rows
-        that match the rule pattern
-    """
-    for pattern, words in data:
-        for item in words:
-            yield [pattern] + list(item)
+from .utils import write_lexicon, flatten_match_results, load_data, \
+    load_module_from_path
 
 
 @click.command(context_settings={"help_option_names": ['-h', '--help']})
@@ -151,9 +120,11 @@ def main(**kwargs):
             continue
         if match_words:
             flat_matches = flatten_match_results(results)
-            write_lexicon(f"words_matching_rules_{dialect}.txt", flat_matches)
+            out_file = output_dir / f"words_matching_rules_{dialect}.txt"
+            write_lexicon(out_file, flat_matches)
         else:
-            write_lexicon(f"updated_lexicon_{dialect}.txt", results)
+            out_file = output_dir / f"updated_lexicon_{dialect}.txt"
+            write_lexicon(out_file, results)
 
     # For calculating execution time
     file_gen_end_time = datetime.datetime.now()

@@ -6,6 +6,7 @@ into variables to fill slots in SQL query templates.
 import logging
 from typing import List, Generator
 
+from .utils import filter_list_by_list
 from .constants import ruleset_schema, exemption_schema, WORD_NOT_IN
 
 
@@ -121,7 +122,9 @@ def parse_rules(
         conditional query fragment,
         conditional values to fill placeholders
     """
-    rule_exemptions = map_rule_exemptions(exemption_schema.validate(exemptions))
+    rule_exemptions = map_rule_exemptions(
+        exemption_schema.validate(exemptions)
+    )
 
     for ruleset in rulesets:
         rule_dialects = filter_list_by_list(ruleset["areas"], filter_dialects)
@@ -149,9 +152,3 @@ def parse_rules(
                     cond_string,
                     cond_values
                 )
-
-
-def filter_list_by_list(check_list, filter_list):
-    """Keep only elements from check_list if they exist in the filter_list."""
-    filtered = [_ for _ in check_list if _ in filter_list]
-    return filtered
