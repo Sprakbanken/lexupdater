@@ -66,7 +66,7 @@ sem_code TEXT,
 frequency TEXT,
 orig_wf TEXT,
 comment TEXT,
-unique_id VARCHAR NOT NULL
+unique_id VARCHAR NOT NULL UNIQUE
 );"""
 
 INSERT_STMT = "INSERT INTO {table_name} SELECT * FROM {other_table};"
