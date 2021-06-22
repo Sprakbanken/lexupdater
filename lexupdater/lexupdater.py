@@ -14,7 +14,8 @@ from config import (
     DATABASE,
     RULES_FILE,
     EXEMPTIONS_FILE,
-    OUTPUT_DIR
+    OUTPUT_DIR,
+    NEWWORD_FILE
 )
 from .db_handler import DatabaseUpdater
 
@@ -77,6 +78,7 @@ def main(user_dialects, write_base, match_words):
 
     rules = run_path(RULES_FILE).get("ruleset_list")
     exemptions = run_path(EXEMPTIONS_FILE).get("exemptions_list")
+    newwords = run_path(NEWWORD_FILE).get("newwords")
 
     update_obj = DatabaseUpdater(
         DATABASE, rules, user_dialects, WORD_TABLE, exemptions=exemptions
