@@ -13,6 +13,7 @@ __all__ = [
     "RULES_FILE",
     "EXEMPTIONS_FILE",
     "OUTPUT_DIR",
+    "NEWWORD_FILE"
 ]
 """Variables that are available to be imported
 by other modules.
@@ -45,6 +46,9 @@ and that the ordering of the rules may matter.
 EXEMPTIONS_FILE = "exemptions.py"
 """Path to file with exemption dicts"""
 
+NEWWORD_FILE = "nyord.csv"
+"""Path to file with new words which should be added
+to the lexicon"""
 
 DIALECTS = [
     "e_spoken",
