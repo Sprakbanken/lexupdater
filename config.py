@@ -46,9 +46,9 @@ and that the ordering of the rules may matter.
 EXEMPTIONS_FILE = "exemptions.py"
 """Path to file with exemption dicts"""
 
-NEWWORD_FILE = "nyord.csv"
-"""Path to file with new words which should be added
-to the lexicon"""
+NEWWORD_FILE = "newword.py"
+"""Path to file containing a dataframe with new words which should 
+be added to the lexicon"""
 
 DIALECTS = [
     "e_spoken",
