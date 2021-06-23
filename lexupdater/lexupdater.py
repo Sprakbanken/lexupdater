@@ -10,7 +10,6 @@ from runpy import run_path
 from typing import Iterable
 
 from config import (
-    WORD_TABLE,
     DATABASE,
     RULES_FILE,
     EXEMPTIONS_FILE,
@@ -81,7 +80,7 @@ def main(user_dialects, write_base, match_words):
     newwords = run_path(NEWWORD_FILE).get("newwords")
 
     update_obj = DatabaseUpdater(
-        DATABASE, rules, user_dialects, WORD_TABLE, exemptions=exemptions
+        DATABASE, rules, user_dialects, exemptions=exemptions
     )
     if write_base:
         base = update_obj.get_base()
