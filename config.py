@@ -7,22 +7,17 @@ from pathlib import Path
 
 
 __all__ = [
-    "WORD_TABLE",
     "DATABASE",
     "DIALECTS",
     "RULES_FILE",
     "EXEMPTIONS_FILE",
     "OUTPUT_DIR",
+    "NEWWORD_FILE"
 ]
 """Variables that are available to be imported
 by other modules.
 """
 
-
-WORD_TABLE = "words_tmp"
-"""Name of the temp table containing all words and word metadata
-in the backend db
-"""
 
 DATA_DIR = Path("data")
 
@@ -45,6 +40,9 @@ and that the ordering of the rules may matter.
 EXEMPTIONS_FILE = "exemptions.py"
 """Path to file with exemption dicts"""
 
+NEWWORD_FILE = "newword.py"
+"""Path to file containing a dataframe with new words which should 
+be added to the lexicon"""
 
 DIALECTS = [
     "e_spoken",

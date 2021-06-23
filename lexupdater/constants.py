@@ -5,6 +5,8 @@
 and select entries.
 """
 from schema import Schema, Optional
+import pandera as pa
+from pandera import Column, DataFrameSchema
 
 from config import DIALECTS
 
@@ -31,7 +33,17 @@ ruleset_schema = Schema({
 
 exemption_schema = Schema([{"ruleset": str, "words": list}])
 
-CREATE_DIALECT_TABLE_STMT = """CREATE TEMPORARY TABLE {dialect} (
+newword_schema = DataFrameSchema({
+    "token": Column(pa.String),
+    "transcription": Column(pa.String), #TODO: add pa.Check
+    "alt_transcription_1": Column(pa.String, required=False),
+    "alt_transcription_2": Column(pa.String, required=False),
+    "alt_transcription_3": Column(pa.String, required=False),
+    "pos": Column(pa.String),
+    "morphology": Column(pa.String, required=False)
+})
+
+CREATE_PRON_TABLE_STMT = """CREATE TEMPORARY TABLE {pron_table_name} (
 pron_id INTEGER NOT NULL,
 nofabet TEXT NOT NULL,
 certainty INTEGER NOT NULL,
@@ -66,7 +78,7 @@ sem_code TEXT,
 frequency TEXT,
 orig_wf TEXT,
 comment TEXT,
-unique_id VARCHAR NOT NULL
+unique_id VARCHAR NOT NULL UNIQUE
 );"""
 
 INSERT_STMT = "INSERT INTO {table_name} SELECT * FROM {other_table};"
