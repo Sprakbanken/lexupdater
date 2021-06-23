@@ -1,4 +1,4 @@
-"""Parse input arguments and run lexupdater.main."""
+"""Run the lexupdater.main() function."""
 
 from .lexupdater import main
 

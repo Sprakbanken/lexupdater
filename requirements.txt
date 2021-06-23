@@ -1,8 +1,13 @@
+# For running the code
+click == 8.0.1
 schema == 0.7.4
-setuptools == 54.2.0
-mypy==0.812         # Type checking
-pylint==2.8.2       # Code linting
-pycodestyle==2.7.0
-pydocstyle==6.0.0
-pytest==6.2.3       # Testing code
-pytest-cov==2.12.0
+setuptools == 57.0.0
+
+# For development
+mypy == 0.902           # Type checking
+pylint == 2.8.3         # Code linting
+pycodestyle == 2.7.0    # Code linting
+pydocstyle == 6.1.1     # Docstring linting
+pytest == 6.2.4         # Testing code
+pytest-cov == 2.12.1    # Check test coverage
+wheel == 0.36.2         # Build a source distribution .whl file
