@@ -7,7 +7,6 @@ from pathlib import Path
 
 
 __all__ = [
-    "WORD_TABLE",
     "DATABASE",
     "DIALECTS",
     "RULES_FILE",
@@ -19,11 +18,6 @@ __all__ = [
 by other modules.
 """
 
-
-WORD_TABLE = "words_tmp"
-"""Name of the temp table containing all words and word metadata
-in the backend db
-"""
 
 DATA_DIR = Path("data")
 

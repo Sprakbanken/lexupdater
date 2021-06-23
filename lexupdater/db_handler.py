@@ -56,19 +56,17 @@ class DatabaseUpdater:
         rule_schema from the config.constants module
     dialect_names: list
         List of dialects to update transcription entries for
-    word_tbl: str
-        Name of temporary table to be created for the word entries
     exemptions:
         List of exemption dictionaries, containing words
         that are exempt from a given ruleset, and the name of the ruleset
     """
 
-    def __init__(self, db, rulesets, dialect_names, word_tbl, exemptions=None):
+    def __init__(self, db, rulesets, dialect_names, exemptions=None):
         """Set object attributes, connect to db and create temp tables."""
         if exemptions is None:
             exemptions = []
         self._db = db
-        self.word_table = word_tbl
+        self.word_table = "words_tmp"
         self.dialects = dialect_schema.validate(dialect_names)
         self.parsed_rules = parse_rules(
             self.dialects,
