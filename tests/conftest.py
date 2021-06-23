@@ -4,63 +4,32 @@ from pathlib import Path
 
 import pytest
 
-from lexupdater.constants import WORD_TABLE
 from lexupdater.db_handler import DatabaseUpdater
 
 
 @pytest.fixture(scope="session")
 def ruleset_fixture():
-    """Set up a test value for the rules"""
-    return [
-        {
-            "areas": ["e_spoken"],
-            "name": "retrotest",
-            "rules": [
-                {
-                    "pattern": r"\b(R)([NTD])\\b",
-                    "repl": r"\1 \2",
-                    "constraints": [],
-                },
-                {
-                    "pattern": r"\b(R)(NX0)\b",
-                    "repl": r"\1 AX0 N",
-                    "constraints": [],
-                },
-            ],
-        },
-        {
-            "areas": ["n_written", "sw_spoken"],
-            "name": "masc",
-            "rules": [
-                {
-                    "pattern": r"\bAX0 R$",
-                    "repl": r"AA0 R",
-                    "constraints": [
-                        {"field": "pos", "pattern": "NN", "is_regex": False},
-                        {"field": "feats", "pattern": "MAS", "is_regex": True},
-                    ],
-                },
-                {
-                    "pattern": r"\bNX0 AX0$",
-                    "repl": r"AA0 N AX0",
-                    "constraints": [
-                        {"field": "pos", "pattern": "NN", "is_regex": False},
-                        {"field": "feats", "pattern": "MAS", "is_regex": True},
-                    ],
-                },
-            ],
-        },
-    ]
+    """Set up a test value for the rules."""
+    from dummy_rules import test1, test2
+    return [test1, test2]
+
+
+@pytest.fixture(scope="session")
+def exemptions_fixture():
+    """Test value for the exemptions."""
+    from dummy_exemptions import exemption1, exemption2
+    return [exemption1, exemption2]
 
 
 @pytest.fixture(scope="session")
 def some_dialects():
-    """Set up a test value for the dialects"""
+    """Set up a test value for the dialects."""
     return ["e_spoken", "n_written", "sw_spoken"]
 
 
 @pytest.fixture(scope="session")
 def all_dialects():
+    """Full list of valid dialects."""
     return [
         "e_spoken",
         "e_written",
@@ -75,35 +44,18 @@ def all_dialects():
     ]
 
 
-@pytest.fixture(scope="session")
-def exemptions_fixture():
-    """Test value for the exemptions"""
-    return [
-        {"ruleset": "retrotest", "words": ["garn", "klarne"]},
-        {"ruleset": "masc", "words": ["søknader", "søknadene"]},
-    ]
-
-
 @pytest.fixture
-def invalid_config_values(request, ruleset_fixture, exemptions_fixture,
-                          some_dialects):
+def invalid_config_values(request, ruleset_fixture, exemptions_fixture):
+    """Manipulated input data to test the schema validation."""
     if request.param == "rules":
         return (
             ruleset_fixture + [{"unexpected_key": "unexpected_value"}],
             exemptions_fixture,
-            some_dialects,
         )
     elif request.param == "exemptions":
         return (
             ruleset_fixture,
             exemptions_fixture + [{"unexpected_key": "unexpected_value"}],
-            some_dialects,
-        )
-    elif request.param == "dialects":
-        return (
-            ruleset_fixture,
-            exemptions_fixture,
-            some_dialects + ["invalid_dialect"],
         )
     else:
         raise ValueError("invalid internal test config")
@@ -120,10 +72,10 @@ def db_updater_obj(ruleset_fixture, all_dialects, exemptions_fixture):
     if the config values are changed.
     """
     updater_obj = DatabaseUpdater(
-        str(Path('tests') / 'dummy_data.db'),  # Ensure file path is OS agnostic
+        str(Path('tests') / 'dummy_data.db'),  # Ensure OS agnostic file path
         ruleset_fixture,
         all_dialects,
-        WORD_TABLE,
+        "test_words",
         exemptions_fixture,
     )
     yield updater_obj

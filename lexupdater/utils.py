@@ -5,7 +5,7 @@ import importlib.machinery
 import importlib.util
 import logging
 from pathlib import Path
-from typing import Union, Iterable, Tuple, Any, List, Dict
+from typing import Union, Iterable, Tuple, List, Dict
 
 
 def write_lexicon(output_file: Union[str, Path], data: Iterable):
@@ -63,7 +63,7 @@ def load_data(file_rel_path: Union[str, Path]) -> List:
     Parameters
     ----------
     file_rel_path: str or Path
-        Relative path to either a .toml or .py file
+        Relative path to a .py module
 
     Returns
     -------
