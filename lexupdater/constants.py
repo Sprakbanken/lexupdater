@@ -43,7 +43,7 @@ newword_schema = DataFrameSchema({
     "morphology": Column(pa.String, required=False)
 })
 
-CREATE_DIALECT_TABLE_STMT = """CREATE TEMPORARY TABLE {dialect} (
+CREATE_PRON_TABLE_STMT = """CREATE TEMPORARY TABLE {pron_table_name} (
 pron_id INTEGER NOT NULL,
 nofabet TEXT NOT NULL,
 certainty INTEGER NOT NULL,
