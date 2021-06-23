@@ -115,18 +115,19 @@ def parse_rules(
 
     Yields
     ------
-    tuple[list, str]
-        dialect affected by the rule,
-        regex pattern,
-        replacement string,
-        conditional query fragment,
-        conditional values to fill placeholders
+    tuple
+        str: dialect affected by the rule,
+        str: regex pattern,
+        str: replacement string,
+        str: conditional query fragment,
+        list: conditional values to fill placeholders
     """
     rule_exemptions = map_rule_exemptions(
         exemption_schema.validate(exemptions)
     )
 
     for ruleset in rulesets:
+        ruleset = ruleset_schema.validate(ruleset)
         rule_dialects = filter_list_by_list(ruleset["areas"], filter_dialects)
         if not rule_dialects:
             continue
@@ -135,7 +136,6 @@ def parse_rules(
             ruleset.get("name"),
             ", ".join(rule_dialects)
         )
-        ruleset = ruleset_schema.validate(ruleset)
         exempt_words = rule_exemptions.get(ruleset["name"], [])
 
         for rule in ruleset["rules"]:

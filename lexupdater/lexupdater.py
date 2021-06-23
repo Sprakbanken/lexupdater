@@ -14,6 +14,7 @@ from .utils import (
     load_module_from_path
 )
 
+
 @click.command(context_settings={"help_option_names": ['-h', '--help']})
 @click.option(
     "-b",
@@ -167,7 +168,7 @@ def main(**kwargs):
 
     # Write output
     if write_base:
-        write_lexicon("base.txt", base)
+        write_lexicon((output_dir / "base.txt"), base)
 
     for dialect in user_dialects:
         results = update_obj.results[dialect]

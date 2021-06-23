@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 from schema import SchemaError
 
-from lexupdater.constants import DATABASE, WORD_TABLE
+from config import DATABASE, WORD_TABLE
 from lexupdater import db_handler
 
 
@@ -53,35 +53,12 @@ class TestDatabaseUpdater:
             # Check that the patched function was called
             db_handler.DatabaseUpdater._establish_connection.assert_called()
 
-    @pytest.mark.skip("invalid values do not raise issues upon initialisation")
-    @pytest.mark.parametrize(
-        "invalid_config_values",
-        ["rules", "exemptions", "dialects"],
-        indirect=True
-    )
-    def test_invalid_config_values_raises_error(self, invalid_config_values):
-        """Test validation of rules and exemptions
-        when loaded by DatabaseUpdater
-        """
-        # given
-        rules, exemptions, dialects = invalid_config_values
-        with patch.object(
-            db_handler.DatabaseUpdater, "_establish_connection", autospec=True
-        ):
-            with pytest.raises(SchemaError):
-                db_handler.DatabaseUpdater(
-                    DATABASE,
-                    rules,
-                    dialects,
-                    WORD_TABLE,
-                    exemptions,
-                )
-
     def test_establish_connection(
         self, ruleset_fixture, some_dialects, exemptions_fixture
     ):
-        """Test the constructor of the DatabaseUpdater
-        with patched elements for the _establish_connection function
+        """Test the constructor of the DatabaseUpdater.
+
+        Patch elements for the _establish_connection function
         """
         # patch functions that are called by _establish_connection
         with patch(
@@ -112,7 +89,9 @@ class TestDatabaseUpdater:
         # when
         db_updater_obj.select_words_matching_rules()
         # then
-        assert any([result != [] for result in db_updater_obj.results.values()])
+        assert any(
+            [result != [] for result in db_updater_obj.results.values()]
+        )
 
     def test_update(self, db_updater_obj):
         # given
@@ -120,7 +99,9 @@ class TestDatabaseUpdater:
         # when
         db_updater_obj.update()
         # then
-        assert any([result != [] for result in db_updater_obj.results.values()])
+        assert any(
+            [result != [] for result in db_updater_obj.results.values()]
+        )
 
     def test_update_results(self, db_updater_obj, all_dialects):
         # given
