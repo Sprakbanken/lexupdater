@@ -75,18 +75,18 @@ class DatabaseUpdater:
             exemptions
         )
         self.results = {dialect: [] for dialect in self.dialects}
-        self._establish_connection()
-        self._create_temp_tables()
-        self._populate_temp_tables()
-        self._create_and_populate_dialect_tables()
+        self._connect_and_populate()
 
-    def _establish_connection(self):
-        """Connect to db and create temporary tables."""
+    def _connect_and_populate(self):
+        """Connect to db. Create and populate temp tables."""
         logging.debug("Connecting to the database %s", self._db)
         self._connection = sqlite3.connect(self._db)
         self._connection.create_function("REGEXP", 2, regexp)
         self._connection.create_function("REGREPLACE", 3, re.sub)
         self._cursor = self._connection.cursor()
+        self._create_temp_tables()
+        self._populate_temp_tables()
+        self._create_and_populate_dialect_tables()
 
     def _create_temp_tables(self):
         logging.debug(

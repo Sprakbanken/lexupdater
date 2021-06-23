@@ -6,7 +6,7 @@ and select entries.
 """
 from schema import Schema, Optional
 import pandera as pa
-from pandera import Column, DataFrameSchema 
+from pandera import Column, DataFrameSchema
 
 from config import DIALECTS
 

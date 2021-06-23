@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 from schema import SchemaError
 
-from config import DATABASE, WORD_TABLE
+from config import DATABASE
 from lexupdater import db_handler
 
 
@@ -34,24 +34,23 @@ class TestDatabaseUpdater:
     ):
         """
         Test the constructor of the DatabaseUpdater
-        with a patched _establish_connection function
+        with a patched _connect_and_populate function
         """
         # given
         with patch.object(
-            db_handler.DatabaseUpdater, "_establish_connection", autospec=True
+            db_handler.DatabaseUpdater, "_connect_and_populate", autospec=True
         ):
             # when
             result = db_handler.DatabaseUpdater(
                 DATABASE,
                 ruleset_fixture,
                 some_dialects,
-                WORD_TABLE,
                 exemptions_fixture,
             )
             # then
             assert isinstance(result, db_handler.DatabaseUpdater)
             # Check that the patched function was called
-            db_handler.DatabaseUpdater._establish_connection.assert_called()
+            db_handler.DatabaseUpdater._connect_and_populate.assert_called()
 
     @pytest.mark.skip("invalid values do not raise issues upon initialisation")
     @pytest.mark.parametrize(
@@ -66,14 +65,13 @@ class TestDatabaseUpdater:
         # given
         rules, exemptions, dialects = invalid_config_values
         with patch.object(
-            db_handler.DatabaseUpdater, "_establish_connection", autospec=True
+            db_handler.DatabaseUpdater, "_connect_and_populate", autospec=True
         ):
             with pytest.raises(SchemaError):
                 db_handler.DatabaseUpdater(
                     DATABASE,
                     rules,
                     dialects,
-                    WORD_TABLE,
                     exemptions,
                 )
 
@@ -96,7 +94,6 @@ class TestDatabaseUpdater:
                 DATABASE,
                 ruleset_fixture,
                 some_dialects,
-                WORD_TABLE,
                 exemptions_fixture,
             )
             # then
