@@ -40,7 +40,7 @@ column_names = [
 _df_list = []
 
 for path in newword_csv_paths:
-    df = pd.read_csv(path, header=0, index_col=None)[column_names]
+    df = pd.read_csv(path, header=0, index_col=None)[column_names] #TODO: Handle exception if csv doesn't contain columns in column list
     _df_list.append(df)
 
 newwords = pd.concat(_df_list, axis=0, ignore_index=True)
