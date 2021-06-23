@@ -5,6 +5,8 @@
 and select entries.
 """
 from schema import Schema, Optional
+import pandera as pa
+from pandera import Column, DataFrameSchema 
 
 from config import DIALECTS
 
@@ -30,6 +32,16 @@ ruleset_schema = Schema({
 
 
 exemption_schema = Schema([{"ruleset": str, "words": list}])
+
+newword_schema = DataFrameSchema({
+    "token": Column(pa.String),
+    "transcription": Column(pa.String), #TODO: add pa.Check
+    "alt_transcription_1": Column(pa.String, required=False),
+    "alt_transcription_2": Column(pa.String, required=False),
+    "alt_transcription_3": Column(pa.String, required=False),
+    "pos": Column(pa.String),
+    "morphology": Column(pa.String, required=False)
+})
 
 CREATE_DIALECT_TABLE_STMT = """CREATE TEMPORARY TABLE {dialect} (
 pron_id INTEGER NOT NULL,
