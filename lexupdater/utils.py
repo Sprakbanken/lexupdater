@@ -5,7 +5,7 @@ import importlib.machinery
 import importlib.util
 import logging
 from pathlib import Path
-from typing import Union, Iterable, Tuple, List, Dict
+from typing import Union, Iterable, List, Generator
 
 import pandas as pd
 
@@ -28,7 +28,7 @@ def write_lexicon(output_file: Union[str, Path], data: Iterable):
             out_writer.writerow(item)
 
 
-def flatten_match_results(data: Iterable) -> Tuple:
+def flatten_match_results(data: Iterable) -> Generator:
     """Flatten a nested list of rule pattern matches.
 
     Parameters
@@ -49,13 +49,15 @@ def filter_list_by_list(check_list, filter_list):
     return filtered
 
 
-def load_module_from_path(file_path: Union[str, Path]) -> Dict:
+def load_module_from_path(file_path: Union[str, Path]):
     """Use importlib to load a module from a .py file path."""
-    assert Path(file_path).suffix == ".py"
+    file_path = Path(file_path)
+    assert file_path.suffix == ".py"
     module_name = file_path.stem
     spec = importlib.util.spec_from_file_location(module_name, file_path)
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    exec_module = getattr(spec.loader, "exec_module")
+    exec_module(module)
     return module
 
 
@@ -126,7 +128,7 @@ def _load_newwords(newword_csv_paths: list, column_names: list) -> pd.DataFrame:
 
     for path in newword_csv_paths:
         # TODO: Handle exception if csv doesn't contain columns in column list
-        df = pd.read_csv(path, header=0, index_col=None)[column_names]
-        _df_list.append(df)
+        new_word_df = pd.read_csv(path, header=0, index_col=None)[column_names]
+        _df_list.append(new_word_df)
 
     return pd.concat(_df_list, axis=0, ignore_index=True)
