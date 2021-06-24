@@ -101,5 +101,5 @@ installeres med `pip`:
 
 ```shell
 
-pip install dist/lexupdater-0.0.4-py2.py3-none-any.whl      # OS-uavhengig
+pip install dist/lexupdater-0.1.0-py2.py3-none-any.whl      # OS-uavhengig
 ```
