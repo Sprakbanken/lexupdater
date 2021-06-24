@@ -42,34 +42,35 @@ from .utils import (
     "-r",
     "--rules-file",
     type=str,
-    nargs=1,
     help="Apply replacement rules from the given file path.",
 )
 @click.option(
     "-r",
     "--exemptions-file",
     type=str,
-    nargs=1,
     help="Apply exemptions from the given file path to the rules.",
+)
+@click.option(
+    "-n",
+    "--newword-file",
+    type=str,
+    help="Path to file with new words to add to the lexicon."
 )
 @click.option(
     "--db",
     type=str,
-    nargs=1,
     help="The path to the lexicon database.",
 )
 @click.option(
     "-o",
     "--output-dir",
     type=str,
-    nargs=1,
     help="The directory path that files are written to.",
 )
 @click.option(
     "-l",
     "--log-file",
     type=str,
-    nargs=1,
     help="Write all logging messages to log_file instead of the terminal."
 )
 @click.option(
@@ -82,7 +83,6 @@ from .utils import (
     "-c",
     "--config-file",
     type=str,
-    nargs=1,
     default="config.py",
     show_default=True,
     help="Path to config.py file."
@@ -117,16 +117,27 @@ def main(**kwargs):
 
     database = get_arg(kwargs.get("db"), config.DATABASE)
     output_dir = Path(get_arg(kwargs.get("output_dir"), config.OUTPUT_DIR))
-    word_table = config.WORD_TABLE
     user_dialects = get_arg(list(kwargs.get("dialects")), config.DIALECTS)
     rules_file = get_arg(kwargs.get("rules_file"), config.RULES_FILE)
     exemptions_file = get_arg(
         kwargs.get("exemptions_file"), config.EXEMPTIONS_FILE
     )
+    newword_file = get_arg(kwargs.get("newword_file"), config.NEWWORD_FILE)
+    logging.info(
+        "Loading contents of %s, %s, and %s and applying on %s. "
+        "All output will be written to %s",
+        rules_file,
+        exemptions_file,
+        newword_file,
+        database,
+        output_dir
+    )
 
     # Load arguments into python data structures
     rules = load_data(rules_file)
     exemptions = load_data(exemptions_file)
+    newwords = load_data(newword_file)
+    print(newwords)
 
     # Ensure the output directory exists
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -147,7 +158,6 @@ def main(**kwargs):
         database,
         rules,
         user_dialects,
-        word_table,
         exemptions=exemptions
     )
     # Run lexupdater according to user input

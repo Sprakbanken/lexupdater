@@ -6,7 +6,7 @@ import sqlite3
 
 from .constants import (
     dialect_schema,
-    CREATE_DIALECT_TABLE_STMT,
+    CREATE_PRON_TABLE_STMT,
     CREATE_WORD_TABLE_STMT,
     INSERT_STMT,
     UPDATE_QUERY,
@@ -53,19 +53,18 @@ class DatabaseUpdater:
         rule_schema from the config.constants module
     dialect_names: list
         List of dialects to update transcription entries for
-    word_tbl: str
-        Name of temporary table to be created for the word entries
     exemptions:
         List of exemption dictionaries, containing words
         that are exempt from a given ruleset, and the name of the ruleset
     """
 
-    def __init__(self, db, rulesets, dialect_names, word_tbl, exemptions=None):
+    def __init__(self, db, rulesets, dialect_names, exemptions=None):
         """Set object attributes, connect to db and create temp tables."""
         if exemptions is None:
             exemptions = []
         self._db = db
-        self.word_table = word_tbl
+        self.word_table = "words_tmp"
+        self.pron_table = "pron_tmp"
         self.dialects = dialect_schema.validate(dialect_names)
         self.parsed_rules = parse_rules(
             self.dialects,
@@ -73,29 +72,62 @@ class DatabaseUpdater:
             exemptions
         )
         self.results = {dialect: [] for dialect in self.dialects}
-        self._establish_connection()
+        self._connect_and_populate()
 
-    def _establish_connection(self):
-        """Connect to db and create temporary tables."""
+    def _connect_and_populate(self):
+        """Connect to db. Create and populate temp tables."""
         logging.debug("Connecting to the database %s", self._db)
         self._connection = sqlite3.connect(self._db)
         self._connection.create_function("REGEXP", 2, regexp)
         self._connection.create_function("REGREPLACE", 3, re.sub)
         self._cursor = self._connection.cursor()
-        logging.debug("Creating temporary tables")
-        self._cursor.execute(
-            CREATE_WORD_TABLE_STMT.format(word_table_name=self.word_table)
+        self._create_temp_tables()
+        self._populate_temp_tables()
+        self._create_and_populate_dialect_tables()
+
+    def _create_temp_tables(self):
+        logging.debug(
+            "Creating temporary tables: word_table, pron_table"
         )
         self._cursor.execute(
-            INSERT_STMT.format(table_name=self.word_table, other_table="words")
+            CREATE_WORD_TABLE_STMT.format(
+                word_table_name=self.word_table
+            )
+        )
+        self._cursor.execute(
+            CREATE_PRON_TABLE_STMT.format(
+                pron_table_name=self.pron_table
+            )
         )
         self._connection.commit()
+
+    def _populate_temp_tables(self):
+        logging.debug(
+            "Populating temporary tables: word_table, pron_table"
+        )
+        self._cursor.execute(
+            INSERT_STMT.format(
+                table_name=self.word_table,
+                other_table="words"
+            )
+        )
+        self._cursor.execute(
+            INSERT_STMT.format(
+                table_name=self.pron_table, other_table="base"
+            )
+        )
+        self._connection.commit()
+
+    def _create_and_populate_dialect_tables(self):
+        logging.debug("Creating and populating dialect tables")
         for dialect in self.dialects:
-            create_stmt = CREATE_DIALECT_TABLE_STMT.format(dialect=dialect)
+            create_stmt = CREATE_PRON_TABLE_STMT.format(
+                pron_table_name=dialect
+            )
             self._cursor.execute(create_stmt)
             insert_stmt = INSERT_STMT.format(
                 table_name=dialect,
-                other_table="base"
+                other_table=self.pron_table
             )
             self._cursor.execute(insert_stmt)
             self._connection.commit()

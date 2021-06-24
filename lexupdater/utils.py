@@ -7,6 +7,8 @@ import logging
 from pathlib import Path
 from typing import Union, Iterable, Tuple, List, Dict
 
+import pandas as pd
+
 
 def write_lexicon(output_file: Union[str, Path], data: Iterable):
     """Write a simple txt file with the results of the SQL queries.
@@ -57,6 +59,17 @@ def load_module_from_path(file_path: Union[str, Path]) -> Dict:
     return module
 
 
+def load_vars_from_module(module):
+    """Return all public variables that are defined in a module"""
+    module_dict = module.__dict__
+    # Gather all public variables, ignore private vars and dunder objects
+    module_vars = [
+        value for var, value in module_dict.items()
+        if not var.startswith("_")
+    ]
+    return module_vars
+
+
 def load_data(file_rel_path: Union[str, Path]) -> List:
     """Load a list of variables from the given data file.
 
@@ -70,16 +83,50 @@ def load_data(file_rel_path: Union[str, Path]) -> List:
     list
         The python objects that are specified in the given data file
     """
-    cur_path = Path(__file__).parent
-    full_path = cur_path.joinpath("..", file_rel_path)
+    try:
+        cur_path = Path(__file__).parent
+        full_path = cur_path.joinpath("..", file_rel_path).resolve()
+        assert full_path.exists() and full_path.suffix == ".py"
+    except [FileNotFoundError, AssertionError] as error:
+        logging.error(error)
 
-    if full_path.suffix == ".py":
-        module = load_module_from_path(full_path)
-        module_dict = module.__dict__
-        # Gather all public variables, ignore private vars and dunder objects
-        return [
-            value for var, value in module_dict.items()
-            if not var.startswith("_")
-        ]
-    else:
-        raise ValueError(f"Cannot load data from {full_path}")
+    module = load_module_from_path(full_path)
+    module_vars = load_vars_from_module(module)
+    return module_vars
+
+
+def _load_newwords(newword_csv_paths: list, column_names: list) -> pd.DataFrame:
+    """Load lists of new words into a pandas DataFrame.
+
+    New words to be added to the lexicon are specified in
+    csv files, which are loaded into the dataframe "newwords".
+
+    These are the columns of "newwords":
+        "token": the orthographic form
+        "transcription": The primary phonetic transcription
+        "alt_transcription_1-3": Alternative transcriptions. May be empty
+        "pos": The POS tag
+        "morphology": Morphological features. May be empty
+
+    The csv files may contain additional columns, but these will not be loaded
+    into "newwords"
+
+    Parameters
+    ----------
+    newword_csv_paths: list
+        List of csv files with new words
+    column_names: list
+        Names of the columns in the newword df
+
+    Returns
+    -------
+    pd.DataFrame
+    """
+    _df_list = []
+
+    for path in newword_csv_paths:
+        # TODO: Handle exception if csv doesn't contain columns in column list
+        df = pd.read_csv(path, header=0, index_col=None)[column_names]
+        _df_list.append(df)
+
+    return pd.concat(_df_list, axis=0, ignore_index=True)
