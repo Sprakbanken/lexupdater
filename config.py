@@ -1,8 +1,5 @@
 """Configure input data to update the lexicon transcriptions."""
 
-WORD_TABLE = "words_tmp"
-"""Name of the temp table to contain all words and metadata in the database."""
-
 DATABASE = "data/input/backend-db03.db"
 """Path to the backend db"""
 
@@ -19,6 +16,9 @@ and that the ordering of the rules may matter.
 EXEMPTIONS_FILE = "exemptions.py"
 """Path to file with exemption dicts"""
 
+NEWWORD_FILE = "newword.py"
+"""Path to file containing a dataframe with new words which should 
+be added to the lexicon"""
 
 DIALECTS = [
     "e_spoken",
