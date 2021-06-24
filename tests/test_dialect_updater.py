@@ -1,8 +1,6 @@
-"""
-Test suite for all the classes in the dialect_updater.py module
-"""
+"""Test suite for all the classes in the dialect_updater.py module."""
+
 from typing import Generator
-from unittest.mock import patch
 
 import pytest
 from schema import SchemaError

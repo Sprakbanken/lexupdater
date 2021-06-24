@@ -1,16 +1,11 @@
 """
 Test suite for the lexupdater.py script in the lexupdater package
 """
-import subprocess
-from pathlib import Path
 
-from click.testing import CliRunner
 import pytest
+from click.testing import CliRunner
 
 from lexupdater import lexupdater
-
-
-
 
 
 def test_main_default_update(all_dialects, tmp_path):
@@ -48,11 +43,11 @@ def test_main_default_update(all_dialects, tmp_path):
     ],
     ids=["base", "match"]
 )
-def test_script_with_config_and_cli_args(cli_arg, expected_files, tmpdir):
+def test_script_with_config_and_cli_args(cli_arg, expected_files, tmp_path):
     # given
-    # specify output directory
-    output_dir = Path(tmpdir.mkdir("dummy_output"))
-
+    output_dir = (tmp_path / "dummy_output")
+    output_dir.mkdir()
+    assert output_dir.exists()
     runner = CliRunner()
     # when
     result = runner.invoke(

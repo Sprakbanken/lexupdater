@@ -1,10 +1,8 @@
-"""
-Test suite for all the classes in the db_handler.py module
-"""
+"""Test suite for all the classes in the db_handler.py module."""
+
 from unittest.mock import patch
 
 import pytest
-from schema import SchemaError
 
 from dummy_config import DATABASE
 from lexupdater import db_handler
