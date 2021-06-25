@@ -83,29 +83,23 @@ make lint
 
 ## Bygg `lexupdater` som en python-pakke
 Ferdig-bygde Python-pakker er installérbare, og tillater å dele verktøyet 
-som en vanlig fil, samt installere filen med `pip`. 
+som en vanlig fil, samt installere pakken med `pip`. 
 
 ### Windows 
 ```shell
 python setup.py bdist --formats=wininst
 ```
 
-### Linux 
-```shell
-python setup.py bdist --formats=gztar
-```
-
 ### OS-uavhengig (ikke ferdig testet)
 ```shell
-python -m build .
+python setup.py bdist_wheel
 ```
 
 ## Installér `lexupdater` som en python-pakke 
 Etter at python-pakken er bygget, vil den ligge i `dist`-mappen. Den kan nå 
-installeres med `pip` (velg bare én av kommanoene under): 
+installeres med `pip`: 
 
 ```shell
-pip install dist/lexupdater-0.0.3.linux-x86_64.tar.gz   # Linux
-pip install dist/lexupdater-0.0.3.linux-x86_64.exe      # Windows
-pip install dist/lexupdater-0.0.3-py3-none-any.whl      # OS-uavhengig
+
+pip install dist/lexupdater-0.1.0-py2.py3-none-any.whl      # OS-uavhengig
 ```

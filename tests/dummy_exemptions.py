@@ -1,4 +1,4 @@
-"""List of dicts with words to be exempted from the specified rulesets."""
+"""Dummy values to test how lexupdater handles exemptions."""
 
 exemption1 = {"ruleset": "retrotest", "words": ["garn", "klarne"]}
 

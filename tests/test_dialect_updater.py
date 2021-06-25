@@ -1,16 +1,16 @@
-"""
-Test suite for all the classes in the dialect_updater.py module
-"""
+"""Test suite for all the classes in the dialect_updater.py module."""
+
 from typing import Generator
 
 import pytest
+from schema import SchemaError
 
 from lexupdater import dialect_updater
 
 
 @pytest.fixture
 def rule():
-    """A test example of a structured rule from a ruleset"""
+    """A test example of a structured rule from a ruleset."""
     return {
         "pattern": r"\bAX0 R$",
         "repl": r"AA0 R",
@@ -66,24 +66,6 @@ def test_map_rule_exemptions():
     assert list(result.values()) == list(expected.values())
 
 
-def test_filter_list_by_list_all_valid(some_dialects, all_dialects):
-    # given
-    input_dialects = some_dialects + ["e_spoken"]
-    # when
-    result = dialect_updater.filter_list_by_list(input_dialects, all_dialects)
-    # then
-    assert result == input_dialects
-
-
-def test_filter_list_by_list_not_valid(some_dialects, all_dialects):
-    # given
-    input_dialects = some_dialects + ["bergensk"]
-    # when
-    result = dialect_updater.filter_list_by_list(input_dialects, all_dialects)
-    # then
-    assert result == some_dialects
-
-
 def test_parse_conditions(rule):
     # given
     input_exemptions = ["biler", "båter"]
@@ -112,7 +94,7 @@ def test_parse_rules(some_dialects, ruleset_fixture, exemptions_fixture):
     # given
     expected_first_item = (
         "e_spoken",
-        r"\b(R)([NTD])\\b",
+        r"\b(R)([NTD])\b",
         r"\1 \2",
         "w.wordform NOT IN (?,?)",
         ["garn", "klarne"]
@@ -124,3 +106,22 @@ def test_parse_rules(some_dialects, ruleset_fixture, exemptions_fixture):
     # then
     assert isinstance(result, Generator)
     assert list(result)[0] == expected_first_item
+
+
+@pytest.mark.parametrize(
+    "invalid_config_values",
+    ["rules", "exemptions"],
+    indirect=True
+)
+def test_parse_rules_invalid_input(some_dialects, invalid_config_values):
+    """Test validation of rules and exemptions."""
+    # given
+    rulesets, exemptions = invalid_config_values
+    # when
+    result = dialect_updater.parse_rules(
+        some_dialects, rulesets, exemptions
+    )
+    # then
+    with pytest.raises(SchemaError):
+        for values in result:
+            assert all(values)

@@ -4,13 +4,25 @@
 * SQL query template strings to create tables, insert values, update entries
 and select entries.
 """
+
 from schema import Schema, Optional
 import pandera as pa
 from pandera import Column, DataFrameSchema
 
-from config import DIALECTS
 
-dialect_schema = Schema(DIALECTS)
+# Define validation Schemas
+dialect_schema = Schema([
+    "e_spoken",
+    "e_written",
+    "sw_spoken",
+    "sw_written",
+    "w_spoken",
+    "w_written",
+    "t_spoken",
+    "t_written",
+    "n_spoken",
+    "n_written",
+])
 
 constraint_schema = Schema({
     "field": str,
@@ -30,12 +42,11 @@ ruleset_schema = Schema({
     "rules": [rule_schema.schema],
 })
 
-
 exemption_schema = Schema([{"ruleset": str, "words": list}])
 
 newword_schema = DataFrameSchema({
     "token": Column(pa.String),
-    "transcription": Column(pa.String), #TODO: add pa.Check
+    "transcription": Column(pa.String),  # TODO: add pa.Check
     "alt_transcription_1": Column(pa.String, required=False),
     "alt_transcription_2": Column(pa.String, required=False),
     "alt_transcription_3": Column(pa.String, required=False),
@@ -43,6 +54,7 @@ newword_schema = DataFrameSchema({
     "morphology": Column(pa.String, required=False)
 })
 
+# Define SQL query templates
 CREATE_PRON_TABLE_STMT = """CREATE TEMPORARY TABLE {pron_table_name} (
 pron_id INTEGER NOT NULL,
 nofabet TEXT NOT NULL,

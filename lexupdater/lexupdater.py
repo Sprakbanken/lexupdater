@@ -1,87 +1,168 @@
-#!/usr/bin/env python
-# coding=utf-8
-
 """Transcription updates for a pronunciation lexicon in sqlite3 db format."""
 
-import csv
 import datetime
 import logging
-from runpy import run_path
-from typing import Iterable
+from pathlib import Path
 
-from config import (
-    DATABASE,
-    RULES_FILE,
-    EXEMPTIONS_FILE,
-    OUTPUT_DIR,
-    NEWWORD_FILE
-)
+import click
+
 from .db_handler import DatabaseUpdater
+from .utils import (
+    write_lexicon,
+    flatten_match_results,
+    load_data,
+    load_module_from_path
+)
 
 
-def write_lexicon(output_file: str, data: Iterable):
-    """Write a simple txt file with the results of the SQL queries.
+@click.command(context_settings={"help_option_names": ['-h', '--help']})
+@click.option(
+    "-b",
+    "--write-base",
+    is_flag=True,
+    help="Write a lexicon file with the state of the lexicon prior to updates."
+)
+@click.option(
+    "-m",
+    "--match-words",
+    is_flag=True,
+    help=(
+        "Write file with the words that will be affected by update rules "
+        "for the given dialects."
+    )
+)
+@click.option(
+    "-d",
+    "--dialects",
+    type=str,
+    multiple=True,
+    help="Apply replacement rules on one or more specified dialects.",
+)
+@click.option(
+    "-r",
+    "--rules-file",
+    type=str,
+    help="Apply replacement rules from the given file path.",
+)
+@click.option(
+    "-r",
+    "--exemptions-file",
+    type=str,
+    help="Apply exemptions from the given file path to the rules.",
+)
+@click.option(
+    "-n",
+    "--newword-file",
+    type=str,
+    help="Path to file with new words to add to the lexicon."
+)
+@click.option(
+    "--db",
+    type=str,
+    help="The path to the lexicon database.",
+)
+@click.option(
+    "-o",
+    "--output-dir",
+    type=str,
+    help="The directory path that files are written to.",
+)
+@click.option(
+    "-l",
+    "--log-file",
+    type=str,
+    help="Write all logging messages to log_file instead of the terminal."
+)
+@click.option(
+    "-v",
+    "--verbose",
+    is_flag=True,
+    help="Print logging messages at the debugging level."
+)
+@click.option(
+    "-c",
+    "--config-file",
+    type=str,
+    default="config.py",
+    show_default=True,
+    help="Path to config.py file."
+)
+def main(**kwargs):
+    """Apply the dialect update rules on the base lexicon.
 
-    Parameters
-    ----------
-    output_file: str
-        Name of the file to write data to
-    data: Iterable[dict]
-        A collection of dictionaries,
-        where the 1st, 2nd, 3rd and 2nd to last elements are saved to disk
+    Default file paths to the lexicon database, the replacement rules,
+    and their exemptions, as well as the output directory,
+    are specified in the config.py file.
+
+    If provided, CLI arguments override the default values from the config.
+
+    Note that all modifications in the backend db target temp tables,
+    so the db isn't modified.
+    The modifications to the lexicon are written to
+    new, dialect-specific files.
     """
-    logging.info("Write lexicon data to %s", output_file)
-    with open(OUTPUT_DIR / output_file, 'w', newline='') as csvfile:
-        out_writer = csv.writer(csvfile, delimiter='\t')
-        for item in data:
-            out_writer.writerow(item)
+    # Load and import config
+    config_file = Path(kwargs.get("config_file")).resolve()
+    config = load_module_from_path(config_file)
 
+    # Parse input arguments from the command line and config file
+    write_base = kwargs.get("write_base")
+    match_words = kwargs.get("match_words")
+    log_file = kwargs.get("log_file")
+    verbose = kwargs.get("verbose")
 
-def flatten_match_results(data):
-    """Flatten a nested list of rule pattern matches.
+    def get_arg(cli_arg, conf_value):
+        """Prioritize the user input over config values"""
+        return conf_value if cli_arg is None or not cli_arg else cli_arg
 
-    Parameters
-    ----------
-    data: Iterable[tuple]
-        A collection of tuples, where the first element is the rule pattern,
-        the second is the collection of lexicon rows
-        that match the rule pattern
-    """
-    for pattern, words in data:
-        for item in words:
-            yield [pattern] + list(item)
+    database = get_arg(kwargs.get("db"), config.DATABASE)
+    output_dir = Path(
+        get_arg(kwargs.get("output_dir"), config.OUTPUT_DIR)
+    ).resolve()  # <-- Should make default linux paths work in Windows
+    user_dialects = get_arg(list(kwargs.get("dialects")), config.DIALECTS)
+    rules_file = get_arg(kwargs.get("rules_file"), config.RULES_FILE)
+    exemptions_file = get_arg(
+        kwargs.get("exemptions_file"), config.EXEMPTIONS_FILE
+    )
+    newword_file = get_arg(kwargs.get("newword_file"), config.NEWWORD_FILE)
+    logging.info(
+        "Loading contents of %s, %s, and %s and applying on %s. "
+        "All output will be written to %s",
+        rules_file,
+        exemptions_file,
+        newword_file,
+        database,
+        output_dir
+    )
 
+    # Load arguments into python data structures
+    rules = load_data(rules_file)
+    exemptions = load_data(exemptions_file)
+    newwords = load_data(newword_file)
+    print(newwords)
 
-def main(user_dialects, write_base, match_words):
-    """Apply the replacement rules from the config on the base lexicon.
+    # Ensure the output directory exists
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    The variable base contains the original state of the lexicon.
-    exp contains the modified lexicon based on the rules and
-    exemptions specified in the config file. Note that all modifications
-    in the backend db target temp tables, so the db isn"t modified.
+    # Set up logging config
+    logging.basicConfig(
+        filename=(output_dir / log_file) if log_file else None,
+        level=logging.DEBUG if verbose else logging.INFO,
+        format='%(asctime)s | %(levelname)s | %(module)s | %(message)s',
+        datefmt='%Y-%m-%d %H:%M')
 
-    The modifications to the lexicon are written to new, dialect-specific
-    files.
-
-    Parameters
-    ----------
-    user_dialects: list
-        List of dialects to write updated lexicon .txt-files for
-    write_base: bool
-        If True, write the base lexicon as a .txt-file
-    match_words: bool
-        If True, only fetch a list of words that match the rule patterns
-    """
+    # Log starting time
     begin_time = datetime.datetime.now()
     logging.debug("Started lexupdater process at %s", begin_time.isoformat())
 
-    rules = run_path(RULES_FILE).get("ruleset_list")
-    exemptions = run_path(EXEMPTIONS_FILE).get("exemptions_list")
-    newwords = run_path(NEWWORD_FILE).get("newwords")
-
+    # Initiate the database connection
     update_obj = DatabaseUpdater(
-        DATABASE, rules, user_dialects, exemptions=exemptions
+        database,
+        rules,
+        user_dialects,
+        exemptions=exemptions
     )
+    # Run lexupdater according to user input
     if write_base:
         base = update_obj.get_base()
     if match_words:
@@ -97,8 +178,9 @@ def main(user_dialects, write_base, match_words):
     update_time = update_end_time - begin_time
     logging.debug("Database closed. Time: %s", update_time)
 
+    # Write output
     if write_base:
-        write_lexicon("base.txt", base)
+        write_lexicon((output_dir / "base.txt"), base)
 
     for dialect in user_dialects:
         results = update_obj.results[dialect]
@@ -106,11 +188,13 @@ def main(user_dialects, write_base, match_words):
             continue
         if match_words:
             flat_matches = flatten_match_results(results)
-            write_lexicon(f"words_matching_rules_{dialect}.txt", flat_matches)
+            out_file = output_dir / f"words_matching_rules_{dialect}.txt"
+            write_lexicon(out_file, flat_matches)
         else:
-            write_lexicon(f"updated_lexicon_{dialect}.txt", results)
+            out_file = output_dir / f"updated_lexicon_{dialect}.txt"
+            write_lexicon(out_file, results)
 
-    # For calculating execution time
+    # Calculating execution time
     file_gen_end_time = datetime.datetime.now()
     file_gen_time = file_gen_end_time - update_end_time
     logging.debug("Files generated. Time: %s", file_gen_time)

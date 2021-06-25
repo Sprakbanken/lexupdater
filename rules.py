@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# coding=utf-8
-
 """Pronunciation replacement rulesets.
 
 "areas" is the list of dialects which should be affected by the rule.
@@ -22,6 +19,9 @@
         either a regex or a literal,
         and "is_regex", which should be True if the pattern is a regex and
         False otherwise.
+
+Note that multiple rules may affect the same  pronunciations,
+and that the ordering of the rules may be of importance for the result.
 """
 
 
@@ -57,10 +57,3 @@ test2 = {
         },
     ],
 }
-
-ruleset_list = [test1, test2]
-"""List of dialect update rules.
-
-Note that multiple rules may affect the same  pronunciations,
-and that the ordering of the rules may matter.
-"""

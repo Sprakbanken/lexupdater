@@ -1,33 +1,9 @@
-#!/usr/bin/env python
-# coding=utf-8
-
 """Configure input data to update the lexicon transcriptions."""
 
-from pathlib import Path
-
-
-__all__ = [
-    "DATABASE",
-    "DIALECTS",
-    "RULES_FILE",
-    "EXEMPTIONS_FILE",
-    "OUTPUT_DIR",
-    "NEWWORD_FILE"
-]
-"""Variables that are available to be imported
-by other modules.
-"""
-
-
-DATA_DIR = Path("data")
-
-INPUT_DIR = DATA_DIR / "input"
-
-DATABASE = INPUT_DIR / "backend-db03.db"
+DATABASE = "data/input/backend-db03.db"
 """Path to the backend db"""
 
-
-OUTPUT_DIR = DATA_DIR / "output"
+OUTPUT_DIR = "data/output"
 """Path to the output folder for the lexica"""
 
 RULES_FILE = "rules.py"

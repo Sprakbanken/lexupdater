@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# coding=utf-8
-
 from lexupdater.utils import _load_newwords
 
 _newword_csv_paths = [
@@ -18,4 +15,4 @@ _column_names = [
         "morphology"
     ]
 
-newwords = _load_newwords(_newword_csv_paths, _column_names)
+newwords = _load_newwords(_newword_csv_paths, _column_names)[:5]

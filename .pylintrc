@@ -148,7 +148,8 @@ disable=print-statement,
         too-many-arguments,
         too-many-locals,
         too-few-public-methods,
-        missing-module-docstring
+        missing-module-docstring,
+        too-many-statements,
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option
@@ -228,8 +229,7 @@ single-line-if-stmt=no
 
 # List of note tags to take in consideration, separated by a comma.
 notes=FIXME,
-      XXX,
-      TODO
+      XXX
 
 # Regular expression of note tags to take in consideration.
 #notes-rgx=
