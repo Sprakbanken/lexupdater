@@ -1,7 +1,7 @@
 """Utility functions for lexupdater"""
 
 import csv
-import importlib.machinery
+import sys
 import importlib.util
 import logging
 from pathlib import Path
@@ -49,15 +49,16 @@ def filter_list_by_list(check_list, filter_list):
     return filtered
 
 
-def load_module_from_path(file_path: Union[str, Path]):
+def load_module_from_path(file_path):
     """Use importlib to load a module from a .py file path."""
-    file_path = Path(file_path)
-    assert file_path.suffix == ".py"
-    module_name = file_path.stem
-    spec = importlib.util.spec_from_file_location(module_name, file_path)
+    module_path = Path(file_path)
+    assert module_path.suffix == ".py"
+    module_name = module_path.stem
+
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
     module = importlib.util.module_from_spec(spec)
-    exec_module = getattr(spec.loader, "exec_module")
-    exec_module(module)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
     return module
 
 
@@ -89,15 +90,16 @@ def load_data(file_rel_path: Union[str, Path]) -> List:
         cur_path = Path(__file__).parent
         full_path = cur_path.joinpath("..", file_rel_path).resolve()
         assert full_path.exists() and full_path.suffix == ".py"
-    except [FileNotFoundError, AssertionError] as error:
+    except (FileNotFoundError, AssertionError) as error:
         logging.error(error)
+        sys.exit(0)
 
     module = load_module_from_path(full_path)
     module_vars = load_vars_from_module(module)
     return module_vars
 
 
-def _load_newwords(newword_csv_paths: list, column_names: list) -> pd.DataFrame:
+def _load_newwords(csv_paths:list, column_names: list) -> pd.DataFrame:
     """Load lists of new words into a pandas DataFrame.
 
     New words to be added to the lexicon are specified in
@@ -115,7 +117,7 @@ def _load_newwords(newword_csv_paths: list, column_names: list) -> pd.DataFrame:
 
     Parameters
     ----------
-    newword_csv_paths: list
+    csv_paths: list
         List of csv files with new words
     column_names: list
         Names of the columns in the newword df
@@ -126,9 +128,12 @@ def _load_newwords(newword_csv_paths: list, column_names: list) -> pd.DataFrame:
     """
     _df_list = []
 
-    for path in newword_csv_paths:
-        # TODO: Handle exception if csv doesn't contain columns in column list
-        new_word_df = pd.read_csv(path, header=0, index_col=None)[column_names]
-        _df_list.append(new_word_df)
+    for path in csv_paths:
+        new_word_df = pd.read_csv(
+            path, header=0, index_col=None
+        )
+        # ignore columns in the column list if the csv doesn't contain them
+        col_names = filter_list_by_list(column_names, new_word_df.columns)
+        _df_list.append(new_word_df.loc[:, col_names])
 
     return pd.concat(_df_list, axis=0, ignore_index=True)
