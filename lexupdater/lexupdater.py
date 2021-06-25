@@ -116,7 +116,9 @@ def main(**kwargs):
         return conf_value if cli_arg is None or not cli_arg else cli_arg
 
     database = get_arg(kwargs.get("db"), config.DATABASE)
-    output_dir = Path(get_arg(kwargs.get("output_dir"), config.OUTPUT_DIR))
+    output_dir = Path(
+        get_arg(kwargs.get("output_dir"), config.OUTPUT_DIR)
+    ).resolve()  # <-- Should make default linux paths work in Windows
     user_dialects = get_arg(list(kwargs.get("dialects")), config.DIALECTS)
     rules_file = get_arg(kwargs.get("rules_file"), config.RULES_FILE)
     exemptions_file = get_arg(
