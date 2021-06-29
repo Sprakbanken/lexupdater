@@ -8,7 +8,6 @@ import click
 
 from .db_handler import DatabaseUpdater
 from .utils import (
-    _load_newwords,
     write_lexicon,
     flatten_match_results,
     load_data,

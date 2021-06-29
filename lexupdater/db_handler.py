@@ -124,7 +124,7 @@ class DatabaseUpdater:
             )
         )
         self._connection.commit()
-    
+
     def _insert_newwords(self):
         logging.debug("Inserting lexical additions")
         word_vals, pron_vals = parse_newwords(self.newwords)

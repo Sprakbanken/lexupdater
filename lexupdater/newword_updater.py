@@ -36,13 +36,13 @@ def _process_newword_table(newwords):
     )
     return (word_df, pron_df)
 
-def parse_newwords(newwords: pd.DataFrame) -> Tuple: 
+def parse_newwords(newwords: pd.DataFrame) -> Tuple:
     """Convert a DataFrame with lexical additions to a pair
     of lists of values to SQL insert statements.
 
     Parameters
     ----------
-    newword_df: 
+    newword_df:
         a DataFrame with lexical additions and
         corresponding transcriptions and grammatical
         information.
@@ -59,9 +59,3 @@ def parse_newwords(newwords: pd.DataFrame) -> Tuple:
         for df in [word_df, pron_fd]
     ]
     return (word_values, pron_values)
-
-
-
-
-
-
