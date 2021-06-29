@@ -62,8 +62,8 @@ class DatabaseUpdater:
         that are exempt from a given ruleset, and the name of the ruleset
     """
 
-    def __init__(self, db, rulesets, dialect_names, newwords,
-        exemptions=None):
+    def __init__(self, db, rulesets, dialect_names,
+        newwords=None, exemptions=None):
         """Set object attributes, connect to db and create temp tables."""
         if exemptions is None:
             exemptions = []
@@ -126,21 +126,24 @@ class DatabaseUpdater:
         self._connection.commit()
 
     def _insert_newwords(self):
-        logging.debug("Inserting lexical additions")
-        word_vals, pron_vals = parse_newwords(self.newwords)
-        word_insert_stmt = NEWWORD_INSERT.format(
-            table=self.word_table,
-            columns=NW_WORD_COLS[0],
-            vars=NW_WORD_COLS[1]
-        )
-        pron_insert_stmt = NEWWORD_INSERT.format(
-            table=self.pron_table,
-            columns=NW_PRON_COLS[0],
-            vars=NW_PRON_COLS[1]
-        )
-        self._cursor.executemany(word_insert_stmt, word_vals)
-        self._cursor.executemany(pron_insert_stmt, pron_vals)
-        self._connection.commit()
+        if self.newwords is None:
+            logging.debug("Inserting lexical additions")
+            word_vals, pron_vals = parse_newwords(self.newwords)
+            word_insert_stmt = NEWWORD_INSERT.format(
+                table=self.word_table,
+                columns=NW_WORD_COLS[0],
+                vars=NW_WORD_COLS[1]
+            )
+            pron_insert_stmt = NEWWORD_INSERT.format(
+                table=self.pron_table,
+                columns=NW_PRON_COLS[0],
+                vars=NW_PRON_COLS[1]
+            )
+            self._cursor.executemany(word_insert_stmt, word_vals)
+            self._cursor.executemany(pron_insert_stmt, pron_vals)
+            self._connection.commit()
+        else:
+            pass
 
     def _create_and_populate_dialect_tables(self):
         logging.debug("Creating and populating dialect tables")

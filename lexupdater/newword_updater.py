@@ -7,7 +7,7 @@ into lists of variables to fill slots in SQL query templates.
 from typing import Tuple
 import pandas as pd
 
-from .constants import UNIQUE_ID_PATTERN
+from .constants import UNIQUE_ID_PATTERN, newword_schema
 
 def _make_pron_table(newwords, proncolumnname):
     pron_df = newwords[
@@ -53,7 +53,8 @@ def parse_newwords(newwords: pd.DataFrame) -> Tuple:
         a list of word table values and
         a list of pron table values
     """
-    word_df, pron_fd = _process_newword_table(newwords)
+    newwords_df = newword_schema.validate(newwords)
+    word_df, pron_fd = _process_newword_table(newwords_df)
     word_values, pron_values = [
         (list(df.itertuples(index=False, name=None)))
         for df in [word_df, pron_fd]
