@@ -56,7 +56,7 @@ newword_schema = DataFrameSchema({
 
 # Define SQL query templates
 CREATE_PRON_TABLE_STMT = """CREATE TEMPORARY TABLE {pron_table_name} (
-pron_id INTEGER NOT NULL,
+pron_id INTEGER PRIMARY KEY AUTOINCREMENT,
 nofabet TEXT NOT NULL,
 certainty INTEGER NOT NULL,
 unique_id VARCHAR NOT NULL,
@@ -160,3 +160,17 @@ SELECT_QUERY = (
 )
 
 UNIQUE_ID_PATTERN = "NB{counter}"
+
+NEWWORD_INSERT = (
+    "INSERT INTO {table} ({columns}) "
+    "VALUES ({vars});"
+)
+
+NW_WORD_COLS = (
+    "wordform, pos, feats, unique_id",
+    "?,?,?,?")
+
+NW_PRON_COLS = (
+    "nofabet, unique_id, certainty",
+    "?,?,?"
+)
