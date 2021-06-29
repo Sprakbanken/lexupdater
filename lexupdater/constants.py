@@ -158,3 +158,5 @@ SELECT_QUERY = (
     "{where_regex} "
     "{where_word_in_stmt};"
 )
+
+UNIQUE_ID_PATTERN = "NB{counter}"
