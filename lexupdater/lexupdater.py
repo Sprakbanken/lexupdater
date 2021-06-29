@@ -8,6 +8,7 @@ import click
 
 from .db_handler import DatabaseUpdater
 from .utils import (
+    _load_newwords,
     write_lexicon,
     flatten_match_results,
     load_data,
@@ -135,11 +136,11 @@ def main(**kwargs):
         output_dir
     )
 
+
     # Load arguments into python data structures
     rules = load_data(rules_file)
     exemptions = load_data(exemptions_file)
-    newwords = load_data(newword_file)
-    print(newwords)
+    newwords = load_data(newword_file)[0]
 
     # Ensure the output directory exists
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -160,7 +161,8 @@ def main(**kwargs):
         database,
         rules,
         user_dialects,
-        exemptions=exemptions
+        exemptions=exemptions,
+        newwords=newwords
     )
     # Run lexupdater according to user input
     if write_base:
