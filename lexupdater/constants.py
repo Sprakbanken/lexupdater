@@ -70,7 +70,7 @@ exemption_schema = Schema([{"ruleset": str, "words": list}])
 
 _phone_check = lambda s: all(
     x in LICIT_PHONES for x in s.split(" ")
-)
+) if isinstance(s, str) else True
 
 newword_schema = DataFrameSchema({
     "token": Column(pa.String),

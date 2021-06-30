@@ -76,6 +76,7 @@ def db_updater_obj(ruleset_fixture, all_dialects, exemptions_fixture):
         ruleset_fixture,
         all_dialects,
         exemptions_fixture,
+        exclude_newwords=True,
     )
     yield updater_obj
     updater_obj.close_connection()
