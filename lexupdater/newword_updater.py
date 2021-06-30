@@ -54,7 +54,7 @@ def parse_newwords(newwords: pd.DataFrame) -> Tuple:
         a list of pron table values
     """
     newwords_df = newword_schema.validate(newwords)
-    word_df, pron_fd = _process_newword_table(newwords_df)
+    word_df, pron_df = _process_newword_table(newwords_df)
     word_values, pron_values = [
         (list(df.itertuples(index=False, name=None)))
         for df in [word_df, pron_fd]
