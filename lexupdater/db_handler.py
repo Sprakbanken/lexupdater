@@ -62,8 +62,9 @@ class DatabaseUpdater:
         that are exempt from a given ruleset, and the name of the ruleset
     """
 
-    def __init__(self, db, rulesets, dialect_names,
-        newwords=None, exemptions=None):
+    def __init__(
+        self, db, rulesets, dialect_names, newwords=None, exemptions=None
+    ):
         """Set object attributes, connect to db and create temp tables."""
         if exemptions is None:
             exemptions = []
