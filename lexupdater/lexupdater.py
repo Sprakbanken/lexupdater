@@ -125,8 +125,9 @@ def main(**kwargs):
         datefmt='%Y-%m-%d %H:%M',
         filename=str(output_dir / "log.txt"),
         filemode='a')
-    log_level = logging.DEBUG if kwargs.get("verbose_debug") else logging.INFO
-    if kwargs.get("verbose_info"):
+    verbose_debug = kwargs.get("verbose_debug")
+    log_level = logging.DEBUG if verbose_debug else logging.INFO
+    if kwargs.get("verbose_info") or verbose_debug:
         # define a Handler which writes log messages to stderr
         console = logging.StreamHandler()
         console.setLevel(log_level)
@@ -208,7 +209,7 @@ def main(**kwargs):
 
     # Calculating execution time
     file_gen_end_time = datetime.datetime.now()
-    print(file_gen_end_time, "Done.")
-    print(f"Output files, including log messages, are in {output_dir}")
     file_gen_time = file_gen_end_time - end_time
     logging.debug("Files generated. Time: %s", file_gen_time)
+    print(file_gen_end_time, "Done.")
+    print(f"Output files, including log messages, are in {output_dir}")
