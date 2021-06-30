@@ -68,6 +68,7 @@ class TestDatabaseUpdater:
                 ruleset_fixture,
                 some_dialects,
                 exemptions_fixture,
+                exclude_newwords=True,
             )
             # then
             # Check that the patched functions were called

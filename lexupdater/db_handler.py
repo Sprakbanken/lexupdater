@@ -63,7 +63,8 @@ class DatabaseUpdater:
     """
 
     def __init__(
-        self, db, rulesets, dialect_names, newwords=None, exemptions=None
+        self, db, rulesets, dialect_names, newwords=None,
+        exemptions=None, exclude_newwords=False
     ):
         """Set object attributes, connect to db and create temp tables."""
         if exemptions is None:
@@ -72,6 +73,7 @@ class DatabaseUpdater:
         self.word_table = "words_tmp"
         self.pron_table = "pron_tmp"
         self.newwords = newwords
+        self.exclude_newwords = exclude_newwords
         self.dialects = dialect_schema.validate(dialect_names)
         self.parsed_rules = parse_rules(
             self.dialects,
@@ -90,8 +92,11 @@ class DatabaseUpdater:
         self._cursor = self._connection.cursor()
         self._create_temp_tables()
         self._populate_temp_tables()
-        self._insert_newwords()
-        self._create_and_populate_dialect_tables()
+        if self.exclude_newwords:
+            self._create_and_populate_dialect_tables()
+        else:
+            self._insert_newwords()
+            self._create_and_populate_dialect_tables()
 
     def _create_temp_tables(self):
         logging.debug(
@@ -127,7 +132,7 @@ class DatabaseUpdater:
         self._connection.commit()
 
     def _insert_newwords(self):
-        if self.newwords is None:
+        if not self.newwords is None:
             logging.debug("Inserting lexical additions")
             word_vals, pron_vals = parse_newwords(self.newwords)
             word_insert_stmt = NEWWORD_INSERT.format(

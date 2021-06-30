@@ -57,6 +57,6 @@ def parse_newwords(newwords: pd.DataFrame) -> Tuple:
     word_df, pron_df = _process_newword_table(newwords_df)
     word_values, pron_values = [
         (list(df.itertuples(index=False, name=None)))
-        for df in [word_df, pron_fd]
+        for df in [word_df, pron_df]
     ]
     return (word_values, pron_values)
