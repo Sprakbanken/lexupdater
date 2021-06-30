@@ -9,10 +9,10 @@ import pandas as pd
 
 from .constants import UNIQUE_ID_PATTERN, newword_schema
 
-def _make_pron_table(newwords, proncolumnname):
+def _make_pron_table(newwords, pron_column_name):
     pron_df = newwords[
-        [proncolumnname, "unique_id"]
-    ][~newwords[proncolumnname].isna()]
+        [pron_column_name, "unique_id"]
+    ][~newwords[pron_column_name].isna()]
     pron_df["certainty"] = 1
     pron_df.columns = ["transcription", "unique_id", "certainty"]
     return pron_df
