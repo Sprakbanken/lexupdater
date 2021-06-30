@@ -139,6 +139,7 @@ class DatabaseUpdater:
         before applying it.
         """
         # The replacement string _ is not used for this query
+        logging.info("Fetch words that match the rule patterns")
         for dialect, pattern, _, conditional, conditions in self.parsed_rules:
             where_word = re.sub(
                 "WHERE unique_id",
@@ -173,6 +174,7 @@ class DatabaseUpdater:
         Fill in the query templates with the rules and exemptions before
         applying them.
         """
+        logging.info("Apply rule patterns, update transcriptions")
         for dialect, pattern, replacement, conditional, conditions in \
                 self.parsed_rules:
             where_word = WHERE_WORD_IN_STMT.format(
