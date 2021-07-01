@@ -63,8 +63,7 @@ class DatabaseUpdater:
     """
 
     def __init__(
-        self, db, rulesets, dialect_names, newwords=None,
-        exemptions=None, exclude_newwords=False
+        self, db, rulesets, dialect_names, newwords=None, exemptions=None,
     ):
         """Set object attributes, connect to db and create temp tables."""
         if exemptions is None:
@@ -73,7 +72,6 @@ class DatabaseUpdater:
         self.word_table = "words_tmp"
         self.pron_table = "pron_tmp"
         self.newwords = newwords
-        self.exclude_newwords = exclude_newwords
         self.dialects = dialect_schema.validate(dialect_names)
         self.parsed_rules = parse_rules(
             self.dialects,
@@ -92,11 +90,9 @@ class DatabaseUpdater:
         self._cursor = self._connection.cursor()
         self._create_temp_tables()
         self._populate_temp_tables()
-        if self.exclude_newwords:
-            self._create_and_populate_dialect_tables()
-        else:
+        if self.newwords is not None:
             self._insert_newwords()
-            self._create_and_populate_dialect_tables()
+        self._create_and_populate_dialect_tables()
 
     def _create_temp_tables(self):
         logging.debug(
@@ -132,24 +128,22 @@ class DatabaseUpdater:
         self._connection.commit()
 
     def _insert_newwords(self):
-        if not self.newwords is None:
-            logging.debug("Inserting lexical additions")
-            word_vals, pron_vals = parse_newwords(self.newwords)
-            word_insert_stmt = NEWWORD_INSERT.format(
-                table=self.word_table,
-                columns=NW_WORD_COLS[0],
-                vars=NW_WORD_COLS[1]
-            )
-            pron_insert_stmt = NEWWORD_INSERT.format(
-                table=self.pron_table,
-                columns=NW_PRON_COLS[0],
-                vars=NW_PRON_COLS[1]
-            )
-            self._cursor.executemany(word_insert_stmt, word_vals)
-            self._cursor.executemany(pron_insert_stmt, pron_vals)
-            self._connection.commit()
-        else:
-            pass
+        logging.debug("Inserting lexical additions")
+        word_vals, pron_vals = parse_newwords(self.newwords)
+        word_insert_stmt = NEWWORD_INSERT.format(
+            table=self.word_table,
+            columns=NW_WORD_COLS[0],
+            vars=NW_WORD_COLS[1]
+        )
+        pron_insert_stmt = NEWWORD_INSERT.format(
+            table=self.pron_table,
+            columns=NW_PRON_COLS[0],
+            vars=NW_PRON_COLS[1]
+        )
+        self._cursor.executemany(word_insert_stmt, word_vals)
+        self._cursor.executemany(pron_insert_stmt, pron_vals)
+        self._connection.commit()
+
 
     def _create_and_populate_dialect_tables(self):
         logging.debug("Creating and populating dialect tables")
