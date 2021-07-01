@@ -75,8 +75,8 @@ def db_updater_obj(ruleset_fixture, all_dialects, exemptions_fixture):
         str(Path('tests') / 'dummy_data.db'),  # Ensure OS agnostic file path
         ruleset_fixture,
         all_dialects,
-        exemptions_fixture,
-        exclude_newwords=True,
+        exemptions=exemptions_fixture,
+        newwords=None,
     )
     yield updater_obj
     updater_obj.close_connection()
