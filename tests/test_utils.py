@@ -1,7 +1,7 @@
 """Test suite for helper functions in utils.py."""
-from pathlib import Path
 from typing import Generator
 
+import pandas as pd
 import pytest
 
 from lexupdater import utils
@@ -61,13 +61,13 @@ def test_filter_list_by_list_not_valid(some_dialects, all_dialects):
 def module_file_path(tmp_path):
     """Create a python file with dummy variables, and return the path."""
     file_path = (tmp_path / "dummy_module.py")
-    module_content = """DATABASE = "tests/dummy_data.db"
-    OUTPUT_DIR = "tests/delete_me"
-    RULES_FILE = "tests/dummy_rules.py"
-    EXEMPTIONS_FILE = "tests/dummy_exemptions.py"
-    NEWWORD_FILE = "tests/dummy_newword.py"
+    module_content = """DATABASE = "a_database.db"
+    OUTPUT_DIR = "delete_this_folder"
+    RULES_FILE = "some_rules.py"
+    EXEMPTIONS_FILE = "and_some_exemptions.py"
+    NEWWORD_FILE = "all_brand_new_newwords.py"
     DIALECTS = [
-        "n_written",
+        "norwegian_dialect",
     ]
     """
     file_path.write_text(module_content.replace(r"    ", ""))
@@ -78,24 +78,21 @@ def test_load_module_from_path(module_file_path):
     # when
     result_module = utils.load_module_from_path(module_file_path)
     # then
-    assert result_module.DATABASE == "tests/dummy_data.db"
-    assert result_module.OUTPUT_DIR == "tests/delete_me"
-    assert result_module.RULES_FILE == "tests/dummy_rules.py"
-    assert result_module.EXEMPTIONS_FILE == "tests/dummy_exemptions.py"
-    assert result_module.NEWWORD_FILE == "tests/dummy_newword.py"
+    assert result_module.DATABASE == "a_database.db"
+    assert result_module.OUTPUT_DIR == "delete_this_folder"
+    assert result_module.RULES_FILE == "some_rules.py"
+    assert result_module.EXEMPTIONS_FILE == "and_some_exemptions.py"
+    assert result_module.NEWWORD_FILE == "all_brand_new_newwords.py"
     assert len(result_module.DIALECTS) == 1
-    assert result_module.DIALECTS == ["n_written"]
+    assert result_module.DIALECTS == ["norwegian_dialect"]
 
 
 def test_load_module_from_path_raises_error():
     file_path = "wrong_path_extension.txt"
     # given
-    with pytest.raises(AssertionError) as error:
+    with pytest.raises(AssertionError):
         # when
-        result = utils.load_module_from_path(file_path)
-        # then
-        assert result is None
-        assert error.value != 0
+        utils.load_module_from_path(file_path)
 
 
 def test_load_vars_from_module():
@@ -104,6 +101,7 @@ def test_load_vars_from_module():
     # when
     result = utils.load_vars_from_module(dummy_config)
     # then
+    assert isinstance(result, list)
     assert "tests/dummy_data.db" in result
     assert "tests/delete_me" in result
     assert "tests/dummy_rules.py" in result
@@ -112,21 +110,56 @@ def test_load_vars_from_module():
     assert ["n_written"] in result
 
 
-@pytest.mark.skip
 def test_load_data(module_file_path):
     # when
     result = utils.load_data(module_file_path)
-    assert False
+    # then
+    # verify the same as for load_vars_from_module, but different values
+    assert isinstance(result, list)
+    assert "a_database.db" in result
+    assert "delete_this_folder" in result
+    assert "some_rules.py" in result
+    assert "and_some_exemptions.py" in result
+    assert "all_brand_new_newwords.py" in result
+    assert ["norwegian_dialect"] in result
 
 
-def test_load_data_raises_error(module_file_path):
+def test_load_data_raises_error():
+    file_path = "wrong_path.txt"
     # given
-    with pytest.raises(AssertionError) as error:
+    with pytest.raises(SystemExit):
         # when
-        result = utils.load_data(module_file_path)
-        assert error.value == 0
+        utils.load_data(file_path)
 
 
-@pytest.mark.skip
-def test__load_newwords():
-    assert False
+@pytest.mark.parametrize(
+    "paths,col_names",
+    [
+        (["nyord02.csv"], ["token"]),
+        (["nyord.csv", "nyord02.csv"], ["token",
+                                        "transcription",
+                                        "alt_transcription_1",
+                                        "alt_transcription_2",
+                                        "alt_transcription_3",
+                                        "pos",
+                                        "morphology"]
+         ),
+        (["nyord02.csv"], ["word", "transcription", "feats"])
+    ],
+    ids=["minimal_input", "maximal_input", "wrong_input"]
+)
+def test__load_newwords(paths, col_names):
+    # given
+    valid_col_names = [
+        "token",
+        "transcription",
+        "alt_transcription_1",
+        "alt_transcription_2",
+        "alt_transcription_3",
+        "pos",
+        "morphology"
+    ]
+    result = utils._load_newwords(paths, col_names)[:5]
+
+    assert isinstance(result, pd.DataFrame)
+    assert all([col in valid_col_names for col in result.columns])
