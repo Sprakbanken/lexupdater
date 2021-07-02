@@ -28,31 +28,40 @@ hvor man bl.a. spesifiserer følgende variabler:
 
 Variabelnavn | Forklaring | Default-verdi
 ---|---|---
-`WORD_TABLE` | navnet på den midlertidige tabellen med ord fra leksikon-databasen | `"words_tmp"` 
 `DATABASE`  | filnavnet til backend-databasen i filstrukturen | `data / input / backend-db03.db`
 `OUTPUT_DIR` | filmappen hvor output blir lagret | `data / output`
-`DIALECTS` | navnet på gyldige dialektområder | `e_spoken, e_written, sw_spoken, sw_written, w_spoken, w_written, t_spoken, t_written, n_spoken, n_written`
 `RULES_FILE` | regelfil med søk-erstatt-regelsett-lister |  `rules.py`
 `EXEMPTIONS_FILE` | unntaksfil med lister over ord som er unntatt regel-oppdateringene | `exemptions.py`
+`NEWWORD_FILE` | Fil som definerer en pandas dataramme med nyord som skal legges til  |   `newword.py`
+`DIALECTS` | navnet på gyldige dialektområder | `e_spoken, e_written, sw_spoken, sw_written, w_spoken, w_written, t_spoken, t_written, n_spoken, n_written`
 
 
 ## Oppdatér leksikonet
 Hovedprogramsnutten er i fila `lexupdater/lexupdater.py`, som kan kjøres med 
 `python -m lexupdater` og med kommandolinje-argumenter som beskrevet under. 
-Der det ikke angis "gyldige verdier" er flagget et boolsk argument som slås 
-"på" .  
-
-Flagg | Forklaring  | Gyldige verdier/eksempler
----   | ---          | ---
-`-d`  | Generer leksikonfiler bare for spesifikke dialektområder  | `e_spoken, e_written, sw_spoken, sw_written, w_spoken, w_written, t_spoken, t_written, n_spoken, n_written`
-`-b`  | Skriv ut base-leksikonet, altså original-transkripsjonene fra NST | 
-`-m`  | Skriv ut hvilke ord som blir dekket av hvert regel-mønster | 
-`-v`  | Skriv ut mer detaljerte debug-beskjeder i loggen | 
-`-l`  | Angi et filnavn som loggen skrives til. Om ikke -l spesifiseres, skrives alt til terminalen. | `log.txt`
-
 Kjører man `lexupdater` uten argumenter, 
 genereres leksikonfiler med oppdaterte transkripsjoner for alle 
 dialektområdene.
+
+Der det ikke angis "gyldige verdier" er flagget et boolsk argument som slås 
+"på" .  
+Samme informasjon er tilgjengelig med `python -m lexupdater -h`.
+
+
+Flagg | Forklaring  | Gyldige verdier/eksempler
+---   | --- | ---
+`-b, --write-base`  | Skriv ut base-leksikonet, altså original-transkripsjonene fra NST. | 
+`-m, --match-words`  | Skriv ut hvilke ord som blir dekket av hvert regel-mønster. | 
+`-d, --dialects`  | Generer leksikonfiler bare for spesifikke dialektområder.  | `e_spoken, e_written, sw_spoken, sw_written, w_spoken, w_written, t_spoken, t_written, n_spoken, n_written`
+`-r, --rules-file` | Regelfil med søk-erstatt-regelsett-lister. | `rules.py`  
+`-e, --exemptions-file` | Unntaksfil med lister over ord som er unntatt regel-oppdateringene. | `exemptions.py`
+`-n, --newword-file` | Fil som definerer en pandas dataramme med nyord som skal legges til.  |   `newword.py` 
+`--db` | Filnavnet til backend-databasen i filstrukturen. | `data / input / backend-db03.db` 
+`-o, --output-dir` | Filmappen hvor output blir lagret. | `data / output`
+`-v, --verbose-info `  | Skriv ut logg-beskjeder til terminalen. |
+`-vv, --verbose-debug` | Skriv mer detaljerte logg-beskjeder til terminalen. | 
+`-c, --config-file` | Filsti til en python konfigurasjonsfil. | `config.py`
+`-h, --help` | Print informasjon om alle argumentene og avslutt. | 
 
 
 # For utviklere
@@ -83,7 +92,7 @@ make lint
 
 ## Bygg `lexupdater` som en python-pakke
 Ferdig-bygde Python-pakker er installérbare, og tillater å dele verktøyet 
-som en vanlig fil, samt installere pakken med `pip`. 
+som en vanlig fil, samt å installere pakken med `pip`. 
 
 ### Windows 
 ```shell

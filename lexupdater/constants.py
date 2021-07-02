@@ -5,10 +5,9 @@
 and select entries.
 """
 
-from schema import Schema, Optional
 import pandera as pa
 from pandera import Column, DataFrameSchema, Check
-
+from schema import Schema, Optional
 
 # Licit NoFAbet phones
 LICIT_PHONES = [
