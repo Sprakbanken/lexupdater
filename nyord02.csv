@@ -1,0 +1,8 @@
+token,transcription,pos,morphology,alt_transcription_1,alt_transcription_2,alt_transcription_3,number_of_years,freq,lemma,comment
+nettosummen,N EH1 T OH0 S UH3 M AX0 N,NN,SIN|DEF|MAS,,,,7,12,nettosum,
+nettchat,N EH2 T T SJ EH3 T,NN,SIN|DEF|MAS,,,,7,12,nettchat,
+nettverkskontakt,N EH2 T V AX0 R K S K OH0 N T AH3 K T,NN,SIN|IND|FEM,,,,7,12,nettverkskontakt,
+nettprosjektet,N EH1 T P R OH0 SJ EH3 K T AX0,NN,SIN|DEF|NEU,,,,7,12,nettprosjekt,
+nettoverdiene,N EH1 T OH0 V AX0 RD II3 AX0 N AX0,NN,PLU|DEF|FEM,,,,7,12,nettoverdie,
+nettsier,N EH2 T S II3 AX0 R,NN,PLU|IND|MAS,,,,7,12,nettsie,
+nettradiostasjoner,N EH2 T R AH0 D IH0 OH0 S T AH0 SJ OO3 N AX0 R,NN,PLU|IND|MAS,,,,7,12,nettradiostasjone,
