@@ -45,7 +45,7 @@ from .utils import (
     help="Apply replacement rules from the given file path.",
 )
 @click.option(
-    "-r",
+    "-e",
     "--exemptions-file",
     type=str,
     help="Apply exemptions from the given file path to the rules.",
