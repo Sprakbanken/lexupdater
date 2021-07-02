@@ -139,6 +139,11 @@ def main(**kwargs):
         # add the handler to the root logger
         logging.getLogger('').addHandler(console)
 
+    # Boolean flags that decide which operation to perform
+    write_base = kwargs.get("write_base")
+    match_words = kwargs.get("match_words")
+
+    # Data input files
     database = get_arg(kwargs.get("db"), config.DATABASE)
     user_dialects = get_arg(list(kwargs.get("dialects")), config.DIALECTS)
     rules_file = get_arg(kwargs.get("rules_file"), config.RULES_FILE)
@@ -147,22 +152,20 @@ def main(**kwargs):
     )
     newword_file = get_arg(kwargs.get("newword_file"), config.NEWWORD_FILE)
 
-    write_base = kwargs.get("write_base")
-    match_words = kwargs.get("match_words")
+    # Load file contents into python data structures
+    rules = load_data(rules_file)
+    exemptions = load_data(exemptions_file)
+    newwords = load_data(newword_file)[0]
+
     logging.info(
         "Loading contents of %s, %s, and %s and applying on %s. "
-        "All output will be written to %s",
+        "Output will be written to %s",
         rules_file,
         exemptions_file,
         newword_file,
         database,
         output_dir
     )
-
-    # Load arguments into python data structures
-    rules = load_data(rules_file)
-    exemptions = load_data(exemptions_file)
-    newwords = load_data(newword_file)
 
     # Log starting time
     begin_time = datetime.datetime.now()
@@ -174,7 +177,8 @@ def main(**kwargs):
         database,
         rules,
         user_dialects,
-        exemptions=exemptions
+        exemptions=exemptions,
+        newwords=newwords
     )
     # Run lexupdater according to user input
     if write_base:
