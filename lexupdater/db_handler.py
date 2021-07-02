@@ -168,21 +168,12 @@ class DatabaseUpdater:
         # The replacement string _ is not used for this query
         logging.info("Fetch words that match the rule patterns")
         for dialect, pattern, _, conditional, conditions in self.parsed_rules:
-            where_word = re.sub(
-                "WHERE unique_id",
-                "AND w.unique_id",
-                WHERE_WORD_IN_STMT.format(
-                    word_table=self.word_table, conditions=conditional
-                ),
-                1
-            ) if conditional else ""
-
             query = SELECT_QUERY.format(
                 columns=COL_WORD_PRON,
                 word_table=self.word_table,
                 pron_table=dialect,
                 where_regex=WHERE_REGEXP,
-                where_word_in_stmt=where_word
+                where_word_in_stmt=f" AND {conditional}" if conditional else ""
             )
             values = tuple([pattern] + conditions)
             logging.debug("Execute SQL Query: %s %s", query, values)
@@ -236,6 +227,7 @@ class DatabaseUpdater:
                 where_regex='',
                 where_word_in_stmt=''
             )
+            logging.debug("Execute SQL Query: %s", stmt)
             self.results[dialect] = self._cursor.execute(stmt).fetchall()
             logging.debug("Update results for %s ", dialect)
 
