@@ -35,7 +35,9 @@ def test_flatten_match_results():
     result = utils.flatten_match_results(nested_structure)
     # then
     assert isinstance(result, Generator)
-    for result_element, expected_element in zip(result, expected):
+    result_list = list(result)
+    assert len(expected) == len(result_list)
+    for result_element, expected_element in zip(result_list, expected):
         assert result_element == expected_element
 
 
