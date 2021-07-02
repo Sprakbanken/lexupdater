@@ -1,9 +1,9 @@
 """Utility functions for lexupdater"""
 
 import csv
-import sys
-import importlib.util
+import importlib
 import logging
+import sys
 from pathlib import Path
 from typing import Union, Iterable, List, Generator
 
