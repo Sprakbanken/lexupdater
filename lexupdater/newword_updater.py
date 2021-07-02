@@ -9,6 +9,7 @@ import pandas as pd
 
 from .constants import UNIQUE_ID_PATTERN, newword_schema
 
+
 def _make_pron_table(newwords, pron_column_name):
     pron_df = newwords[
         [pron_column_name, "unique_id"]
@@ -16,6 +17,7 @@ def _make_pron_table(newwords, pron_column_name):
     pron_df["certainty"] = 1
     pron_df.columns = ["transcription", "unique_id", "certainty"]
     return pron_df
+
 
 def _process_newword_table(newwords):
     newwords["unique_id"] = newwords.apply(
@@ -35,6 +37,7 @@ def _process_newword_table(newwords):
         ignore_index=True
     )
     return (word_df, pron_df)
+
 
 def parse_newwords(newwords: pd.DataFrame) -> Tuple:
     """Convert a DataFrame with lexical additions to a pair
