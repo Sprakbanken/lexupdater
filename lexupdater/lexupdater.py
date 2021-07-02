@@ -68,16 +68,16 @@ from .utils import (
     help="The directory path that files are written to.",
 )
 @click.option(
-    "-l",
-    "--log-file",
-    type=str,
-    help="Write all logging messages to log_file instead of the terminal."
+    "-v",
+    "--verbose-info",
+    is_flag=True,
+    help="Print log messages to the console in addition to the logging file."
 )
 @click.option(
-    "-v",
-    "--verbose",
+    "-vv",
+    "--verbose-debug",
     is_flag=True,
-    help="Print logging messages at the debugging level."
+    help="Print detailed log messages at debugging level to the console."
 )
 @click.option(
     "-c",
@@ -106,28 +106,60 @@ def main(**kwargs):
     config = load_module_from_path(config_file)
 
     # Parse input arguments from the command line and config file
-    write_base = kwargs.get("write_base")
-    match_words = kwargs.get("match_words")
-    log_file = kwargs.get("log_file")
-    verbose = kwargs.get("verbose")
-
     def get_arg(cli_arg, conf_value):
         """Prioritize the user input over config values"""
         return conf_value if cli_arg is None or not cli_arg else cli_arg
 
-    database = get_arg(kwargs.get("db"), config.DATABASE)
     output_dir = Path(
         get_arg(kwargs.get("output_dir"), config.OUTPUT_DIR)
     ).resolve()  # <-- Should make default linux paths work in Windows
+    # Ensure the output directory exists
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Configure logging
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format=(
+            "%(asctime)s | %(levelname)s "
+            "| %(module)s-%(funcName)s-%(lineno)04d | %(message)s"),
+        datefmt='%Y-%m-%d %H:%M',
+        filename=str(output_dir / "log.txt"),
+        filemode='a')
+    verbose_debug = kwargs.get("verbose_debug")
+    log_level = logging.DEBUG if verbose_debug else logging.INFO
+    if kwargs.get("verbose_info") or verbose_debug:
+        # define a Handler which writes log messages to stderr
+        console = logging.StreamHandler()
+        console.setLevel(log_level)
+        # set a format which is simpler for console use
+        formatter = logging.Formatter(
+            '%(asctime)-10s | %(levelname)s | %(message)s')
+        # tell the handler to use this format
+        console.setFormatter(formatter)
+        # add the handler to the root logger
+        logging.getLogger('').addHandler(console)
+
+    # Boolean flags that decide which operation to perform
+    write_base = kwargs.get("write_base")
+    match_words = kwargs.get("match_words")
+
+    # Data input files
+    database = get_arg(kwargs.get("db"), config.DATABASE)
     user_dialects = get_arg(list(kwargs.get("dialects")), config.DIALECTS)
     rules_file = get_arg(kwargs.get("rules_file"), config.RULES_FILE)
     exemptions_file = get_arg(
         kwargs.get("exemptions_file"), config.EXEMPTIONS_FILE
     )
     newword_file = get_arg(kwargs.get("newword_file"), config.NEWWORD_FILE)
+
+    # Load file contents into python data structures
+    rules = load_data(rules_file)
+    exemptions = load_data(exemptions_file)
+    newwords = load_data(newword_file)[0]
+
     logging.info(
         "Loading contents of %s, %s, and %s and applying on %s. "
-        "All output will be written to %s",
+        "Output will be written to %s",
         rules_file,
         exemptions_file,
         newword_file,
@@ -135,25 +167,10 @@ def main(**kwargs):
         output_dir
     )
 
-
-    # Load arguments into python data structures
-    rules = load_data(rules_file)
-    exemptions = load_data(exemptions_file)
-    newwords = load_data(newword_file)[0]
-
-    # Ensure the output directory exists
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    # Set up logging config
-    logging.basicConfig(
-        filename=(output_dir / log_file) if log_file else None,
-        level=logging.DEBUG if verbose else logging.INFO,
-        format='%(asctime)s | %(levelname)s | %(module)s | %(message)s',
-        datefmt='%Y-%m-%d %H:%M')
-
     # Log starting time
     begin_time = datetime.datetime.now()
-    logging.debug("Started lexupdater process at %s", begin_time.isoformat())
+    logging.info("START")
+    print(f"{begin_time} Loading database")
 
     # Initiate the database connection
     update_obj = DatabaseUpdater(
@@ -167,22 +184,21 @@ def main(**kwargs):
     if write_base:
         base = update_obj.get_base()
     if match_words:
-        logging.info("LEXUPDATER: Fetch words that match the rule patterns")
+        print("Run SELECT queries on the database")
         update_obj.select_words_matching_rules()
     else:
-        logging.info("LEXUPDATER: Apply rule patterns, update transcriptions")
+        print("Run UPDATE queries on the database")
         update_obj.update()
     update_obj.close_connection()
 
     # Calculating execution time
-    update_end_time = datetime.datetime.now()
-    update_time = update_end_time - begin_time
-    logging.debug("Database closed. Time: %s", update_time)
+    end_time = datetime.datetime.now()
+    update_time = end_time - begin_time
+    logging.info("Database closed. Update time: %s", update_time)
 
-    # Write output
+    print("Write output")
     if write_base:
         write_lexicon((output_dir / "base.txt"), base)
-
     for dialect in user_dialects:
         results = update_obj.results[dialect]
         if not results:
@@ -197,6 +213,7 @@ def main(**kwargs):
 
     # Calculating execution time
     file_gen_end_time = datetime.datetime.now()
-    file_gen_time = file_gen_end_time - update_end_time
+    file_gen_time = file_gen_end_time - end_time
     logging.debug("Files generated. Time: %s", file_gen_time)
-    logging.info("Done.")
+    print(file_gen_end_time, "Done.")
+    print(f"Output files, including log messages, are in {output_dir}")
