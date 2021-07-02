@@ -145,6 +145,7 @@ def parse_rules(
                 rule, exempt_words
             )
             for dialect in rule_dialects:
+                print(".", end="")
                 yield (
                     dialect,
                     rule["pattern"],
@@ -152,3 +153,4 @@ def parse_rules(
                     cond_string,
                     cond_values
                 )
+    print("")
