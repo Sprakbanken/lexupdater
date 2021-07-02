@@ -5,6 +5,7 @@ into lists of variables to fill slots in SQL query templates.
 """
 
 from typing import Tuple
+
 import pandas as pd
 
 from .constants import UNIQUE_ID_PATTERN, newword_schema

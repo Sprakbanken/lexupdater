@@ -144,7 +144,6 @@ class DatabaseUpdater:
         self._cursor.executemany(pron_insert_stmt, pron_vals)
         self._connection.commit()
 
-
     def _create_and_populate_dialect_tables(self):
         logging.debug("Creating and populating dialect tables")
         for dialect in self.dialects:

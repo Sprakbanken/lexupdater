@@ -45,7 +45,7 @@ dialektområdene.
 
 Der det ikke angis "gyldige verdier" er flagget et boolsk argument som slås 
 "på" .  
-Merk at samme informasjon er tilgjengelig med `python -m lexupdater -h`.
+Samme informasjon er tilgjengelig med `python -m lexupdater -h`.
 
 
 Flagg | Forklaring  | Gyldige verdier/eksempler
