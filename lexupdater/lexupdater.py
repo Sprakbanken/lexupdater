@@ -196,7 +196,7 @@ def main(**kwargs):
     update_time = end_time - begin_time
     logging.info("Database closed. Update time: %s", update_time)
 
-    print(f"Write output")
+    print("Write output")
     if write_base:
         write_lexicon((output_dir / "base.txt"), base)
     for dialect in user_dialects:
