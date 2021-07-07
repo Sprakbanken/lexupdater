@@ -82,7 +82,7 @@ def missing_trans():
 
 @pytest.fixture(scope="session")
 def missing_pos():
-    """A test example of a newwords list with a pos tag"""
+    """A test example of a newwords list with a missing pos tag"""
     word = {
         "token": ["testord"],
         "transcription": ["N EH1 T UU0 T G AA3 V AX0"],

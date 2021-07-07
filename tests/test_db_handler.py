@@ -137,4 +137,3 @@ class TestDatabaseUpdater:
             assert all(wd in result_words for wd in input_words)
             assert all(tn in result_trans for tn in main_trans)
             assert all(tn in result_trans for tn in alt_trans)
-            
