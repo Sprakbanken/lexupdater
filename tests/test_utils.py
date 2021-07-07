@@ -136,16 +136,20 @@ def test_load_data_raises_error():
 @pytest.mark.parametrize(
     "paths,col_names",
     [
-        (["nyord02.csv"], ["token"]),
-        (["nyord.csv", "nyord02.csv"], ["token",
-                                        "transcription",
-                                        "alt_transcription_1",
-                                        "alt_transcription_2",
-                                        "alt_transcription_3",
-                                        "pos",
-                                        "morphology"]
-         ),
-        (["nyord02.csv"], ["word", "transcription", "feats"])
+        (["tests/dummy_newwords_2.csv"], ["token"]),
+        (
+            ["tests/dummy_newwords_1.csv", "tests/dummy_newwords_2.csv"],
+            [
+                "token",
+                "transcription",
+                "alt_transcription_1",
+                "alt_transcription_2",
+                "alt_transcription_3",
+                "pos",
+                "morphology"
+            ]
+        ),
+        (["tests/dummy_newwords_2.csv"], ["word", "transcription", "feats"])
     ],
     ids=["minimal_input", "maximal_input", "wrong_input"]
 )
