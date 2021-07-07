@@ -92,6 +92,16 @@ newword_schema = DataFrameSchema({
     "morphology": Column(pa.String, nullable=True)
 })
 
+newword_column_names = [
+        "token",
+        "transcription",
+        "alt_transcription_1",
+        "alt_transcription_2",
+        "alt_transcription_3",
+        "pos",
+        "morphology"
+    ]
+
 # Define SQL query templates
 CREATE_PRON_TABLE_STMT = """CREATE TEMPORARY TABLE {pron_table_name} (
 pron_id INTEGER PRIMARY KEY AUTOINCREMENT,

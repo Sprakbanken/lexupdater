@@ -11,8 +11,10 @@ from .utils import (
     write_lexicon,
     flatten_match_results,
     load_data,
-    load_module_from_path
+    load_module_from_path,
+    load_newwords
 )
+from .constants import newword_column_names
 
 
 @click.command(context_settings={"help_option_names": ['-h', '--help']})
@@ -150,19 +152,19 @@ def main(**kwargs):
     exemptions_file = get_arg(
         kwargs.get("exemptions_file"), config.EXEMPTIONS_FILE
     )
-    newword_file = get_arg(kwargs.get("newword_file"), config.NEWWORD_FILE)
+    newword_files = config.NEWWORD_FILES
 
     # Load file contents into python data structures
     rules = load_data(rules_file)
     exemptions = load_data(exemptions_file)
-    newwords = load_data(newword_file)[0]
+    newwords = load_newwords(newword_files, newword_column_names)
 
     logging.info(
         "Loading contents of %s, %s, and %s and applying on %s. "
         "Output will be written to %s",
         rules_file,
         exemptions_file,
-        newword_file,
+        newword_files,
         database,
         output_dir
     )
