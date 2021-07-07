@@ -108,7 +108,6 @@ def test_load_vars_from_module():
     assert "tests/delete_me" in result
     assert "tests/dummy_rules.py" in result
     assert "tests/dummy_exemptions.py" in result
-    assert "tests/dummy_newword.py" in result
     assert ["n_written"] in result
 
 
@@ -150,7 +149,7 @@ def test_load_data_raises_error():
     ],
     ids=["minimal_input", "maximal_input", "wrong_input"]
 )
-def test__load_newwords(paths, col_names):
+def test_load_newwords(paths, col_names):
     # given
     valid_col_names = [
         "token",
@@ -161,7 +160,7 @@ def test__load_newwords(paths, col_names):
         "pos",
         "morphology"
     ]
-    result = utils._load_newwords(paths, col_names)[:5]
+    result = utils.load_newwords(paths, col_names)[:5]
 
     assert isinstance(result, pd.DataFrame)
     assert all([col in valid_col_names for col in result.columns])
