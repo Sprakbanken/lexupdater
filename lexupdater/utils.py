@@ -99,7 +99,7 @@ def load_data(file_rel_path: Union[str, Path]) -> List:
     return module_vars
 
 
-def load_newwords(csv_paths:list, column_names: list) -> pd.DataFrame:
+def load_newwords(csv_paths: list, column_names: list) -> pd.DataFrame:
     """Load lists of new words into a pandas DataFrame.
 
     New words to be added to the lexicon are specified in
@@ -129,11 +129,18 @@ def load_newwords(csv_paths:list, column_names: list) -> pd.DataFrame:
     _df_list = []
 
     for path in csv_paths:
-        new_word_df = pd.read_csv(
-            Path(path), header=0, index_col=None
-        )
-        # ignore columns in the column list if the csv doesn't contain them
-        col_names = filter_list_by_list(column_names, new_word_df.columns)
-        _df_list.append(new_word_df.loc[:, col_names])
-
+        try:
+            cur_path = Path(__file__).parent
+            full_path = cur_path.joinpath("..", path).resolve()
+            assert full_path.exists() and full_path.suffix == ".csv"
+            new_word_df = pd.read_csv(
+                full_path, header=0, index_col=None
+            )
+            # ignore columns in the column list if the csv doesn't contain them
+            col_names = filter_list_by_list(column_names, new_word_df.columns)
+            _df_list.append(new_word_df.loc[:, col_names])
+            print(new_word_df.loc[:, ["token"]])
+        except (FileNotFoundError, AssertionError) as error:
+            logging.error(error)
+            sys.exit(0)
     return pd.concat(_df_list, axis=0, ignore_index=True)
