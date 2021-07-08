@@ -99,7 +99,7 @@ def load_data(file_rel_path: Union[str, Path]) -> List:
     return module_vars
 
 
-def _load_newwords(csv_paths:list, column_names: list) -> pd.DataFrame:
+def load_newwords(csv_paths:list, column_names: list) -> pd.DataFrame:
     """Load lists of new words into a pandas DataFrame.
 
     New words to be added to the lexicon are specified in
@@ -130,7 +130,7 @@ def _load_newwords(csv_paths:list, column_names: list) -> pd.DataFrame:
 
     for path in csv_paths:
         new_word_df = pd.read_csv(
-            path, header=0, index_col=None
+            Path(path), header=0, index_col=None
         )
         # ignore columns in the column list if the csv doesn't contain them
         col_names = filter_list_by_list(column_names, new_word_df.columns)
