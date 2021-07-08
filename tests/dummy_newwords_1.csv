@@ -1,3 +1,4 @@
+token,transcription,pos,morphology,alt_transcription_1,alt_transcription_2,alt_transcription_3,number_of_years,freq,lemma,comment
 dummyord-én,N EH2 T M OE3 RN AX0,NN,SIN|IND|NEU,,,,21,5426,nettmøte,
 dummyord-to,N EH2 T AX0 R,NN,SIN|DEF|MAS,,,,21,4356,nettbank,
 dummyord-tre,N EH2 T UU0 T G AA3 V AX0,NN,SIN|IND|MAS,N EH1 T UU0 T G AA3 V AX0,N EH2 T UU0 T G EE3 V AX0,N EH1 T UU0 T G EE3 V AX0,21,1084,nettutgave,
