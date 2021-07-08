@@ -51,7 +51,8 @@ class TestDatabaseUpdater:
             db_handler.DatabaseUpdater._connect_and_populate.assert_called()
 
     def test_connect_and_populate(
-        self, ruleset_fixture, some_dialects, exemptions_fixture
+        self, ruleset_fixture, some_dialects,
+        exemptions_fixture, wordlist_fixture
     ):
         """Test the constructor of the DatabaseUpdater."""
         # patch functions that are called by _connect_and_populate
@@ -68,7 +69,7 @@ class TestDatabaseUpdater:
                 ruleset_fixture,
                 some_dialects,
                 exemptions=exemptions_fixture,
-                newwords=None,
+                newwords=wordlist_fixture,
             )
             # then
             # Check that the patched functions were called
@@ -115,3 +116,24 @@ class TestDatabaseUpdater:
         assert isinstance(result, list)
         assert result != []
         assert result[0] is not None
+
+    def test__insert_newwords(self, db_updater_obj, wordlist_fixture):
+        # when
+        db_updater_obj.update_results()
+        results = db_updater_obj.results
+        input_words = wordlist_fixture["token"]
+        main_trans = wordlist_fixture["transcription"]
+        alt_trans = [
+            x[1] for x in [
+                wordlist_fixture["alt_transcription_1"],
+                wordlist_fixture["alt_transcription_2"],
+                wordlist_fixture["alt_transcription_3"]
+            ]
+        ]
+        # then
+        for d in results.keys():
+            result_words = [x[0] for x in results[d]]
+            result_trans = [x[3] for x in results[d]]
+            assert all(wd in result_words for wd in input_words)
+            assert all(tn in result_trans for tn in main_trans)
+            assert all(tn in result_trans for tn in alt_trans)

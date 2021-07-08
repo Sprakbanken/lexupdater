@@ -13,8 +13,8 @@ from schema import Schema, Optional
 LICIT_PHONES = [
     "AA0", "AA1", "AA2", "AA3", "AE0", "AE1", "AE2", "AE3",
     "AEH0", "AEH1", "AEH2", "AEH3", "AEJ0", "AEJ1", "AEJ2",
-    "AEJ3", "AEW0", "AEW1", "AEW2", "AEW3", "AH0","AH1", "AH2",
-    "AH3", "AJ0", "AJ1", "AJ2", "AJ3", "AX0","AX1", "AX2", "AX3",
+    "AEJ3", "AEW0", "AEW1", "AEW2", "AEW3", "AH0", "AH1", "AH2",
+    "AH3", "AJ0", "AJ1", "AJ2", "AJ3", "AX0", "AX1", "AX2", "AX3",
     "B", "D", "DH", "DJ", "EE0", "EE1", "EE2", "EE3", "EH0",
     "EH1", "EH2", "EH3", "EXH", "F", "G", "H", "IH0", "IH1",
     "IH2", "IH3", "II0", "II1", "II2", "II3", "INH", "J", "JX0",
@@ -91,6 +91,16 @@ newword_schema = DataFrameSchema({
     "pos": Column(pa.String),
     "morphology": Column(pa.String, nullable=True)
 })
+
+newword_column_names = [
+        "token",
+        "transcription",
+        "alt_transcription_1",
+        "alt_transcription_2",
+        "alt_transcription_3",
+        "pos",
+        "morphology"
+    ]
 
 # Define SQL query templates
 CREATE_PRON_TABLE_STMT = """CREATE TEMPORARY TABLE {pron_table_name} (

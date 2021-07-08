@@ -4,7 +4,10 @@ DATABASE = "tests/dummy_data.db"
 OUTPUT_DIR = "tests/delete_me"
 RULES_FILE = "tests/dummy_rules.py"
 EXEMPTIONS_FILE = "tests/dummy_exemptions.py"
-NEWWORD_FILE = "tests/dummy_newword.py"
+NEWWORD_FILES = [
+        "nyord.csv",
+        "nyord02.csv"
+    ]
 DIALECTS = [
     "n_written",
 ]
