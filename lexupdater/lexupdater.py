@@ -152,7 +152,7 @@ def main(**kwargs):
     exemptions_file = get_arg(
         kwargs.get("exemptions_file"), config.EXEMPTIONS_FILE
     )
-        newword_files = get_arg(
+    newword_files = get_arg(
         list(kwargs.get("newword_files")), config.NEWWORD_FILES
     )
 
