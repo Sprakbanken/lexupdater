@@ -54,9 +54,10 @@ from .constants import newword_column_names
 )
 @click.option(
     "-n",
-    "--newword-file",
+    "--newword-files",
     type=str,
-    help="Path to file with new words to add to the lexicon."
+    multiple=True,
+    help="Paths to csv files with new words to add to the lexicon."
 )
 @click.option(
     "--db",
@@ -152,12 +153,9 @@ def main(**kwargs):
     exemptions_file = get_arg(
         kwargs.get("exemptions_file"), config.EXEMPTIONS_FILE
     )
-
-# Tests fail with this. Commented out temporarily
-#    newword_files = get_arg(
-#        list(kwargs.get("newword_files")), config.NEWWORD_FILES
-#    )
-    newword_files = config.NEWWORD_FILES
+    newword_files = get_arg(
+        list(kwargs.get("newword_files")), config.NEWWORD_FILES
+    )
 
     # Load file contents into python data structures
     rules = load_data(rules_file)
