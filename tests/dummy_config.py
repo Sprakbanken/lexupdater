@@ -5,8 +5,8 @@ OUTPUT_DIR = "tests/delete_me"
 RULES_FILE = "tests/dummy_rules.py"
 EXEMPTIONS_FILE = "tests/dummy_exemptions.py"
 NEWWORD_FILES = [
-        "nyord.csv",
-        "nyord02.csv"
+        "tests/dummy_newwords_1.csv",
+        "tests/dummy_newwords_2.csv"
     ]
 DIALECTS = [
     "n_written",
