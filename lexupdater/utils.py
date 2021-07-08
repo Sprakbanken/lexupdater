@@ -139,7 +139,6 @@ def load_newwords(csv_paths: list, column_names: list) -> pd.DataFrame:
             # ignore columns in the column list if the csv doesn't contain them
             col_names = filter_list_by_list(column_names, new_word_df.columns)
             _df_list.append(new_word_df.loc[:, col_names])
-            print(new_word_df.loc[:, ["token"]])
         except (FileNotFoundError, AssertionError) as error:
             logging.error(error)
             sys.exit(0)
