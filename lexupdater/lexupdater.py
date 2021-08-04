@@ -190,10 +190,10 @@ def main(**kwargs):
         base = update_obj.get_base()
     if match_words:
         print("Run SELECT queries on the database")
-        update_obj.select_words_matching_rules()
+        results = update_obj.select_words_matching_rules()
     else:
         print("Run UPDATE queries on the database")
-        update_obj.update()
+        results = update_obj.update()
     update_obj.close_connection()
 
     # Calculating execution time
@@ -205,16 +205,16 @@ def main(**kwargs):
     if write_base:
         write_lexicon((output_dir / "base.txt"), base)
     for dialect in user_dialects:
-        results = update_obj.results[dialect]
-        if not results:
+        data = results[dialect]
+        if not data:
             continue
         if match_words:
-            flat_matches = flatten_match_results(results)
+            flat_matches = flatten_match_results(data)
             out_file = output_dir / f"words_matching_rules_{dialect}.txt"
             write_lexicon(out_file, flat_matches)
         else:
             out_file = output_dir / f"updated_lexicon_{dialect}.txt"
-            write_lexicon(out_file, results)
+            write_lexicon(out_file, data)
 
     # Calculating execution time
     file_gen_end_time = datetime.datetime.now()

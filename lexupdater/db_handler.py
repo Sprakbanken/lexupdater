@@ -12,9 +12,10 @@ from .constants import (
     UPDATE_QUERY,
     WHERE_WORD_IN_STMT,
     SELECT_QUERY,
-    COL_WORD_PRON,
+    COL_WORD_PRON_ID,
     WHERE_REGEXP,
     COL_WORD_POS_FEATS_PRON,
+    COL_ID_WORD_FEATS_PRON_ID,
     NEWWORD_INSERT,
     NW_WORD_COLS,
     NW_PRON_COLS,
@@ -73,12 +74,11 @@ class DatabaseUpdater:
         self.pron_table = "pron_tmp"
         self.newwords = newwords
         self.dialects = dialect_schema.validate(dialect_names)
-        self.parsed_rules = parse_rules(
+        self.parsed_rules = list(parse_rules(
             self.dialects,
             rulesets,
             exemptions
-        )
-        self.results = {dialect: [] for dialect in self.dialects}
+        ))
         self._connect_and_populate()
 
     def _connect_and_populate(self):
@@ -163,12 +163,21 @@ class DatabaseUpdater:
 
         Construct the SQL query with values from the rules and exemptions
         before applying it.
+
+        Returns
+        -------
+        dict
+            Format: {dialect: [
+            (rule_pattern, (db_field1, db_field2, ...)),
+            ...]}
         """
-        # The replacement string _ is not used for this query
+        # Reset the result lists before populating it again
+        matching_entries = {dialect: [] for dialect in self.dialects}
         logging.info("Fetch words that match the rule patterns")
+        # The replacement string _ is not used for this query
         for dialect, pattern, _, conditional, conditions in self.parsed_rules:
             query = SELECT_QUERY.format(
-                columns=COL_WORD_PRON,
+                columns=COL_WORD_PRON_ID,
                 word_table=self.word_table,
                 pron_table=dialect,
                 where_regex=WHERE_REGEXP,
@@ -183,13 +192,23 @@ class DatabaseUpdater:
                 len(word_match),
                 dialect
             )
-            self.results[dialect] += [(pattern, word_match)]
+            matching_entries[dialect] += [(pattern, word_match)]
+        return matching_entries
 
-    def update(self):
+    def update(self, include_id: bool = False):
         """Apply SQL UPDATE queries to the dialect temp tables.
 
         Fill in the query templates with the rules and exemptions before
         applying them.
+
+        If include_id is True, the results attribute will include a column
+        with the unique_id of the word entry, and the pron_id of the
+        transcription.
+
+        Returns
+        -------
+        dict
+            Format: {dialect: [(database_field1, database_field2,...), ...]}
         """
         logging.info("Apply rule patterns, update transcriptions")
         for dialect, pattern, replacement, conditional, conditions in \
@@ -205,30 +224,43 @@ class DatabaseUpdater:
             logging.debug("Execute SQL Query: %s %s", query, values)
             self._cursor.execute(query, values)
             self._connection.commit()
-        self.update_results()
+        return self.update_results(include_id)
 
-    def update_results(self):
+    def update_results(self, include_id: bool = False) -> dict:
         """Assign updated lexicon state to the results attribute.
 
         For each dialect, fetch the state of the lexicon
         after the rules have been applied,
         and update the results dictionary with the new values.
 
+        If include_id is True, the results attribute will include a column
+        with the unique_id of the word entry, and the pron_id of the
+        transcription.
+
+        Returns
+        -------
         results: dict
             Dialect names are keys, and the resulting collection of values
             from each field in the database are the values
         """
+        results: dict = {dialect: [] for dialect in self.dialects}
+        columns_to_fetch = (
+            COL_ID_WORD_FEATS_PRON_ID if include_id
+            else COL_WORD_POS_FEATS_PRON
+        )
+
         for dialect in self.dialects:
             stmt = SELECT_QUERY.format(
-                columns=COL_WORD_POS_FEATS_PRON,
+                columns=columns_to_fetch,
                 word_table=self.word_table,
                 pron_table=dialect,
                 where_regex='',
                 where_word_in_stmt=''
             )
             logging.debug("Execute SQL Query: %s", stmt)
-            self.results[dialect] = self._cursor.execute(stmt).fetchall()
+            results[dialect] = self._cursor.execute(stmt).fetchall()
             logging.debug("Update results for %s ", dialect)
+        return results
 
     def get_base(self):
         """Select the state of the lexicon before the updates.

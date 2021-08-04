@@ -21,6 +21,8 @@ def write_lexicon(output_file: Union[str, Path], data: Iterable):
         A collection of dictionaries,
         where the 1st, 2nd, 3rd and 2nd to last elements are saved to disk
     """
+    if not data:    # Do not write empty data
+        return
     logging.info("Write lexicon data to %s", output_file)
     with open(output_file, 'w', newline='') as csvfile:
         out_writer = csv.writer(csvfile, delimiter='\t')
@@ -89,10 +91,18 @@ def load_data(file_rel_path: Union[str, Path]) -> List:
     try:
         cur_path = Path(__file__).parent
         full_path = cur_path.joinpath("..", file_rel_path).resolve()
-        assert full_path.exists() and full_path.suffix == ".py"
-    except (FileNotFoundError, AssertionError) as error:
-        logging.error(error)
-        sys.exit(0)
+        assert full_path.exists(), f"File doesn't exist {full_path}"
+        assert full_path.suffix == ".py", (
+            f"Inappropriate file type: {full_path.suffix}")
+    except (FileNotFoundError, AssertionError):
+        try:
+            full_path = Path(file_rel_path).resolve()
+            assert full_path.exists(), f"File doesn't exist {full_path}"
+            assert full_path.suffix == ".py", (f"Inappropriate file type: "
+                                               f"{full_path.suffix}")
+        except AssertionError as error:
+            logging.error(error)
+            sys.exit(0)
 
     module = load_module_from_path(full_path)
     module_vars = load_vars_from_module(module)
