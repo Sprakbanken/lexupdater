@@ -152,10 +152,10 @@ WHERE_REGEXP = "WHERE REGEXP(?,nofabet)"
 
 WORD_NOT_IN = "w.wordform NOT IN"
 
-COL_WORD_PRON = "w.wordform, p.nofabet "
+COL_WORD_PRON_ID = "w.wordform, p.nofabet, p.pron_id "
 
-COL_ID_WORD_FEATS_PRON = (
-    "w.unique_id, w.wordform, w.pos, w.feats, p.nofabet"
+COL_ID_WORD_FEATS_PRON_ID = (
+    "w.unique_id, w.wordform, w.pos, w.feats, p.nofabet, p.pron_id "
 )
 
 COL_WORD_POS_FEATS_PRON = "w.wordform, w.pos, w.feats, p.nofabet"

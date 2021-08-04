@@ -79,34 +79,30 @@ class TestDatabaseUpdater:
             patch_cursor.execute.assert_called()
 
     def test_select_words_matching_rules(self, db_updater_obj):
-        # given
-        assert all(result == [] for result in db_updater_obj.results.values())
         # when
-        db_updater_obj.select_words_matching_rules()
+        results = db_updater_obj.select_words_matching_rules()
         # then
         assert any(
-            [result != [] for result in db_updater_obj.results.values()]
+            [result != [] for result in results]
         )
 
     def test_update(self, db_updater_obj):
-        # given
-        assert all(result == [] for result in db_updater_obj.results.values())
         # when
-        db_updater_obj.update()
+        results = db_updater_obj.update()
         # then
         assert any(
-            [result != [] for result in db_updater_obj.results.values()]
+            [result != [] for result in results]
         )
 
     def test_update_results(self, db_updater_obj, all_dialects):
         # given
         test_dialect_name = sorted(list(all_dialects))[0]
         # when
-        db_updater_obj.update_results()
+        results = db_updater_obj.update_results()
         # then
-        assert isinstance(db_updater_obj.results, dict)
-        assert sorted(db_updater_obj.results.keys()) == sorted(all_dialects)
-        assert len(db_updater_obj.results.get(test_dialect_name)[0]) == 4
+        assert isinstance(results, dict)
+        assert sorted(results.keys()) == sorted(all_dialects)
+        assert len(results.get(test_dialect_name)[0]) == 4
 
     def test_get_base(self, db_updater_obj):
         # when
@@ -119,8 +115,7 @@ class TestDatabaseUpdater:
 
     def test__insert_newwords(self, db_updater_obj, wordlist_fixture):
         # when
-        db_updater_obj.update_results()
-        results = db_updater_obj.results
+        results = db_updater_obj.update_results()
         input_words = wordlist_fixture["token"]
         main_trans = wordlist_fixture["transcription"]
         alt_trans = [
