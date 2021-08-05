@@ -159,8 +159,11 @@ def main(**kwargs):
 
     # Load file contents into python data structures
     rules = load_data(rules_file)
-    exemptions = load_data(exemptions_file)
-    newwords = load_newwords(newword_files, newword_column_names)
+    exemptions = load_data(exemptions_file) if exemptions_file else None
+    newwords = (
+        load_newwords(newword_files, newword_column_names)
+        if newword_files else None
+    )
 
     logging.info(
         "Loading contents of %s, %s, and %s and applying on %s. "
