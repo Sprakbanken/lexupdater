@@ -128,7 +128,7 @@ def test_load_data(module_file_path):
 def test_load_data_raises_error():
     file_path = "wrong_path.txt"
     # given
-    with pytest.raises(SystemExit):
+    with pytest.raises(AssertionError):
         # when
         utils.load_data(file_path)
 

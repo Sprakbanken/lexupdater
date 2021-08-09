@@ -95,14 +95,10 @@ def load_data(file_rel_path: Union[str, Path]) -> List:
         assert full_path.suffix == ".py", (
             f"Inappropriate file type: {full_path.suffix}")
     except (FileNotFoundError, AssertionError):
-        try:
-            full_path = Path(file_rel_path).resolve()
-            assert full_path.exists(), f"File doesn't exist {full_path}"
-            assert full_path.suffix == ".py", (f"Inappropriate file type: "
-                                               f"{full_path.suffix}")
-        except AssertionError as error:
-            logging.error(error)
-            sys.exit(0)
+        full_path = Path(file_rel_path).resolve()
+        assert full_path.exists(), f"File doesn't exist {full_path}"
+        assert full_path.suffix == ".py", (f"Inappropriate file type: "
+                                           f"{full_path.suffix}")
 
     module = load_module_from_path(full_path)
     module_vars = load_vars_from_module(module)
@@ -151,5 +147,4 @@ def load_newwords(csv_paths: list, column_names: list) -> pd.DataFrame:
             _df_list.append(new_word_df.loc[:, col_names])
         except (FileNotFoundError, AssertionError) as error:
             logging.error(error)
-            sys.exit(0)
     return pd.concat(_df_list, axis=0, ignore_index=True)
