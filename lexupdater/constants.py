@@ -55,7 +55,7 @@ constraint_schema = Schema({
 
 rule_schema = Schema({
     "pattern": str,
-    "repl": str,
+    "replacement": str,
     "constraints": [Optional(constraint_schema.schema)],
 })
 
@@ -65,7 +65,7 @@ ruleset_schema = Schema({
     "rules": [rule_schema.schema],
 })
 
-exemption_schema = Schema([{"ruleset": str, "words": list}])
+exemption_schema = Schema({"ruleset": str, "words": list})
 
 _phone_check = lambda s: all(
     x in LICIT_PHONES for x in s.split(" ")
