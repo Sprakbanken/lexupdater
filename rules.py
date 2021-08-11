@@ -9,8 +9,8 @@
 "rules" contains a list of replacement rules.
     Each rule consists of
     "pattern", which is a regex pattern for a certain transcription,
-    "repl" which is a replacement referencing the pattern,
-    and "constraints", a(n optionally empty) list of dicts constraining
+    "replacement" which is a string to replace the pattern with,
+    and "constraints", an optional list of dicts constraining
     the replacement only to words with given metadata.
     In the constraints dicts,
         "field" gives the word metadata field (corresponding to fields in the
@@ -20,7 +20,7 @@
         and "is_regex", which should be True if the pattern is a regex and
         False otherwise.
 
-Note that multiple rules may affect the same  pronunciations,
+Note that multiple rules may affect the same pronunciations,
 and that the ordering of the rules may be of importance for the result.
 """
 
@@ -29,8 +29,14 @@ test1 = {
     "areas": ["e_spoken"],
     "name": "retrotest",
     "rules": [
-        {"pattern": r"\b(R)([NTD])\b", "repl": r"\1 \2", "constraints": []},
-        {"pattern": r"\b(R)(NX0)\b", "repl": r"\1 AX0 N", "constraints": []},
+        {
+            "pattern": r"\b(R)([NTD])\b",
+            "replacement": r"\1 \2",
+            "constraints": []},
+        {
+            "pattern": r"\b(R)(NX0)\b",
+            "replacement": r"\1 AX0 N",
+            "constraints": []},
     ],
 }
 
@@ -41,7 +47,7 @@ test2 = {
     "rules": [
         {
             "pattern": r"\bAX0 R$",
-            "repl": r"AA0 R",
+            "replacement": r"AA0 R",
             "constraints": [
                 {"field": "pos", "pattern": r"NN", "is_regex": False},
                 {"field": "feats", "pattern": r"MAS", "is_regex": True},
@@ -49,7 +55,7 @@ test2 = {
         },
         {
             "pattern": r"\bNX0 AX0$",
-            "repl": r"AA0 N AX0",
+            "replacement": r"AA0 N AX0",
             "constraints": [
                 {"field": "pos", "pattern": r"NN", "is_regex": False},
                 {"field": "feats", "pattern": r"MAS", "is_regex": True},

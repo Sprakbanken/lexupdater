@@ -28,7 +28,7 @@ class TestDatabaseUpdater:
     """
 
     def test_database_updater(
-        self, ruleset_fixture, some_dialects, exemptions_fixture
+        self, ruleset_list, some_dialects, exemptions_list
     ):
         """
         Test the constructor of the DatabaseUpdater
@@ -41,9 +41,9 @@ class TestDatabaseUpdater:
             # when
             result = db_handler.DatabaseUpdater(
                 DATABASE,
-                ruleset_fixture,
+                ruleset_list,
                 some_dialects,
-                exemptions_fixture,
+                exemptions_list,
             )
             # then
             assert isinstance(result, db_handler.DatabaseUpdater)
@@ -51,8 +51,8 @@ class TestDatabaseUpdater:
             db_handler.DatabaseUpdater._connect_and_populate.assert_called()
 
     def test_connect_and_populate(
-        self, ruleset_fixture, some_dialects,
-        exemptions_fixture, wordlist_fixture
+        self, ruleset_list, some_dialects,
+        exemptions_list, wordlist_fixture
     ):
         """Test the constructor of the DatabaseUpdater."""
         # patch functions that are called by _connect_and_populate
@@ -66,9 +66,9 @@ class TestDatabaseUpdater:
             # when
             _ = db_handler.DatabaseUpdater(
                 DATABASE,
-                ruleset_fixture,
+                ruleset_list,
                 some_dialects,
-                exemptions=exemptions_fixture,
+                exemptions=exemptions_list,
                 newwords=wordlist_fixture,
             )
             # then

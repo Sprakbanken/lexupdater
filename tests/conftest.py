@@ -6,17 +6,41 @@ import pandas as pd
 import pytest
 
 from lexupdater.db_handler import DatabaseUpdater
+from lexupdater.rule_objects import Rule, RuleSet
 
+
+
+@pytest.fixture
+def rule_fixture():
+    """Dummy rule to be used in tests."""
+    return Rule(
+        pattern="transcription_pattern_to_replace",
+        replacement="new_transcription",
+        constraints=[
+            {"field": "column_name", "pattern": "value", "is_regex": True}
+        ]
+    )
+
+
+@pytest.fixture
+def ruleset_fixture(rule_fixture):
+    """Dummy rule set object."""
+    return RuleSet(
+            name="test_rule_set",
+            areas=["e_spoken"],
+            rules=[rule_fixture],
+            exempt_words=["exempt_word"]
+        )
 
 @pytest.fixture(scope="session")
-def ruleset_fixture():
+def ruleset_list():
     """Set up a test value for the rules."""
     from dummy_rules import test1, test2
     return [test1, test2]
 
 
 @pytest.fixture(scope="session")
-def exemptions_fixture():
+def exemptions_list():
     """Test value for the exemptions."""
     from dummy_exemptions import exemption1, exemption2
     return [exemption1, exemption2]
@@ -111,17 +135,17 @@ def invalid_trans():
 
 
 @pytest.fixture
-def invalid_config_values(request, ruleset_fixture, exemptions_fixture):
+def invalid_config_values(request, ruleset_list, exemptions_list):
     """Manipulated input data to test the schema validation."""
     if request.param == "rules":
         return (
-            ruleset_fixture + [{"unexpected_key": "unexpected_value"}],
-            exemptions_fixture,
+            ruleset_list + [{"unexpected_key": "unexpected_value"}],
+            exemptions_list,
         )
     elif request.param == "exemptions":
         return (
-            ruleset_fixture,
-            exemptions_fixture + [{"unexpected_key": "unexpected_value"}],
+            ruleset_list,
+            exemptions_list + [{"unexpected_key": "unexpected_value"}],
         )
     else:
         raise ValueError("invalid internal test config")
@@ -129,7 +153,7 @@ def invalid_config_values(request, ruleset_fixture, exemptions_fixture):
 
 @pytest.fixture(scope="function")
 def db_updater_obj(
-    ruleset_fixture, all_dialects, exemptions_fixture, wordlist_fixture
+    ruleset_list, all_dialects, exemptions_list, wordlist_fixture
         ):
     """Instance of the class object we want to test.
 
@@ -141,9 +165,9 @@ def db_updater_obj(
     """
     updater_obj = DatabaseUpdater(
         str(Path('tests') / 'dummy_data.db'),  # Ensure OS agnostic file path
-        ruleset_fixture,
+        ruleset_list,
         all_dialects,
-        exemptions=exemptions_fixture,
+        exemptions=exemptions_list,
         newwords=wordlist_fixture,
     )
     yield updater_obj
