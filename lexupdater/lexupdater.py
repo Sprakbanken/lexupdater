@@ -12,7 +12,8 @@ from .utils import (
     flatten_match_results,
     load_data,
     load_module_from_path,
-    load_newwords
+    load_newwords,
+    convert_lex_to_mfa
 )
 from .constants import newword_column_names
 
@@ -31,6 +32,15 @@ from .constants import newword_column_names
     help=(
         "Write file with the words that will be affected by update rules "
         "for the given dialects."
+    )
+)
+@click.option(
+    "-l",
+    "--mfa-lexicon",
+    is_flag=True,
+    help=(
+        "Convert the output lexicon files to a format that is compatible with "
+        "the Montreal Forced Aligner algorithm. "
     )
 )
 @click.option(
@@ -145,6 +155,7 @@ def main(**kwargs):
     # Boolean flags that decide which operation to perform
     write_base = kwargs.get("write_base")
     match_words = kwargs.get("match_words")
+    mfa_lexicon = kwargs.get("mfa_lexicon")
 
     # Data input files
     database = get_arg(kwargs.get("db"), config.DATABASE)
@@ -218,6 +229,8 @@ def main(**kwargs):
         else:
             out_file = output_dir / f"updated_lexicon_{dialect}.txt"
             write_lexicon(out_file, data)
+    if mfa_lexicon:
+        convert_lex_to_mfa(lex_dir=output_dir)
 
     # Calculating execution time
     file_gen_end_time = datetime.datetime.now()
