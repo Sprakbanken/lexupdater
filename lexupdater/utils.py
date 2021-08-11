@@ -312,7 +312,10 @@ def convert_lex_to_mfa(
         First part of output lexicon filenames. Extended with dialect name.
     """
     def format_line(line):
-        return f"{line[0]} {line[-1]}"
+        return f"{line[0]} {replace_phonemes(line[-1])}"
+
+    def replace_phonemes(transcription: str):
+        return re.sub(r"\bRS\b", " SJ ", transcription)
 
     directory = Path(lex_dir)
 

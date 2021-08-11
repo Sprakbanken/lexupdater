@@ -124,7 +124,7 @@ class Rule:
     @constraints.setter
     def constraints(self, constraint_list):
 
-        original_constraints = self._constraints
+        original_constraints = self._constraints.copy()
         if len(constraint_list) == 0:
             logging.debug("Resetting the constraints to an empty list.")
             self._constraints = []
@@ -244,7 +244,7 @@ class RuleSet:
 
     @rules.setter
     def rules(self, rule_list: list):
-        original_rules = self._rules
+        original_rules = self._rules.copy()
         if len(rule_list) == 0:
             logging.debug("Resetting the rules to an empty list.")
             self._rules = []
