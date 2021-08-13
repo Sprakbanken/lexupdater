@@ -1,8 +1,10 @@
 """Transcription updates for a pronunciation lexicon in sqlite3 db format."""
 
 import datetime
+import json
 import logging
 from pathlib import Path
+from typing import Iterable
 
 import click
 
@@ -18,7 +20,56 @@ from .utils import (
 from .constants import newword_column_names
 
 
+def configure(ctx, param, filename):
+    cfg = load_module_from_path(filename).__dict__
+    ctx.default_map = {key.lower():value for key, value in cfg.items()}
+
+
+def split_multiple_args(ctx, param, arg):
+    if isinstance(arg, Iterable):
+        return [s for string in arg for s in string.split(",")]
+    if isinstance(arg, str):
+        return arg.split(",")
+
+
+def configure_logging(ctx, param, verbose):
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format=(
+            "%(asctime)s | %(levelname)s "
+            "| %(module)s-%(funcName)s-%(lineno)04d | %(message)s"),
+        datefmt='%Y-%m-%d %H:%M',
+        filename=ctx.default_map.get("output_dir",".") + "/log.txt",
+        filemode='a')
+
+    def log_level(verbosity: int):
+        return (3 - verbosity) * 10 if verbosity in (0, 1, 2) else 10
+
+    if verbose:
+        # define a Handler which writes log messages to stderr
+        console = logging.StreamHandler()
+        console.setLevel(log_level(verbose))
+        # set a format which is simpler for console use
+        formatter = logging.Formatter(
+            '%(asctime)-10s | %(levelname)s | %(message)s')
+        # tell the handler to use this format
+        console.setFormatter(formatter)
+        # add the handler to the root logger
+        logging.getLogger('').addHandler(console)
+
+    return verbose
+
 @click.command(context_settings={"help_option_names": ['-h', '--help']})
+@click.option(
+    '-c', '--config',
+    type=click.Path(dir_okay=False),
+    default="./config.py",
+    callback=configure,
+    is_eager=True,
+    expose_value=False,
+    help='Read config defaults from the specified .py file',
+    show_default=True,
+)
 @click.option(
     "-b",
     "--write-base",
@@ -29,26 +80,40 @@ from .constants import newword_column_names
     "-m",
     "--match-words",
     is_flag=True,
-    help=(
-        "Write file with the words that will be affected by update rules "
-        "for the given dialects."
-    )
+    help="Write file with the words that will be affected by update rules "
+         "for the given dialects."
 )
 @click.option(
     "-l",
     "--mfa-lexicon",
     is_flag=True,
-    help=(
-        "Convert the output lexicon files to a format that is compatible with "
-        "the Montreal Forced Aligner algorithm. "
-    )
+    help="Convert the output lexicon files to a format that is compatible with "
+         "the Montreal Forced Aligner algorithm. "
+)
+@click.option(
+    "-s",
+    "--spoken",
+    "spoken_prob",
+    default=1.0,
+    help="Probability assigned to spoken dialectal transcriptions in the MFA "
+         "dictionary, if --mfa-lexicon is enabled."
+)
+@click.option(
+    "-w",
+    "--written",
+    "written_prob",
+    default=1.0,
+    help="Probability assigned to dialectal transcriptions close to written "
+         "form in the MFA dictionary, if --mfa-lexicon is enabled."
 )
 @click.option(
     "-d",
     "--dialects",
     type=str,
     multiple=True,
-    help="Apply replacement rules on one or more specified dialects.",
+    callback=split_multiple_args,
+    help="Apply replacement rules on one or more specified dialects. "
+         "Args must be separated by a simple comma (,) and no white-space.",
 )
 @click.option(
     "-r",
@@ -63,14 +128,26 @@ from .constants import newword_column_names
     help="Apply exemptions from the given file path to the rules.",
 )
 @click.option(
+    "--no-exemptions",
+    is_flag=True,
+    help="Disable any exemptions."
+)
+@click.option(
     "-n",
     "--newword-files",
     type=str,
     multiple=True,
-    help="Paths to csv files with new words to add to the lexicon."
+    callback=split_multiple_args,
+    help="Paths to csv files with new words to add to the lexicon.",
 )
 @click.option(
-    "--db",
+    "--no-newwords",
+    is_flag=True,
+    help="Disable any newword-updates."
+)
+@click.option(
+    "-db",
+    "--database",
     type=str,
     help="The path to the lexicon database.",
 )
@@ -82,23 +159,11 @@ from .constants import newword_column_names
 )
 @click.option(
     "-v",
-    "--verbose-info",
-    is_flag=True,
-    help="Print log messages to the console in addition to the logging file."
-)
-@click.option(
-    "-vv",
-    "--verbose-debug",
-    is_flag=True,
-    help="Print detailed log messages at debugging level to the console."
-)
-@click.option(
-    "-c",
-    "--config-file",
-    type=str,
-    default="config.py",
-    show_default=True,
-    help="Path to config.py file."
+    "--verbose",
+    count=True,
+    callback=configure_logging,
+    help="Print logging messages to the console in addition to the log file. "
+         "-v is informative, -vv is detailed (for debugging)."
 )
 def main(**kwargs):
     """Apply the dialect update rules on the base lexicon.
@@ -114,66 +179,37 @@ def main(**kwargs):
     The modifications to the lexicon are written to
     new, dialect-specific files.
     """
-    # Load and import config
-    config_file = Path(kwargs.get("config_file")).resolve()
-    config = load_module_from_path(config_file)
+    if kwargs.get("verbose"):
+        click.secho(
+            f"Script configuration values: \n"
+            f"{json.dumps(kwargs, sort_keys=True, indent=4)}", fg="yellow")
 
-    # Parse input arguments from the command line and config file
-    def get_arg(cli_arg, conf_value):
-        """Prioritize the user input over config values"""
-        return conf_value if cli_arg is None or not cli_arg else cli_arg
+    # default POSIX paths should work in Windows
+    output_dir = Path(kwargs.get("output_dir")).resolve()
 
-    output_dir = Path(
-        get_arg(kwargs.get("output_dir"), config.OUTPUT_DIR)
-    ).resolve()  # <-- Should make default linux paths work in Windows
     # Ensure the output directory exists
     output_dir.mkdir(parents=True, exist_ok=True)
-
-    # Configure logging
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format=(
-            "%(asctime)s | %(levelname)s "
-            "| %(module)s-%(funcName)s-%(lineno)04d | %(message)s"),
-        datefmt='%Y-%m-%d %H:%M',
-        filename=str(output_dir / "log.txt"),
-        filemode='a')
-    verbose_debug = kwargs.get("verbose_debug")
-    log_level = logging.DEBUG if verbose_debug else logging.INFO
-    if kwargs.get("verbose_info") or verbose_debug:
-        # define a Handler which writes log messages to stderr
-        console = logging.StreamHandler()
-        console.setLevel(log_level)
-        # set a format which is simpler for console use
-        formatter = logging.Formatter(
-            '%(asctime)-10s | %(levelname)s | %(message)s')
-        # tell the handler to use this format
-        console.setFormatter(formatter)
-        # add the handler to the root logger
-        logging.getLogger('').addHandler(console)
 
     # Boolean flags that decide which operation to perform
     write_base = kwargs.get("write_base")
     match_words = kwargs.get("match_words")
     mfa_lexicon = kwargs.get("mfa_lexicon")
+    no_exemptions = kwargs.get("no_exemptions")
+    no_newwords = kwargs.get("no_newwords")
 
     # Data input files
-    database = get_arg(kwargs.get("db"), config.DATABASE)
-    user_dialects = get_arg(list(kwargs.get("dialects")), config.DIALECTS)
-    rules_file = get_arg(kwargs.get("rules_file"), config.RULES_FILE)
-    exemptions_file = get_arg(
-        kwargs.get("exemptions_file"), config.EXEMPTIONS_FILE
-    )
-    newword_files = get_arg(
-        list(kwargs.get("newword_files")), config.NEWWORD_FILES
-    )
+    database = kwargs.get("database")
+    user_dialects = kwargs.get("dialects")
+    rules_file = kwargs.get("rules_file")
+    exemptions_file = kwargs.get("exemptions_file")
+    newword_files = kwargs.get("newword_files")
 
     # Load file contents into python data structures
     rules = load_data(rules_file)
-    exemptions = load_data(exemptions_file) if exemptions_file else None
+    exemptions = load_data(exemptions_file) if not no_exemptions else None
     newwords = (
         load_newwords(newword_files, newword_column_names)
-        if newword_files else None
+        if not no_newwords else None
     )
 
     logging.info(
@@ -189,7 +225,7 @@ def main(**kwargs):
     # Log starting time
     begin_time = datetime.datetime.now()
     logging.info("START")
-    print(f"{begin_time} Loading database")
+    click.echo(f"{begin_time} Loading database")
 
     # Initiate the database connection
     update_obj = DatabaseUpdater(
@@ -203,10 +239,10 @@ def main(**kwargs):
     if write_base:
         base = update_obj.get_base()
     if match_words:
-        print("Run SELECT queries on the database")
+        click.echo("Run SELECT queries on the database")
         results = update_obj.select_words_matching_rules()
     else:
-        print("Run UPDATE queries on the database")
+        click.echo("Run UPDATE queries on the database")
         results = update_obj.update()
     update_obj.close_connection()
 
@@ -215,7 +251,7 @@ def main(**kwargs):
     update_time = end_time - begin_time
     logging.info("Database closed. Update time: %s", update_time)
 
-    print("Write output")
+    click.echo("Write output")
     if write_base:
         write_lexicon((output_dir / "base.txt"), base)
     for dialect in user_dialects:
@@ -230,11 +266,19 @@ def main(**kwargs):
             out_file = output_dir / f"updated_lexicon_{dialect}.txt"
             write_lexicon(out_file, data)
     if mfa_lexicon:
-        convert_lex_to_mfa(lex_dir=output_dir)
+        click.echo("Convert lexica to MFA dict format")
+        logging.info("Converting lexica for %s to MFA format", user_dialects)
+        convert_lex_to_mfa(
+            lex_dir=output_dir,
+            dialects=user_dialects,
+            combine_dialect_forms=True,
+            written_prob=kwargs.get("written_prob"),
+            spoken_prob=kwargs.get("spoken_prob"),
+        )
 
     # Calculating execution time
     file_gen_end_time = datetime.datetime.now()
     file_gen_time = file_gen_end_time - end_time
     logging.debug("Files generated. Time: %s", file_gen_time)
-    print(file_gen_end_time, "Done.")
-    print(f"Output files, including log messages, are in {output_dir}")
+    click.echo(f"Output files, including log messages, are in {output_dir}")
+    click.echo(f"{file_gen_end_time} Done.")

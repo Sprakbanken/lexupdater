@@ -28,12 +28,12 @@ hvor man bl.a. spesifiserer følgende variabler:
 
 Variabelnavn | Forklaring | Default-verdi
 ---|---|---
-`DATABASE`  | filnavnet til backend-databasen i filstrukturen | `data / input / backend-db03.db`
-`OUTPUT_DIR` | filmappen hvor output blir lagret | `data / output`
-`RULES_FILE` | regelfil med søk-erstatt-regelsett-lister |  `rules.py`
-`EXEMPTIONS_FILE` | unntaksfil med lister over ord som er unntatt regel-oppdateringene | `exemptions.py`
-`NEWWORD_FILE` | Fil som definerer en pandas dataramme med nyord som skal legges til  |   `newword.py`
-`DIALECTS` | navnet på gyldige dialektområder | `e_spoken, e_written, sw_spoken, sw_written, w_spoken, w_written, t_spoken, t_written, n_spoken, n_written`
+`DATABASE`  | Filsti til backend-databasen i filstrukturen | `data input/backend-db03.db`
+`OUTPUT_DIR` | Filmappe hvor output blir lagret | `data/output`
+`RULES_FILE` | Python-fil med søk-erstatt-regelsett-lister |  `rules.py`
+`EXEMPTIONS_FILE` | Python-fil med lister over ord som er unntatt regel-oppdateringene | `exemptions.py`
+`NEWWORD_FILES` | CSV-filer med nyord som skal legges til  |   `nyord.csv, nyord2.csv`
+`DIALECTS` | Navn på gyldige dialektområder | `e_spoken, e_written, sw_spoken, sw_written, w_spoken, w_written, t_spoken, t_written, n_spoken, n_written`
 
 
 ## Oppdatér leksikonet
@@ -50,17 +50,21 @@ Samme informasjon er tilgjengelig med `python -m lexupdater -h`.
 
 Flagg | Forklaring  | Gyldige verdier/eksempler
 ---   | --- | ---
+`-c, --config` | Filsti til en python-konfigurasjonsfil. | `config.py`
 `-b, --write-base`  | Skriv ut base-leksikonet, altså original-transkripsjonene fra NST. | 
 `-m, --match-words`  | Skriv ut hvilke ord som blir dekket av hvert regel-mønster. | 
+`-l, --mfa-lexicon` | Formater leksikon-filer for å brukes med "Montreal Forced Aligner"-algoritmen. |
+`-s, --spoken` | Sannsynlighet/vekttall (mellom 0 og 1) for talemålsnære transkripsjoner av ord i MFA-formaterte uttaleleksika. | `1.0`
+`-w --written` | Sannsynlighet/vekttall (mellom 0 og 1) for skriftnære transkripsjoner av ord i MFA-formaterte uttaleleksika. | `1.0`
 `-d, --dialects`  | Generer leksikonfiler bare for spesifikke dialektområder.  | `e_spoken, e_written, sw_spoken, sw_written, w_spoken, w_written, t_spoken, t_written, n_spoken, n_written`
-`-r, --rules-file` | Regelfil med søk-erstatt-regelsett-lister. | `rules.py`  
-`-e, --exemptions-file` | Unntaksfil med lister over ord som er unntatt regel-oppdateringene. | `exemptions.py`
-`-n, --newword-file` | Fil som definerer en pandas dataramme med nyord som skal legges til.  |   `newword.py` 
-`--db` | Filnavnet til backend-databasen i filstrukturen. | `data / input / backend-db03.db` 
-`-o, --output-dir` | Filmappen hvor output blir lagret. | `data / output`
-`-v, --verbose-info `  | Skriv ut logg-beskjeder til terminalen. |
-`-vv, --verbose-debug` | Skriv mer detaljerte logg-beskjeder til terminalen. | 
-`-c, --config-file` | Filsti til en python konfigurasjonsfil. | `config.py`
+`-r, --rules-file` | Python-fil med søk-erstatt-regelsett-lister. | `rules.py`  
+`-e, --exemptions-file` | Python-fil med lister over ord som er unntatt regel-oppdateringene. | `exemptions.py`
+`--no-exemptions`  | Ignorer unntakene til reglene. |
+`-n, --newword-files` | CSV-filer med nyord som skal legges til.  |   `nyord.csv, nyord2.csv`
+`--no-newwords`  |  Ignorer nyordsfiler i oppdateringen.
+`-db, --database` | Filsti til backend-databasen i filstrukturen. | `data/input/backend-db03.db` 
+`-o, --output-dir` | Filmappe hvor output blir lagret. | `data/output`
+`-v, --verbose`  | Skriv ut logg-beskjeder til terminalen. `-vv` gir mer detaljerte beskjer, for debugging. |
 `-h, --help` | Print informasjon om alle argumentene og avslutt. | 
 
 
@@ -80,8 +84,6 @@ Kjør automatiske enhets- og integrasjonstester:
 ```shell
 make test
 ```
-Oppsett for kvalitativ testing av leksikonoppdateringene 
-vil komme på plass senere. 
 
 ## Sjekk kodekvalitet
 Kjør en linter på koden for å se hvordan den forholder seg til 
@@ -109,6 +111,5 @@ Etter at python-pakken er bygget, vil den ligge i `dist`-mappen. Den kan nå
 installeres med `pip`: 
 
 ```shell
-
-pip install dist/lexupdater-0.1.0-py2.py3-none-any.whl      # OS-uavhengig
+pip install dist/lexupdater-0.2.0-py2.py3-none-any.whl      # OS-uavhengig
 ```
