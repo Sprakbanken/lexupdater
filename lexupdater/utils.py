@@ -348,8 +348,8 @@ def convert_lex_to_mfa(
                 for pron in word
             ]
             out_file = directory / f"{out_file_prefix}_{area}.dict"
-            with out_file.open("w") as lf:
-                lf.writelines(formatted_lexicon)
+            with out_file.open("w") as l_file:
+                l_file.writelines(formatted_lexicon)
     else:
         for dialect in dialects:
             logging.debug("Converting lexicon for %s", dialect)
@@ -383,8 +383,8 @@ def format_mfa_dict(lex_file: Union[str, Path], prob=None):
     def replace_phonemes(transcription: str):
         return re.sub(r"\bRS\b", " SJ ", transcription)
 
-    with open(lex_file) as f:
-        lex = f.readlines()
+    with open(lex_file) as l_file:
+        lex = l_file.readlines()
         formatted_lex = [format_line(line.split("\t"), prob) for line in lex]
 
     return formatted_lex
