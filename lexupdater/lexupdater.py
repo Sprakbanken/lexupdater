@@ -29,19 +29,31 @@ from .constants import newword_column_names
     "-m",
     "--match-words",
     is_flag=True,
-    help=(
-        "Write file with the words that will be affected by update rules "
-        "for the given dialects."
-    )
+    help="Write file with the words that will be affected by update rules "
+         "for the given dialects."
 )
 @click.option(
     "-l",
     "--mfa-lexicon",
     is_flag=True,
-    help=(
-        "Convert the output lexicon files to a format that is compatible with "
-        "the Montreal Forced Aligner algorithm. "
-    )
+    help="Convert the output lexicon files to a format that is compatible with "
+         "the Montreal Forced Aligner algorithm. "
+)
+@click.option(
+    "-s",
+    "--spoken",
+    "spoken_prob",
+    default=1.0,
+    help="Probability assigned to spoken dialectal transcriptions in the MFA "
+         "dictionary, if --mfa-lexicon is enabled."
+)
+@click.option(
+    "-w",
+    "--written",
+    "written_prob",
+    default=1.0,
+    help="Probability assigned to dialectal transcriptions close to written "
+         "form in the MFA dictionary, if --mfa-lexicon is enabled."
 )
 @click.option(
     "-d",
@@ -230,7 +242,15 @@ def main(**kwargs):
             out_file = output_dir / f"updated_lexicon_{dialect}.txt"
             write_lexicon(out_file, data)
     if mfa_lexicon:
-        convert_lex_to_mfa(lex_dir=output_dir)
+        click.echo("Convert lexica to MFA dict format")
+        logging.info("Converting lexica for %s to MFA format", user_dialects)
+        convert_lex_to_mfa(
+            lex_dir=output_dir,
+            dialects=user_dialects,
+            combine_dialect_forms=True,
+            written_prob=kwargs.get("written_prob"),
+            spoken_prob=kwargs.get("spoken_prob"),
+        )
 
     # Calculating execution time
     file_gen_end_time = datetime.datetime.now()
