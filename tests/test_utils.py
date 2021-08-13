@@ -344,37 +344,109 @@ def test_format_rulesets_and_exemptions(ruleset_fixture):
     assert exemption_match is not None
 
 
-def test_convert_lex_to_mfa(tmp_path):
-    # given
+@pytest.fixture
+def lexicon_dir_prefixes(tmp_path):
     lex_dir = tmp_path / "lexica"
     lex_dir.mkdir()
-    in_prefix = "lexupdater_"
-    out_prefix = "mfa_"
-    file_content = re.sub("\n    ", "\n", """
-    -abel	JJ	SIN|IND|NOM|MAS-FEM|POS	AA1 B AX0 L
-    -abels	JJ	SIN|IND|GEN|MAS-FEM|POS	AA1 B AX0 L S
-    -abelt	JJ	SIN|IND|NOM|NEU|POS	AA1 B AX0 L T
-    -abelts	JJ	SIN|IND|GEN|NEU|POS	AA1 B AX0 L T S
-    -able	JJ	PLU|IND|NOM||POS	AA1 B L AX0
-    -able	JJ	SIN-PLU|DEF|NOM||POS	AA1 B L AX0
-    -ables	JJ	PLU|IND|GEN||POS	AA1 B L AX0 S
-    -ables	JJ	SIN-PLU|DEF|GEN||POS	AA1 B L AX0 S
-    """).lstrip()
-    (lex_dir / (in_prefix + "dialect_name.txt")).write_text(file_content)
-    expected_filename = out_prefix + "dialect_name.dict"
-    expected_content = re.sub("\n    ", "\n", """
-    -abel AA1 B AX0 L
-    -abels AA1 B AX0 L S
-    -abelt AA1 B AX0 L T
-    -abelts AA1 B AX0 L T S
-    -able AA1 B L AX0
-    -able AA1 B L AX0
-    -ables AA1 B L AX0 S
-    -ables AA1 B L AX0 S
-    """).lstrip()
+    in_prefix = "lexupdater"
+    out_prefix = "mfa"
+    file_content = re.sub("\n        ", "\n", """
+        -abel	JJ	SIN|IND|NOM|MAS-FEM|POS	AA1 B AX0 L
+        -abels	JJ	SIN|IND|GEN|MAS-FEM|POS	AA1 B AX0 L S
+        -abelt	JJ	SIN|IND|NOM|NEU|POS	AA1 B AX0 L T
+        -abelts	JJ	SIN|IND|GEN|NEU|POS	AA1 B AX0 L T S
+        -able	JJ	SIN-PLU|DEF|NOM||POS	AA1 B L AX0
+        -ables	JJ	SIN-PLU|DEF|GEN||POS	AA1 B L AX0 S
+        """).lstrip()
+    for suffix in ("spoken","written"):
+        lex_file = lex_dir / f"{in_prefix}_dialect_{suffix}.txt"
+        lex_file.write_text(file_content)
+    return lex_dir, in_prefix, out_prefix
+
+
+@pytest.mark.parametrize(
+    "combine_files,expected_filenames,expected_content,other_keyword_args",
+    [
+        (False,["dialect_spoken.dict", "dialect_written.dict"], """
+-abel AA1 B AX0 L
+-abels AA1 B AX0 L S
+-abelt AA1 B AX0 L T
+-abelts AA1 B AX0 L T S
+-able AA1 B L AX0
+-ables AA1 B L AX0 S
+""".lstrip(), {}),
+        (True, ["dialect.dict"], """
+-abel 0.8 AA1 B AX0 L
+-abel 0.4 AA1 B AX0 L
+-abels 0.8 AA1 B AX0 L S
+-abels 0.4 AA1 B AX0 L S
+-abelt 0.8 AA1 B AX0 L T
+-abelt 0.4 AA1 B AX0 L T
+-abelts 0.8 AA1 B AX0 L T S
+-abelts 0.4 AA1 B AX0 L T S
+-able 0.8 AA1 B L AX0
+-able 0.4 AA1 B L AX0
+-ables 0.8 AA1 B L AX0 S
+-ables 0.4 AA1 B L AX0 S
+""".lstrip(),
+         dict(spoken_prob=0.8, written_prob=0.4)),
+    ],
+)
+def test_convert_lex_to_mfa(
+        lexicon_dir_prefixes, combine_files, expected_filenames,
+        expected_content, other_keyword_args):
+    """Test conversion of multiple files in a directory."""
+    # given
+    lex_dir, in_prefix, out_prefix = lexicon_dir_prefixes
+    expected_files = [
+        lex_dir / f"{out_prefix}_{filename}" for filename in expected_filenames
+    ]
     # when
-    utils.convert_lex_to_mfa(lex_dir, in_prefix, out_prefix)
-    result_content = (lex_dir / expected_filename).read_text()
+    utils.convert_lex_to_mfa(
+        lex_dir=lex_dir,
+        dialects=["dialect_spoken","dialect_written"],
+        in_file_prefix=in_prefix,
+        out_file_prefix=out_prefix,
+        combine_dialect_forms=combine_files,
+        **other_keyword_args
+    )
     # then
-    assert expected_filename in [f.name for f in lex_dir.iterdir()]
+    assert all([f in list(lex_dir.iterdir()) for f in expected_files])
+    result_content = expected_files[0].read_text()
     assert result_content == expected_content
+
+
+@pytest.mark.parametrize(
+    "pron_prob,expected",
+    [
+        (None, [
+            '-abel AA1 B AX0 L\n',
+            '-abels AA1 B AX0 L S\n',
+            '-abelt AA1 B AX0 L T\n',
+            '-abelts AA1 B AX0 L T S\n',
+            '-able AA1 B L AX0\n',
+            '-ables AA1 B L AX0 S\n'
+        ]),
+        (0.8, [
+            '-abel 0.8 AA1 B AX0 L\n',
+            '-abels 0.8 AA1 B AX0 L S\n',
+            '-abelt 0.8 AA1 B AX0 L T\n',
+            '-abelts 0.8 AA1 B AX0 L T S\n',
+            '-able 0.8 AA1 B L AX0\n',
+            '-ables 0.8 AA1 B L AX0 S\n'
+        ])
+    ],
+    ids=["no_weighted_prons", "weighted_pronunciations"]
+)
+def test_format_mfa_dict(
+        lexicon_dir_prefixes, pron_prob, expected):
+    """Test conversion of two files merged into one, with probabilities."""
+    # given
+    lex_dir, in_prefix, out_prefix = lexicon_dir_prefixes
+    lex_file = lex_dir / f"{in_prefix}_dialect_spoken.txt"
+    # when
+    result = utils.format_mfa_dict(lex_file, prob=pron_prob)
+    # then
+    assert len(expected) == len(result)
+    assert all([e_line == r_line for e_line, r_line in zip(expected,
+                                                           result)]), result
