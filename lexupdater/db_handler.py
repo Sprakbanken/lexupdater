@@ -78,6 +78,7 @@ class DatabaseUpdater:
 
     @property
     def rulesets(self):
+        """List of ruleset dicts."""
         return self._rulesets
 
     @rulesets.setter
@@ -92,10 +93,12 @@ class DatabaseUpdater:
 
     @property
     def exemptions(self):
+        "List of exemption dicts."
         return self._exemptions
 
     @property
     def newwords(self):
+        """Pandas DataFrame of new word entries."""
         return self._newwords
 
 
