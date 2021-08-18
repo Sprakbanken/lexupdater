@@ -102,6 +102,10 @@ newword_column_names = [
         "morphology"
     ]
 
+LEX_PREFIX="updated_lexicon"
+MATCH_PREFIX="words_matching_rules"
+MFA_PREFIX="NST_nob"
+
 # Define SQL query templates
 CREATE_PRON_TABLE_STMT = """CREATE TEMPORARY TABLE {pron_table_name} (
 pron_id INTEGER PRIMARY KEY AUTOINCREMENT,
