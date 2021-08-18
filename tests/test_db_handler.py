@@ -41,10 +41,9 @@ class TestDatabaseUpdater:
             # when
             result = db_handler.DatabaseUpdater(
                 DATABASE,
-                ruleset_list,
                 some_dialects,
-                exemptions_list,
-            )
+                rulesets=ruleset_list,
+                exemptions=exemptions_list)
             # then
             assert isinstance(result, db_handler.DatabaseUpdater)
             # Check that the patched function was called
@@ -64,13 +63,10 @@ class TestDatabaseUpdater:
             patch_cursor = patch_connection.cursor.return_value
 
             # when
-            _ = db_handler.DatabaseUpdater(
-                DATABASE,
-                ruleset_list,
-                some_dialects,
-                exemptions=exemptions_list,
-                newwords=wordlist_fixture,
-            )
+            _ = db_handler.DatabaseUpdater(DATABASE, some_dialects,
+                                           rulesets=ruleset_list,
+                                           newwords=wordlist_fixture,
+                                           exemptions=exemptions_list)
             # then
             # Check that the patched functions were called
             patched_sqlite.connect.assert_called_with(DATABASE)
