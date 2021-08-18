@@ -1,5 +1,5 @@
 """Utility functions for lexupdater"""
-import contextlib
+
 import csv
 import importlib
 import logging
@@ -354,6 +354,8 @@ def convert_lex_to_mfa(
     else:
         for dialect in dialects:
             lexicon_file = directory / f"{in_file_prefix}_{dialect}.txt"
+            if not lexicon_file.exists():
+                continue
             formatted_lexicon = format_mfa_dict(lexicon_file)
             out_file = directory / f"{out_file_prefix}_{dialect}.dict"
             logging.debug("Write reformatted lexicon to %s", out_file)
