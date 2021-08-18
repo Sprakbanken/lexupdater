@@ -169,4 +169,4 @@ def db_updater_obj(
                                   newwords=wordlist_fixture,
                                   exemptions=exemptions_list)
     yield updater_obj
-    updater_obj.close_connection()
+    updater_obj.close()
