@@ -182,9 +182,10 @@ class RuleSet:
         self.name: str = name
         self._areas: List = filter_list_by_list(areas, dialect_schema.schema)
         self._rules: List = []
+        self._exempt_words: List = [] if exempt_words is None else exempt_words
+
         if rules is not None:
             self.add_multiple_rules(rules)
-        self._exempt_words: List = [] if exempt_words is None else exempt_words
 
     @classmethod
     def from_dict(cls, ruleset_dict: dict):
@@ -195,7 +196,7 @@ class RuleSet:
         ruleset_dict: dict
             Format is {"name": str, "areas": list, "rules": list}
         """
-        instance = cls(**ruleset_dict)
+        instance = cls(**ruleset_dict, exempt_words=None)
         return instance
 
     def to_dict(self):
