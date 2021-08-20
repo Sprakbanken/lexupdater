@@ -70,7 +70,7 @@ def test_convert_formats(tmp_path):
     # when
     result = runner.invoke(
         lexupdater.main,
-        f"-c tests/dummy_config.py -o {str(output_dir)} convert"
+        f"-c tests/dummy_config.py  convert -l {str(output_dir)}"
     )
     result_files = [file_path.name for file_path in output_dir.iterdir()]
     # then
