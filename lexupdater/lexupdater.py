@@ -45,7 +45,7 @@ def default_from_context(default_name):
     """
     class OptionDefaultFromContext(click.Option):
         """Overwriting default value of an option object."""
-        def get_default(self, ctx):
+        def get_default(self, ctx, call=False):
             self.default = ctx.obj[default_name]
             return super(OptionDefaultFromContext, self).get_default(ctx)
 
