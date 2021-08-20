@@ -424,11 +424,13 @@ def insert_newwords(ctx, database, dialects, newword_files, output_dir):
 
 @main.command("convert")
 @click.option(
-    "-o",
-    "--output-dir",
+    "-l",
+    "--lexicon-dir",
     type=click.Path(resolve_path=True, file_okay=False, path_type=pathlib.Path),
     cls=default_from_context('output_dir'),
     callback=ensure_path,
+    help="Directory where updated lexicon .txt files are located, and that "
+         "converted .dict files will be written to."
 )
 @click.option(
     "-co",
@@ -454,14 +456,13 @@ def insert_newwords(ctx, database, dialects, newword_files, output_dir):
          "form in the MFA dictionary, if --combine is enabled."
 )
 @click.pass_context
-def convert_format(ctx, output_dir, combine, spoken_prob,
+def convert_format(ctx, lexicon_dir, combine, spoken_prob,
                    written_prob):
     """Convert lexicon formats to comply with MFA."""
     click.secho("Convert lexica to MFA dict format", fg="cyan")
     convert_lex_to_mfa(
-        lex_dir=output_dir,
+        lex_dir=lexicon_dir,
         combine_dialect_forms=combine,
         written_prob=written_prob,
         spoken_prob=spoken_prob,
     )
-
