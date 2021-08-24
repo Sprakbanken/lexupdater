@@ -182,9 +182,10 @@ class RuleSet:
         self.name: str = name
         self._areas: List = filter_list_by_list(areas, dialect_schema.schema)
         self._rules: List = []
+        self._exempt_words: List = [] if exempt_words is None else exempt_words
+
         if rules is not None:
             self.add_multiple_rules(rules)
-        self._exempt_words: List = [] if exempt_words is None else exempt_words
 
     @classmethod
     def from_dict(cls, ruleset_dict: dict):
@@ -195,7 +196,7 @@ class RuleSet:
         ruleset_dict: dict
             Format is {"name": str, "areas": list, "rules": list}
         """
-        instance = cls(**ruleset_dict)
+        instance = cls(**ruleset_dict, exempt_words=None)
         return instance
 
     def to_dict(self):
@@ -266,7 +267,7 @@ class RuleSet:
     def exempt_words(self, new_exemptions):
         self._exempt_words = list(set(new_exemptions))
 
-    def index_rules(self, rule_obj: Rule = None, idx: int = None):
+    def view_rules_index(self, rule_obj: Rule = None, idx: int = None):
         """Regular and reverse lookup of rules in the ruleset.
 
         If rule_obj is provided, return the corresponding index
@@ -276,7 +277,8 @@ class RuleSet:
         attribute.
 
         If no args: Return a dictionary with enumerated rules as dicts.
-        Format {index_number: {"pattern":str, "replacement": str, "constraints": list}.
+        Format
+        {index_number: {"pattern":str, "replacement": str, "constraints": list}
         """
         idx_to_id = {i: rule.id_ for i, rule in enumerate(self._rules)}
         id_to_index = {id_: i for i, id_ in idx_to_id.items()}
@@ -327,7 +329,7 @@ class RuleSet:
             self._rules.append(rule)
             logging.debug("Adding %s to self.rules", rule)
         else:
-            index_number = self.index_rules(rule_obj=rule)
+            index_number = self.view_rules_index(rule_obj=rule)
             logging.debug(
                 "Skipping: Rule with pattern=%s and replacement=%s already "
                 "exists: self.rules[%s]", rule.pattern, rule.replacement,

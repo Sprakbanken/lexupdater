@@ -163,12 +163,10 @@ def db_updater_obj(
     Tests that make use of this fixture will need to be updated
     if the config values are changed.
     """
-    updater_obj = DatabaseUpdater(
-        str(Path('tests') / 'dummy_data.db'),  # Ensure OS agnostic file path
-        ruleset_list,
-        all_dialects,
-        exemptions=exemptions_list,
-        newwords=wordlist_fixture,
-    )
+    updater_obj = DatabaseUpdater(str(Path('tests') / 'dummy_data.db'),
+                                  all_dialects,
+                                  rulesets=ruleset_list,
+                                  newwords=wordlist_fixture,
+                                  exemptions=exemptions_list)
     yield updater_obj
-    updater_obj.close_connection()
+    updater_obj.close()
