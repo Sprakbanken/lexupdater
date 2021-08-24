@@ -1,5 +1,4 @@
 """Connect to and update the database containing the pronunciation lexicon."""
-
 import logging
 import re
 import sqlite3
@@ -56,7 +55,7 @@ class DatabaseUpdater:
     rulesets: list
         List of ruleset dictionaries, which are validated with
         rule_schema from the config.constants module
-    dialect_names: list
+    dialects: list
         List of dialects to update transcription entries for
     exemptions:
         List of exemption dictionaries, containing words
@@ -64,22 +63,44 @@ class DatabaseUpdater:
     """
 
     def __init__(
-        self, db, rulesets, dialect_names, newwords=None, exemptions=None,
-    ):
+            self, db, dialects, rulesets=None, newwords=None, exemptions=None):
         """Set object attributes, connect to db and create temp tables."""
-        if exemptions is None:
-            exemptions = []
         self._db = db
         self.word_table = "words_tmp"
         self.pron_table = "pron_tmp"
-        self.newwords = newwords
-        self.dialects = dialect_schema.validate(dialect_names)
+        self.dialects = dialect_schema.validate(dialects)
+        self._rulesets = []
+        self._exemptions = [] if exemptions is None else exemptions
+        self._newwords = newwords
+        if rulesets is not None:
+            self.rulesets = rulesets
+        self._connect_and_populate()
+
+    @property
+    def rulesets(self):
+        """List of ruleset dicts."""
+        return self._rulesets
+
+    @rulesets.setter
+    def rulesets(self, new_rulesets):
+        self._rulesets = new_rulesets
+#            RuleSet.from_dict(rule_dict) for rule_dict in new_rulesets]
         self.parsed_rules = list(parse_rules(
             self.dialects,
-            rulesets,
-            exemptions
+            self._rulesets,
+            self._exemptions
         ))
-        self._connect_and_populate()
+
+    @property
+    def exemptions(self):
+        "List of exemption dicts."
+        return self._exemptions
+
+    @property
+    def newwords(self):
+        """Pandas DataFrame of new word entries."""
+        return self._newwords
+
 
     def _connect_and_populate(self):
         """Connect to db. Create and populate temp tables."""
@@ -285,10 +306,28 @@ class DatabaseUpdater:
         )
         return result
 
+    def get_tmp_table_state(self):
+        """Fetch the state of the temporary tables, including new word
+        entries."""
+        stmt = SELECT_QUERY.format(
+            columns=COL_ID_WORD_FEATS_PRON_ID,
+            word_table=self.word_table,
+            pron_table=self.pron_table,
+            where_regex='',
+            where_word_in_stmt=''
+        )
+        result = self._cursor.execute(stmt).fetchall()
+        logging.debug(
+            "Fetched %s results from the temp tables with SQL query: \n%s ",
+            len(result),
+            stmt
+        )
+        return result
+
     def get_connection(self):
         """Return the object instance's sqlite3 connection."""
         return self._connection
 
-    def close_connection(self):
+    def close(self):
         """Close the object instance's sqlite3 connection."""
         self._connection.close()
