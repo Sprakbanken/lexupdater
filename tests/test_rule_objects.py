@@ -253,9 +253,9 @@ class TestRuleSet:
 
     def test_index_rules(self, rule_fixture, ruleset_fixture):
         # when
-        result_idx = ruleset_fixture.index_rules(rule_obj=rule_fixture)
-        result_rule = ruleset_fixture.index_rules(idx=0)
-        result_index = ruleset_fixture.index_rules()
+        result_idx = ruleset_fixture.view_rules_index(rule_obj=rule_fixture)
+        result_rule = ruleset_fixture.view_rules_index(idx=0)
+        result_index = ruleset_fixture.view_rules_index()
         # then
         assert isinstance(result_idx, int)
         assert result_idx == 0
