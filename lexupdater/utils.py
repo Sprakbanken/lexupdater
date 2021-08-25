@@ -27,7 +27,7 @@ def write_lexicon(output_file: Union[str, Path], data: Iterable):
         A collection of dictionaries,
         where the 1st, 2nd, 3rd and 2nd to last elements are saved to disk
     """
-    if not data:    # Do not write empty data
+    if not data:  # Do not write empty data
         return
     logging.info("Write lexicon data to %s", output_file)
     with open(output_file, 'w', newline='') as csvfile:
@@ -171,6 +171,7 @@ def validate_objects(obj_list: list, obj_schema: Schema) -> list:
             logging.error("Couldn't validate list %s due to %s",
                           obj_list, error)
     return filter_list_by_list(obj_list, obj_schema.schema)
+
 
 def matching_data_to_dict(entries: dict) -> Dict[str, list]:
     """Convert results of select_words_matching_rules to a dict of lists."""
@@ -373,6 +374,7 @@ def format_mfa_dict(lex_file: Union[str, Path], prob=None):
         See MFA documentation for more info:
         https://montreal-forced-aligner.readthedocs.io/en/latest/dictionary.html#dictionaries-with-pronunciation-probability
     """
+
     def format_line(line, prob):
         word = line[0]
         transcription = replace_phonemes(line[-1])
@@ -388,3 +390,19 @@ def format_mfa_dict(lex_file: Union[str, Path], prob=None):
         formatted_lex = [format_line(line.split("\t"), prob) for line in lex]
 
     return formatted_lex
+
+
+def verify_updated_phonemes(updated_lexicon: list, valid_phonemes: list):
+    """Validate phonemes in the updated transcriptions of the lexicon."""
+    transcriptions = {"valid": [], "invalid": []}
+    for row in updated_lexicon:
+        try:
+            # The transcription is the last element in the row
+            assert all(p in valid_phonemes for p in row[-1].split(" "))
+            transcriptions["valid"].append(row)
+        except AssertionError as error:
+            logging.debug(
+                "%s. Transcription contains invalid phonemes: %s",
+                error, row[-1])
+            transcriptions["invalid"].append(row)
+    return transcriptions
