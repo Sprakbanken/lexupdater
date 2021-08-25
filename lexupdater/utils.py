@@ -13,7 +13,7 @@ import autopep8
 import pandas as pd
 from schema import Schema, SchemaError
 
-from .constants import dialect_schema
+from .constants import dialect_schema, MFA_PREFIX, LEX_PREFIX
 
 
 def write_lexicon(output_file: Union[str, Path], data: Iterable):
@@ -299,8 +299,8 @@ def format_rulesets_and_exemptions(ruleset_list: list) -> Tuple:
 def convert_lex_to_mfa(
         lex_dir="lexica",
         dialects=dialect_schema.schema,
-        in_file_prefix="updated_lexicon",
-        out_file_prefix="NST_nob",
+        in_file_prefix=LEX_PREFIX,
+        out_file_prefix=MFA_PREFIX,
         combine_dialect_forms=False,
         written_prob=1.0,
         spoken_prob=1.0,
@@ -331,10 +331,10 @@ def convert_lex_to_mfa(
     """
     areas = {re.sub(r"_(spoken|written)", "", d) for d in dialects}
     directory = Path(lex_dir)
+    logging.info("Converting lexica for %s to MFA format", dialects)
 
     if combine_dialect_forms:
         for area in areas:
-            logging.debug("Converting lexica for %s", area)
             spoken_lexicon = format_mfa_dict(
                 (directory / f"{in_file_prefix}_{area}_spoken.txt"),
                 prob=spoken_prob
@@ -349,14 +349,17 @@ def convert_lex_to_mfa(
                 for pron in word
             ]
             out_file = directory / f"{out_file_prefix}_{area}.dict"
+            logging.debug("Write reformatted lexicon to %s", out_file)
             with out_file.open("w") as l_file:
                 l_file.writelines(formatted_lexicon)
     else:
         for dialect in dialects:
-            logging.debug("Converting lexicon for %s", dialect)
             lexicon_file = directory / f"{in_file_prefix}_{dialect}.txt"
+            if not lexicon_file.exists():
+                continue
             formatted_lexicon = format_mfa_dict(lexicon_file)
             out_file = directory / f"{out_file_prefix}_{dialect}.dict"
+            logging.debug("Write reformatted lexicon to %s", out_file)
             with out_file.open("w") as fa_lf:
                 fa_lf.writelines(formatted_lexicon)
 
