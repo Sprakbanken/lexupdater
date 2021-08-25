@@ -38,3 +38,5 @@ DIALECTS = [
 
 Corresponds to names of pronunciation temp tables created in the backend db.
 """
+
+VALID_PHONEMES = "phoneme_inventory.txt"

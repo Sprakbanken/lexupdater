@@ -395,9 +395,9 @@ def format_mfa_dict(lex_file: Union[str, Path], prob=None):
     return formatted_lex
 
 
-def verify_updated_phonemes(updated_lexicon: list, valid_phonemes: list):
+def validate_phonemes(updated_lexicon: list, valid_phonemes: list):
     """Validate phonemes in the updated transcriptions of the lexicon."""
-    transcriptions = {"valid": [], "invalid": []}
+    transcriptions: dict = {"valid": [], "invalid": []}
     for row in updated_lexicon:
         try:
             # The transcription is the last element in the row

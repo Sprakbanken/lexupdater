@@ -16,7 +16,7 @@ from .utils import (
     load_data,
     load_module_from_path,
     load_newwords,
-    convert_lex_to_mfa
+    convert_lex_to_mfa, validate_phonemes
 )
 from .constants import (
     newword_column_names,
@@ -24,6 +24,7 @@ from .constants import (
     MATCH_PREFIX,
     NEW_PREFIX
 )
+
 
 def configure(ctx, param, filename):
     """Load default values from config file."""
@@ -129,17 +130,29 @@ def configure_logging(ctx, param, verbose):
     "--rules-file",
     type=click.Path(resolve_path=True, exists=True, path_type=pathlib.Path),
     help="Apply replacement rules from the given file path.",
+    default="rules.py"
 )
 @click.option(
     "-e",
     "--exemptions-file",
     type=click.Path(resolve_path=True, exists=True, path_type=pathlib.Path),
     help="Apply exemptions from the given file path to the rules.",
+    default="exemptions.py"
 )
 @click.option(
     "--no-exemptions",
     is_flag=True,
     help="Disable any exemptions."
+)
+@click.option(
+    "-p",
+    "--valid-phonemes",
+    nargs=1,
+    type=click.Path(resolve_path=True, exists=True, path_type=pathlib.Path),
+    callback=lambda ctx, param, file: file.read_text().split("\n"),
+    help="Verify that all phonemes in the lexicon transcriptions are in the "
+         "given phoneme inventory file, with one phoneme per line.",
+    default="phoneme_inventory.txt"
 )
 @click.option(
     "-n",
@@ -173,7 +186,7 @@ def configure_logging(ctx, param, verbose):
 )
 @click.pass_context
 def main(ctx, database, dialects, rules_file, exemptions_file,
-         no_exemptions, newword_files, output_dir, verbose):
+         no_exemptions, valid_phonemes, newword_files, output_dir, verbose):
     """Apply the dialect update rules on the base lexicon.
 
     Default file paths to the lexicon database, the replacement rules,
@@ -188,13 +201,16 @@ def main(ctx, database, dialects, rules_file, exemptions_file,
     new, dialect-specific files.
     """
     ctx.ensure_object(dict)
+    valid_phonemes.remove("")
     ctx.obj.update(ctx.params)
-    click.secho(
-        f"Script configuration values: \n"
-        f"{pprint.pformat(ctx.params)}", fg="yellow")
+    if verbose:
+        click.secho(
+            f"Script configuration values: \n"
+            f"{pprint.pformat(ctx.params)}", fg="yellow")
 
     # Log starting time
     logging.info("START")
+
 
     if ctx.invoked_subcommand is None:
         rulesets = load_data(rules_file)
@@ -213,7 +229,11 @@ def main(ctx, database, dialects, rules_file, exemptions_file,
         ) as db_obj:
             updated_lex = db_obj.update()
         for dialect, data in updated_lex.items():
+            validated_transcriptions = validate_phonemes(data, valid_phonemes)
             write_lexicon(output_dir / f"{LEX_PREFIX}_{dialect}.txt", data)
+            write_lexicon(
+                output_dir / f"invalid_transcriptions_{dialect}.txt",
+                validated_transcriptions["invalid"])
         click.secho(f"Database closed. Files written to {output_dir}",
                     fg="green")
 
@@ -351,9 +371,17 @@ def match_words(ctx, database, dialects, rules_file, exemptions_file,
     cls=default_from_context('output_dir'),
     callback=ensure_path,
 )
+@click.option(
+    "-p",
+    "--check-phonemes",
+    is_flag=True,
+    help="Verify that all phonemes in the lexicon transcriptions are in the "
+         "given phoneme inventory file, with one phoneme per line."
+)
 @click.pass_context
 def update_dialects(
-        ctx, database, dialects, rules_file, exemptions_file, output_dir):
+        ctx, database, dialects, rules_file, exemptions_file, output_dir,
+        check_phonemes):
     """Update dialect transcriptions with rules."""
     click.secho("Update dialect transcriptions", fg="cyan")
     rulesets = load_data(rules_file)
@@ -369,6 +397,13 @@ def update_dialects(
     for dialect, data in updated_lex.items():
         out_file = (output_dir / f"{LEX_PREFIX}_{dialect}.txt")
         write_lexicon(out_file, data)
+        if check_phonemes:
+            validated = validate_phonemes(data, ctx.obj["valid_phonemes"])
+            invalid_transcriptions_file = (
+                output_dir / f"invalid_transcriptions_{dialect}.txt")
+            write_lexicon(invalid_transcriptions_file, validated["invalid"])
+            click.secho(f"{len(validated['invalid'])} invalid transcriptions "
+                        f"in {invalid_transcriptions_file}", fg="magenta")
 
 
 @main.command("insert")
@@ -456,8 +491,7 @@ def insert_newwords(ctx, database, dialects, newword_files, output_dir):
          "form in the MFA dictionary, if --combine is enabled."
 )
 @click.pass_context
-def convert_format(ctx, lexicon_dir, combine, spoken_prob,
-                   written_prob):
+def convert_format(ctx, lexicon_dir, combine, spoken_prob, written_prob):
     """Convert lexicon formats to comply with MFA."""
     click.secho("Convert lexica to MFA dict format", fg="cyan")
     convert_lex_to_mfa(
