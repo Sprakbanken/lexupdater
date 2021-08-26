@@ -8,7 +8,7 @@ import re
 
 import pandera as pa
 from pandera import Column, DataFrameSchema, Check
-from schema import Schema, Optional, And
+from schema import Schema, Optional
 
 # Licit NoFAbet phones
 LICIT_PHONES = [
