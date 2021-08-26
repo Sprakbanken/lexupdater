@@ -65,7 +65,7 @@ def test_convert_formats(tmp_path):
 
     (output_dir / "updated_lexicon_n_written.txt").write_text(
         "-elser	NN	PLU|IND|NOM|NEU-MAS-FEM	EH1 L S AA0 R")
-    expected_file = "NST_nob_n_written.dict"
+    expected_file = "NB_nob_n_written.dict"
     runner = CliRunner()
     # when
     result = runner.invoke(
