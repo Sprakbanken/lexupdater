@@ -9,13 +9,12 @@ from lexupdater.db_handler import DatabaseUpdater
 from lexupdater.rule_objects import Rule, RuleSet
 
 
-
 @pytest.fixture
 def rule_fixture():
     """Dummy rule to be used in tests."""
     return Rule(
         pattern="transcription_pattern_to_replace",
-        replacement="new_transcription",
+        replacement=r"D DH \1 EE1",
         constraints=[
             {"field": "column_name", "pattern": "value", "is_regex": True}
         ]

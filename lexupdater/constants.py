@@ -4,6 +4,7 @@
 * SQL query template strings to create tables, insert values, update entries
 and select entries.
 """
+import re
 
 import pandera as pa
 from pandera import Column, DataFrameSchema, Check
@@ -52,6 +53,19 @@ constraint_schema = Schema({
     "pattern": str,
     "is_regex": bool
 })
+
+def _backreference_check(string):
+    regex_match = re.match(
+        r'(?P<back_ref>\\\d)|(?P<phoneme>\w{1,3})', string)
+    if regex_match is None:
+        return False
+    phoneme = regex_match.group("phoneme")
+    if (phoneme is not None) and (phoneme in LICIT_PHONES):
+        return True
+    back_ref = regex_match.group("back_ref")
+    if back_ref is not None:
+        return True
+    return False
 
 rule_schema = Schema({
     "pattern": str,

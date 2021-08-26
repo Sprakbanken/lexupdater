@@ -326,7 +326,7 @@ def test_format_rulesets_and_exemptions(ruleset_fixture):
         "                 'areas': ['e_spoken'],\n"
         "                 'rules': "  # there is no newline in the string here
         "[{'pattern': 'transcription_pattern_to_replace',\n"
-        "                            'replacement': 'new_transcription',\n"
+        "                            'replacement': 'D DH \\\\1 EE1',\n"
         "                            'constraints': [{'field': 'column_name',\n"
         "                                             'pattern': 'value',\n"
         "                                             'is_regex': True}]}]}\n")
