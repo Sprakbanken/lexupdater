@@ -69,8 +69,7 @@ def _backreference_check(string):
 
 rule_schema = Schema({
     "pattern": str,
-    "replacement": And(str, lambda string: all(
-        _backreference_check(item) for item in string.split(" "))),
+    "replacement": str,
     "constraints": [Optional(constraint_schema.schema)],
 })
 
