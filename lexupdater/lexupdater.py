@@ -16,7 +16,8 @@ from .utils import (
     load_data,
     load_module_from_path,
     load_newwords,
-    convert_lex_to_mfa, validate_phonemes
+    convert_lex_to_mfa, 
+    validate_phonemes
 )
 from .constants import (
     newword_column_names,
