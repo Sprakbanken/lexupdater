@@ -79,11 +79,11 @@ class TestRule:
         # when
         result = rule_objects.Rule(
             pattern="transcription_pattern_to_replace",
-            replacement="new_transcription"
+            replacement=r"D DH \1 EE1"
         )
         assert isinstance(result, rule_objects.Rule)
         assert result.pattern == "transcription_pattern_to_replace"
-        assert result.replacement == "new_transcription"
+        assert result.replacement == r"D DH \1 EE1"
         assert result.constraints == []
         assert result.is_valid
         # id_ is a hash of pattern and replacement
@@ -124,7 +124,6 @@ class TestRule:
         rule_fixture.constraints = new_constraints
         # then
         assert initial == rule_fixture.constraints
-
 
     def test_add_constraint(self, rule_fixture, proper_constraints):
         # given
@@ -180,7 +179,7 @@ class TestRule:
         rule_fixture.constraints += proper_constraints
         same_id = rule_fixture.id_
         rule_fixture.pattern = "some_new_pattern"
-        rule_fixture.replacement = "another_replacement"
+        rule_fixture.replacement = r"T EH0 S T \1"
         new_id = rule_fixture.id_
         # then
         assert original_id == same_id
@@ -267,7 +266,8 @@ class TestRuleSet:
 
     def test_add_rule_no_dupes(self, ruleset_fixture):
         # given
-        test_rule = rule_objects.Rule(pattern="test1", replacement="test2")
+        test_rule = rule_objects.Rule(pattern="test1",
+                                      replacement=r"T EH0 S T \2")
         # when
         ruleset_fixture.add_rule(test_rule)
         ruleset_fixture.add_rule(test_rule.to_dict())
@@ -278,7 +278,8 @@ class TestRuleSet:
 
     def test_add_rule_obj(self, ruleset_fixture):
         # given
-        test_rule = rule_objects.Rule(pattern="test1", replacement="test2")
+        test_rule = rule_objects.Rule(pattern="test1",
+                                      replacement=r"T EH0 S T \2")
         # when
         ruleset_fixture.add_rule(test_rule)
         # then
@@ -286,7 +287,8 @@ class TestRuleSet:
 
     def test_add_rule_dict(self, ruleset_fixture):
         # given
-        test_rule = rule_objects.Rule(pattern="test1", replacement="test2")
+        test_rule = rule_objects.Rule(pattern="test1",
+                                      replacement=r"T EH0 S T \2")
         # when
         ruleset_fixture.add_rule(test_rule.to_dict())
         # then
@@ -294,7 +296,8 @@ class TestRuleSet:
 
     def test_add_rule_params(self, ruleset_fixture):
         # given
-        test_rule = rule_objects.Rule(pattern="test1", replacement="test2")
+        test_rule = rule_objects.Rule(pattern="test1",
+                                      replacement=r"T EH0 S T \2")
         # when
         ruleset_fixture.add_rule(pattern=test_rule.pattern,
                                  replacement=test_rule.replacement)
@@ -304,9 +307,9 @@ class TestRuleSet:
     def test_add_multiple_rules(self, ruleset_fixture):
         # given
         test_rule1 = rule_objects.Rule(pattern="test1",
-                                       replacement="replacement1")
+                                       replacement=r"T EH0 S T \1")
         test_rule2 = rule_objects.Rule(pattern="test2",
-                                       replacement="replacement2")
+                                       replacement=r"T EH0 S T \2")
         invalid_rule = "invalid_rule_object"
         input_rules = [test_rule1,test_rule2, invalid_rule]
         # when
