@@ -118,7 +118,7 @@ newword_column_names = [
 
 LEX_PREFIX="updated_lexicon"
 MATCH_PREFIX="words_matching_rules"
-MFA_PREFIX="NST_nob"
+MFA_PREFIX="NB_nob"
 NEW_PREFIX="base_new_words"
 
 # Define SQL query templates
