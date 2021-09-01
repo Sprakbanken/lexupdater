@@ -317,7 +317,7 @@ def convert_lex_to_mfa(
         dialects=dialect_schema.schema,
         in_file_prefix=LEX_PREFIX,
         out_file_prefix=MFA_PREFIX,
-        combine_dialect_forms=False,
+        combine_dialect_forms=True,
         written_prob=1.0,
         spoken_prob=1.0,
 ):
