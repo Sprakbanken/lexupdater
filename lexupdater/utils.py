@@ -250,7 +250,7 @@ def data_to_df(data: dict, update: bool = False, pron_ids: list = None):
     return pd.DataFrame(data_dict)
 
 
-def compare_transcriptions(database_updater):
+def compare_transcriptions(database_updater, output_dir=Path("lexica"), save_and_convert=False):
     """Create a dataframe with lexicon data from the transformation rules.
 
     Run both select and update queries on the lexicon database,
@@ -273,6 +273,19 @@ def compare_transcriptions(database_updater):
 
     comparison = matching_df.merge(
         updated_df, how='outer', on=["pron_id", "word", "dialect"]).dropna()
+
+    # save updates to files and convert them
+    if save_and_convert:
+        for dialect, entries in updated_words.items():
+            out_file = (output_dir / f"{LEX_PREFIX}_{dialect}.txt")
+            write_lexicon(out_file, entries)
+        convert_lex_to_mfa(
+                lex_dir=output_dir,
+                combine_dialect_forms=True)
+
+        now = datetime.datetime.now().strftime("%Y-%m-%d_%H%M")
+        comparison.to_csv(output_dir/ f"comparison_{now}.txt")
+
     return comparison
 
 
