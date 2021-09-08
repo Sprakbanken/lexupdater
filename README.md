@@ -65,6 +65,7 @@ Flagg | Forklaring  | Gyldige verdier/eksempler
 ||
 __Sub-kommando__ | __Forklaring__ | _Kjør `python -m lexupdater KOMMANDO -h` for å se mulige argumenter/valg_
 `base` | Eksporter base-leksikonet før oppdateringer. |  
+`compare` | Sammenlign originale og oppdaterte transkripsjoner som matcher reglene.  |
 `convert` | Konverter formatet på leksikonfiler for å brukes med MFA.  |  
 `insert` | Eksporter base-leksikonet med nyordsoppdateringer. |
 `match`  | Hent ut leksikonrader som matcher reglene i rules.py | 
