@@ -36,6 +36,28 @@ def write_lexicon(output_file: Union[str, Path], data: Iterable):
             out_writer.writerow(item)
 
 
+def write_lex_per_dialect(
+        data, out_dir, file_prefix, preprocess, *args, **kwargs):
+    """Wrapper for writing a lexicon file per dialect in the data.
+
+    .txt-files get saved to out_dir with the given file_prefix + dialect
+
+    Parameters
+    ----------
+    data: dict
+        The keys are the names of dialects, values are the lexicon entries
+    out_dir: Path
+    file_prefix: str
+    preprocess: callable
+        Function to process the data with before writing it to the file.
+    """
+    for dialect, entries in data.items():
+        if callable(preprocess):
+            entries = preprocess(entries, *args, **kwargs)
+        out_file = out_dir / f"{file_prefix}_{dialect}.txt"
+        write_lexicon(out_file, entries)
+
+
 def flatten_match_results(data: Iterable) -> Generator:
     """Flatten a nested list of rule pattern matches.
 
@@ -408,7 +430,8 @@ def format_mfa_dict(lex_file: Union[str, Path], prob=None):
     return formatted_lex
 
 
-def validate_phonemes(updated_lexicon: list, valid_phonemes: list):
+def validate_phonemes(updated_lexicon: list, valid_phonemes: list,
+                      return_transcriptions="valid"):
     """Validate phonemes in the updated transcriptions of the lexicon."""
     transcriptions: dict = {"valid": [], "invalid": []}
     for row in updated_lexicon:
@@ -421,4 +444,4 @@ def validate_phonemes(updated_lexicon: list, valid_phonemes: list):
                 "%s. Transcription contains invalid phonemes: %s",
                 error, row[-1])
             transcriptions["invalid"].append(row)
-    return transcriptions
+    return transcriptions.get(return_transcriptions, [])
