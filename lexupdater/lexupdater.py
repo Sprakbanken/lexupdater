@@ -1,10 +1,10 @@
 """Transcription updates for a pronunciation lexicon in sqlite3 db format."""
 
-import datetime
 import logging
 import pathlib
 import pprint
 from contextlib import closing
+from datetime import datetime
 from pathlib import Path
 
 import click
@@ -26,7 +26,8 @@ from .utils import (
     load_newwords,
     convert_lex_to_mfa,
     validate_phonemes,
-    write_lex_per_dialect
+    write_lex_per_dialect,
+    compare_transcriptions
 )
 
 
@@ -222,7 +223,7 @@ def main(ctx, database, dialects, rules_file, exemptions_file,
         newwords = load_newwords(newword_files, newword_column_names)
 
         click.secho('Run full update', fg="cyan")
-        click.echo(f"{datetime.datetime.now()} Loading database")
+        click.echo(f"{datetime.now()} Loading database")
         with closing(
                 DatabaseUpdater(
                     database,
@@ -404,6 +405,72 @@ def update_dialects(
             validate_phonemes,
             valid_phonemes=ctx.obj["valid_phonemes"],
             return_transcriptions="invalid")
+
+@main.command("compare")
+@click.option(
+    "-db",
+    "--database",
+    type=click.Path(resolve_path=True, dir_okay=False, path_type=pathlib.Path),
+    help="The path to the lexicon database.",
+    cls=default_from_context('database'),
+)
+@click.option(
+    "-d",
+    "--dialects",
+    type=str,
+    multiple=True,
+    callback=split_multiple_args,
+    help="Apply replacement rules on one or more specified dialects. "
+         "Args must be separated by a simple comma (,) and no white-space.",
+    cls=default_from_context('dialects'),
+)
+@click.option(
+    "-r",
+    "--rules-file",
+    type=click.Path(resolve_path=True, exists=True, path_type=pathlib.Path),
+    help="Apply replacement rules from the given file path.",
+    cls=default_from_context('rules_file'),
+)
+@click.option(
+    "-e",
+    "--exemptions-file",
+    type=click.Path(resolve_path=True, exists=True, path_type=pathlib.Path),
+    help="Apply exemptions from the given file path to the rules.",
+    cls=default_from_context('exemptions_file'),
+)
+@click.option(
+    "-o",
+    "--output-dir",
+    type=click.Path(resolve_path=True, file_okay=False, path_type=pathlib.Path),
+    help="The directory path that files are written to.",
+    cls=default_from_context('output_dir'),
+    callback=ensure_path,
+)
+@click.pass_context
+def compare_matching_updated_transcriptions(
+        ctx, database, dialects, rules_file, exemptions_file, output_dir):
+    """Compare original and updated transcriptions that match the rules."""
+    click.secho("Compare transcriptions before and after dialect updates",
+                fg="cyan")
+    rulesets = load_data(rules_file)
+    exemptions = load_data(exemptions_file)
+    with closing(
+            DatabaseUpdater(
+                db=database,
+                dialects=dialects,
+                rulesets=rulesets,
+                exemptions=exemptions)
+    ) as db_obj:
+        matching_words = db_obj.select_words_matching_rules()
+        updated_words = db_obj.update(include_id=True)
+    comparison = compare_transcriptions(matching_words, updated_words)
+    # save updates to files and convert them
+    write_lex_per_dialect(updated_words, output_dir, LEX_PREFIX, None)
+    convert_lex_to_mfa(
+        lex_dir=output_dir,
+        combine_dialect_forms=True)
+    now = datetime.now().strftime("%Y-%m-%d_%H%M")
+    comparison.to_csv(output_dir / f"comparison_{now}.txt")
 
 
 @main.command("insert")
