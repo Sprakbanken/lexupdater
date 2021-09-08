@@ -503,22 +503,31 @@ def convert_format(ctx, lexicon_dir, combine, spoken_prob, written_prob):
 
 
 def generate_new_lexica(
-        new_rulesets: list = None,
-        use_ruleset_areas: bool = False,
-        data_dir: Path = Path("."),
-        lex_dir: Path = Path("lexica"),
-        db_path: str = "backend-db03.db",
+        new_rulesets=None,
+        use_ruleset_areas=False,
+        data_dir=".",
+        lex_dir="lexica",
+        db_path="backend-db03.db",
 ):
-    """Generate new lexica files with the new rules.
+    """Generate updated lexica files with a list of new rule objects.
 
     Save the rules and exemptions to disk.
     Update the lexicon database with those files,
     and write the updated lexica to the "lexica" directory.
     Convert the format to be compatible with the MFA algorithm.
 
-    If use_ruleset_areas is True,
-    only update lexicon files for dialects that are affected by the rules.
-    If False, update and write new lexicon files for all dialects.
+    Parameters
+    ----------
+    new_rulesets: list[Rule]
+    use_ruleset_areas: bool
+        If True, only generate lexica for the areas of the given rulesets.
+        If False, update and write new lexicon files for all dialects.
+    data_dir: str
+        Path for saving rules and exemptions to files
+    lex_dir: str
+        Path for saving lexicon files
+    db_path: str
+        Path to lexicon database
     """
     try:
         # Lagre regelsettene til filer
@@ -527,6 +536,7 @@ def generate_new_lexica(
         print(error)
         print("Generating lexica with existing rules from rules.py")
 
+    data_dir = Path(data_dir)
     rulesets = load_data(data_dir / "rules.py")
     exemptions = load_data(data_dir / "exemptions.py")
     dialects = (
@@ -544,7 +554,7 @@ def generate_new_lexica(
     ) as db_obj:
         # Oppdater leksika med lexupdater
         updated_lex = db_obj.update()
-    write_lex_per_dialect(updated_lex, lex_dir, LEX_PREFIX, None)
+    write_lex_per_dialect(updated_lex, Path(lex_dir), LEX_PREFIX, None)
     # Konverter leksika til et format som passer FA-algoritmen
     convert_lex_to_mfa(
             lex_dir=lex_dir,
