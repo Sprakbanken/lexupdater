@@ -4,12 +4,20 @@ import datetime
 import logging
 import pathlib
 import pprint
-from pathlib import Path
 from contextlib import closing
+from pathlib import Path
 
 import click
 
+from .constants import (
+    newword_column_names,
+    LEX_PREFIX,
+    MATCH_PREFIX,
+    NEW_PREFIX,
+    dialect_schema
+)
 from .db_handler import DatabaseUpdater
+from .rule_objects import save_rules_and_exemptions
 from .utils import (
     write_lexicon,
     flatten_match_results,
@@ -17,13 +25,8 @@ from .utils import (
     load_module_from_path,
     load_newwords,
     convert_lex_to_mfa,
-    validate_phonemes
-)
-from .constants import (
-    newword_column_names,
-    LEX_PREFIX,
-    MATCH_PREFIX,
-    NEW_PREFIX
+    validate_phonemes,
+    write_lex_per_dialect
 )
 
 
@@ -230,11 +233,12 @@ def main(ctx, database, dialects, rules_file, exemptions_file,
         ) as db_obj:
             updated_lex = db_obj.update()
         for dialect, data in updated_lex.items():
-            validated_transcriptions = validate_phonemes(data, valid_phonemes)
+            validated_transcriptions = validate_phonemes(
+                data, valid_phonemes, return_transcriptions="invalid")
             write_lexicon(output_dir / f"{LEX_PREFIX}_{dialect}.txt", data)
             write_lexicon(
                 output_dir / f"invalid_transcriptions_{dialect}.txt",
-                validated_transcriptions["invalid"])
+                validated_transcriptions)
         click.secho(f"Database closed. Files written to {output_dir}",
                     fg="green")
 
@@ -326,10 +330,8 @@ def match_words(ctx, database, dialects, rules_file, exemptions_file,
                 exemptions=exemptions)
     ) as db_obj:
         matches = db_obj.select_words_matching_rules()
-    for dialect, data in matches.items():
-        flat_matches = flatten_match_results(data)
-        out_file = (output_dir / f"{MATCH_PREFIX}_{dialect}.txt")
-        write_lexicon(out_file, flat_matches)
+    write_lex_per_dialect(
+        matches, output_dir, MATCH_PREFIX, flatten_match_results)
 
 
 @main.command("update")
@@ -395,16 +397,13 @@ def update_dialects(
                 exemptions=exemptions)
     ) as db_obj:
         updated_lex = db_obj.update()
-    for dialect, data in updated_lex.items():
-        out_file = (output_dir / f"{LEX_PREFIX}_{dialect}.txt")
-        write_lexicon(out_file, data)
-        if check_phonemes:
-            validated = validate_phonemes(data, ctx.obj["valid_phonemes"])
-            invalid_transcriptions_file = (
-                output_dir / f"invalid_transcriptions_{dialect}.txt")
-            write_lexicon(invalid_transcriptions_file, validated["invalid"])
-            click.secho(f"{len(validated['invalid'])} invalid transcriptions "
-                        f"in {invalid_transcriptions_file}", fg="magenta")
+    write_lex_per_dialect(updated_lex, output_dir, LEX_PREFIX, None)
+    if check_phonemes:
+        write_lex_per_dialect(
+            updated_lex, output_dir, "invalid_transcriptions",
+            validate_phonemes,
+            valid_phonemes=ctx.obj["valid_phonemes"],
+            return_transcriptions="invalid")
 
 
 @main.command("insert")

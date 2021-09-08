@@ -6,8 +6,8 @@ into variables to fill slots in SQL query templates.
 import logging
 from typing import List, Generator
 
-from .utils import filter_list_by_list, validate_objects
 from .constants import ruleset_schema, exemption_schema, WORD_NOT_IN
+from .utils import filter_list_by_list, validate_objects
 
 
 def parse_constraints(constraints: List):
