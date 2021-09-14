@@ -1,4 +1,5 @@
 # Lexupdater 
+[![GitHub version](https://badge.fury.io/gh/Naereen%2FStrapDown.js.svg)](https://github.com/Naereen/StrapDown.js)
 
 Lexupdater er et utviklingsverktøy for å oppdatere og utvide 
 [NST-leksikonet](https://www.nb.no/sprakbanken/ressurskatalog/oai-nb-no-sbr-23/) 
@@ -58,8 +59,8 @@ Flagg | Forklaring  | Gyldige verdier/eksempler
 `-e, --exemptions-file` | Python-fil med lister over ord som er unntatt regel-oppdateringene. | `exemptions.py`
 `--no-exemptions`  | Ignorer unntakene til reglene. |
 `-n, --newword-files` | CSV-filer med nyord som skal legges til.  |   `nyord.csv, nyord2.csv`
-`-db, --database` | Filsti til backend-databasen i filstrukturen. | `data/input/backend-db03.db` 
-`-o, --output-dir` | Filmappe hvor output blir lagret. | `data/output`
+`-db, --database` | Filsti til backend-databasen i filstrukturen. | `backend-db03.db` 
+`-o, --output-dir` | Filmappe hvor output blir lagret. | `lexica`
 `-v, --verbose`  | Skriv ut logg-beskjeder til terminalen. `-vv` gir mer detaljerte beskjer, for debugging. |
 `-h, --help` | Print informasjon om alle argumentene og avslutt. |
 ||
@@ -105,7 +106,7 @@ som en vanlig fil, samt å installere pakken med `pip`.
 python setup.py bdist --formats=wininst
 ```
 
-### OS-uavhengig (ikke ferdig testet)
+### OS-uavhengig
 ```shell
 python setup.py bdist_wheel
 ```
@@ -115,5 +116,5 @@ Etter at python-pakken er bygget, vil den ligge i `dist`-mappen. Den kan nå
 installeres med `pip`: 
 
 ```shell
-pip install dist/lexupdater-0.3.0-py2.py3-none-any.whl      # OS-uavhengig
+pip install dist/lexupdater-0.*.whl      # OS-uavhengig
 ```
