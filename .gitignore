@@ -138,9 +138,8 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
-data/output/*.txt
-data/output/*.csv
-
+data/
+*.db
 
 # pycharm
 .idea/
