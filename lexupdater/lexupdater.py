@@ -268,7 +268,7 @@ def write_base(ctx, database, output_dir):
     with closing(
             DatabaseUpdater(
                 db=database,
-                dialects=list()
+                dialects=[]
             )
     ) as db_obj:
         base = db_obj.get_base()

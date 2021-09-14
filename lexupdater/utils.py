@@ -30,7 +30,7 @@ def write_lexicon(output_file: Union[str, Path], data: Iterable):
     if not data:  # Do not write empty data
         return
     logging.info("Write lexicon data to %s", output_file)
-    with open(output_file, 'w', newline='') as csvfile:
+    with open(output_file, 'w', encoding="utf-8", newline='') as csvfile:
         out_writer = csv.writer(csvfile, delimiter='\t')
         for item in data:
             out_writer.writerow(item)
@@ -404,7 +404,7 @@ def format_mfa_dict(lex_file: Union[str, Path], prob=None):
     def replace_phonemes(transcription: str):
         return re.sub(r"\bRS\b", " SJ ", transcription)
 
-    with open(lex_file) as l_file:
+    with open(lex_file, encoding="utf-8") as l_file:
         lex = l_file.readlines()
         formatted_lex = [format_line(line.split("\t"), prob) for line in lex]
 
