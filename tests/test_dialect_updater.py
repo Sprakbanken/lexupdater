@@ -13,7 +13,7 @@ def rule():
     """A test example of a structured rule from a ruleset."""
     return {
         "pattern": r"\bAX0 R$",
-        "repl": r"AA0 R",
+        "replacement": r"AA0 R",
         "constraints": [
             {"field": "pos", "pattern": "NN", "is_regex": False},
             {"field": "feats", "pattern": "MAS", "is_regex": True},
@@ -90,7 +90,7 @@ def test_parse_conditions_without_conditions(rule):
     assert result == ("", [])
 
 
-def test_parse_rules(some_dialects, ruleset_fixture, exemptions_fixture):
+def test_parse_rules(some_dialects, ruleset_list, exemptions_list):
     # given
     expected_first_item = (
         "e_spoken",
@@ -101,7 +101,7 @@ def test_parse_rules(some_dialects, ruleset_fixture, exemptions_fixture):
     )
     # when
     result = dialect_updater.parse_rules(
-        some_dialects, ruleset_fixture, exemptions_fixture
+        some_dialects, ruleset_list, exemptions_list
     )
     # then
     assert isinstance(result, Generator)
@@ -122,6 +122,4 @@ def test_parse_rules_invalid_input(some_dialects, invalid_config_values):
         some_dialects, rulesets, exemptions
     )
     # then
-    with pytest.raises(SchemaError):
-        for values in result:
-            assert all(values)
+    assert all([values for values in result])

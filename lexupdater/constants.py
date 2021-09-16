@@ -4,6 +4,7 @@
 * SQL query template strings to create tables, insert values, update entries
 and select entries.
 """
+import re
 
 import pandera as pa
 from pandera import Column, DataFrameSchema, Check
@@ -13,8 +14,8 @@ from schema import Schema, Optional
 LICIT_PHONES = [
     "AA0", "AA1", "AA2", "AA3", "AE0", "AE1", "AE2", "AE3",
     "AEH0", "AEH1", "AEH2", "AEH3", "AEJ0", "AEJ1", "AEJ2",
-    "AEJ3", "AEW0", "AEW1", "AEW2", "AEW3", "AH0","AH1", "AH2",
-    "AH3", "AJ0", "AJ1", "AJ2", "AJ3", "AX0","AX1", "AX2", "AX3",
+    "AEJ3", "AEW0", "AEW1", "AEW2", "AEW3", "AH0", "AH1", "AH2",
+    "AH3", "AJ0", "AJ1", "AJ2", "AJ3", "AX0", "AX1", "AX2", "AX3",
     "B", "D", "DH", "DJ", "EE0", "EE1", "EE2", "EE3", "EH0",
     "EH1", "EH2", "EH3", "EXH", "F", "G", "H", "IH0", "IH1",
     "IH2", "IH3", "II0", "II1", "II2", "II3", "INH", "J", "JX0",
@@ -53,9 +54,22 @@ constraint_schema = Schema({
     "is_regex": bool
 })
 
+def _backreference_check(string):
+    regex_match = re.match(
+        r'(?P<back_ref>\\\d)|(?P<phoneme>\w{1,3})', string)
+    if regex_match is None:
+        return False
+    phoneme = regex_match.group("phoneme")
+    if (phoneme is not None) and (phoneme in LICIT_PHONES):
+        return True
+    back_ref = regex_match.group("back_ref")
+    if back_ref is not None:
+        return True
+    return False
+
 rule_schema = Schema({
     "pattern": str,
-    "repl": str,
+    "replacement": str,
     "constraints": [Optional(constraint_schema.schema)],
 })
 
@@ -65,7 +79,7 @@ ruleset_schema = Schema({
     "rules": [rule_schema.schema],
 })
 
-exemption_schema = Schema([{"ruleset": str, "words": list}])
+exemption_schema = Schema({"ruleset": str, "words": list})
 
 _phone_check = lambda s: all(
     x in LICIT_PHONES for x in s.split(" ")
@@ -91,6 +105,21 @@ newword_schema = DataFrameSchema({
     "pos": Column(pa.String),
     "morphology": Column(pa.String, nullable=True)
 })
+
+newword_column_names = [
+        "token",
+        "transcription",
+        "alt_transcription_1",
+        "alt_transcription_2",
+        "alt_transcription_3",
+        "pos",
+        "morphology"
+    ]
+
+LEX_PREFIX="updated_lexicon"
+MATCH_PREFIX="words_matching_rules"
+MFA_PREFIX="NB_nob"
+NEW_PREFIX="base_new_words"
 
 # Define SQL query templates
 CREATE_PRON_TABLE_STMT = """CREATE TEMPORARY TABLE {pron_table_name} (
@@ -142,10 +171,10 @@ WHERE_REGEXP = "WHERE REGEXP(?,nofabet)"
 
 WORD_NOT_IN = "w.wordform NOT IN"
 
-COL_WORD_PRON = "w.wordform, p.nofabet "
+COL_WORD_PRON_ID = "w.wordform, p.nofabet, p.pron_id "
 
-COL_ID_WORD_FEATS_PRON = (
-    "w.unique_id, w.wordform, w.pos, w.feats, p.nofabet"
+COL_ID_WORD_FEATS_PRON_ID = (
+    "w.unique_id, w.wordform, w.pos, w.feats, p.nofabet, p.pron_id "
 )
 
 COL_WORD_POS_FEATS_PRON = "w.wordform, w.pos, w.feats, p.nofabet"
