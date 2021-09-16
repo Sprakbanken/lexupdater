@@ -1,5 +1,6 @@
 """Test suite for helper functions in utils.py."""
 import re
+from pathlib import Path
 from typing import Generator
 
 import pandas as pd
@@ -366,9 +367,9 @@ def lexicon_dir_prefixes(tmp_path):
 
 
 @pytest.mark.parametrize(
-    "combine_files,expected_filenames,expected_content,other_keyword_args",
+    "combine_files,expected_filenames,expected_content,probabilities",
     [
-        (False,["dialect_spoken.dict", "dialect_written.dict"], """
+        (False, ["dialect_spoken.dict", "dialect_written.dict"], """
 -abel AA1 B AX0 L
 -abels AA1 B AX0 L S
 -abelt AA1 B AX0 L T
@@ -390,12 +391,12 @@ def lexicon_dir_prefixes(tmp_path):
 -ables 0.8 AA1 B L AX0 S
 -ables 0.4 AA1 B L AX0 S
 """.lstrip(),
-         dict(spoken_prob=0.8, written_prob=0.4)),
+         dict(spoken=0.8, written=0.4)),
     ],
 )
 def test_convert_lex_to_mfa(
         lexicon_dir_prefixes, combine_files, expected_filenames,
-        expected_content, other_keyword_args):
+        expected_content, probabilities):
     """Test conversion of multiple files in a directory."""
     # given
     lex_dir, in_prefix, out_prefix = lexicon_dir_prefixes
@@ -409,7 +410,7 @@ def test_convert_lex_to_mfa(
         in_file_prefix=in_prefix,
         out_file_prefix=out_prefix,
         combine_dialect_forms=combine_files,
-        **other_keyword_args
+        probabilities=probabilities
     )
     # then
     assert all([f in list(lex_dir.iterdir()) for f in expected_files])
@@ -444,9 +445,10 @@ def test_format_mfa_dict(
     """Test conversion of two files merged into one, with probabilities."""
     # given
     lex_dir, in_prefix, out_prefix = lexicon_dir_prefixes
-    lex_file = lex_dir / f"{in_prefix}_dialect_spoken.txt"
+    lex_file = Path(lex_dir / f"{in_prefix}_dialect_spoken.txt")
+    lexicon = lex_file.read_text().split("\n")
     # when
-    result = utils.format_mfa_dict(lex_file, prob=pron_prob)
+    result = utils.format_mfa_dict(lexicon, prob=pron_prob)
     # then
     assert len(expected) == len(result)
     assert all([e_line == r_line for e_line, r_line in zip(expected,
