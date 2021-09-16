@@ -406,6 +406,7 @@ def update_dialects(
             valid_phonemes=ctx.obj["valid_phonemes"],
             return_transcriptions="invalid")
 
+
 @main.command("compare")
 @click.option(
     "-db",
@@ -564,8 +565,9 @@ def convert_format(ctx, lexicon_dir, separate_forms, spoken_prob, written_prob):
     convert_lex_to_mfa(
         lex_dir=lexicon_dir,
         combine_dialect_forms=not separate_forms,
-        written_prob=written_prob,
-        spoken_prob=spoken_prob,
+        probabilities=dict(
+            written=written_prob,
+            spoken=spoken_prob),
     )
 
 
