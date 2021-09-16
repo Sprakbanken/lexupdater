@@ -65,12 +65,12 @@ def test_convert_formats(tmp_path):
 
     (output_dir / "updated_lexicon_n_written.txt").write_text(
         "-elser	NN	PLU|IND|NOM|NEU-MAS-FEM	EH1 L S AA0 R")
-    expected_file = "NB_nob_n_written.dict"
+    expected_file = "NB_nob_n.dict"
     runner = CliRunner()
     # when
     result = runner.invoke(
         lexupdater.main,
-        f"-c tests/dummy_config.py  convert -l {str(output_dir)}"
+        f"-c tests/dummy_config.py convert -l {str(output_dir)}"
     )
     result_files = [file_path.name for file_path in output_dir.iterdir()]
     # then

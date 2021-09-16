@@ -535,11 +535,11 @@ def insert_newwords(ctx, database, dialects, newword_files, output_dir):
          "converted .dict files will be written to."
 )
 @click.option(
-    "-co",
-    "--combine",
+    "-sep",
+    "--separate-forms",
     is_flag=True,
-    help="Merge dialect_spoken and dialect_written transcriptions in "
-         "the MFA dictionary, and weight the pronunciations with probabilities."
+    help="Keep spoken and written forms of dialect transcriptions "
+         "as separate MFA-formatted lexica."
 )
 @click.option(
     "-s",
@@ -558,12 +558,12 @@ def insert_newwords(ctx, database, dialects, newword_files, output_dir):
          "form in the MFA dictionary, if --combine is enabled."
 )
 @click.pass_context
-def convert_format(ctx, lexicon_dir, combine, spoken_prob, written_prob):
+def convert_format(ctx, lexicon_dir, separate_forms, spoken_prob, written_prob):
     """Convert lexicon formats to comply with MFA."""
     click.secho("Convert lexica to MFA dict format", fg="cyan")
     convert_lex_to_mfa(
         lex_dir=lexicon_dir,
-        combine_dialect_forms=combine,
+        combine_dialect_forms=not separate_forms,
         written_prob=written_prob,
         spoken_prob=spoken_prob,
     )
