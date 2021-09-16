@@ -28,8 +28,8 @@ hvor man bl.a. spesifiserer følgende variabler:
 
 Variabelnavn | Forklaring | Default-verdi
 ---|---|---
-`DATABASE`  | Filsti til backend-databasen i filstrukturen | `data/input/backend-db03.db`
-`OUTPUT_DIR` | Filmappe hvor output blir lagret | `data/output`
+`DATABASE`  | Filsti til backend-databasen i filstrukturen | `backend-db03.db`
+`OUTPUT_DIR` | Filmappe hvor output blir lagret | `lexica`
 `RULES_FILE` | Python-fil med søk-erstatt-regelsett-lister |  `rules.py`
 `EXEMPTIONS_FILE` | Python-fil med lister over ord som er unntatt regel-oppdateringene | `exemptions.py`
 `NEWWORD_FILES` | CSV-filer med nyord som skal legges til  |   `nyord.csv, nyord2.csv`
