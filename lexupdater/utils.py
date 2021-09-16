@@ -30,10 +30,32 @@ def write_lexicon(output_file: Union[str, Path], data: Iterable):
     if not data:  # Do not write empty data
         return
     logging.info("Write lexicon data to %s", output_file)
-    with open(output_file, 'w', newline='') as csvfile:
+    with open(output_file, 'w', encoding="utf-8", newline='') as csvfile:
         out_writer = csv.writer(csvfile, delimiter='\t')
         for item in data:
             out_writer.writerow(item)
+
+
+def write_lex_per_dialect(
+        data, out_dir, file_prefix, preprocess, *args, **kwargs):
+    """Wrapper for writing a lexicon file per dialect in the data.
+
+    .txt-files get saved to out_dir with the given file_prefix + dialect
+
+    Parameters
+    ----------
+    data: dict
+        The keys are the names of dialects, values are the lexicon entries
+    out_dir: Path
+    file_prefix: str
+    preprocess: callable
+        Function to process the data with before writing it to the file.
+    """
+    for dialect, entries in data.items():
+        if callable(preprocess):
+            entries = preprocess(entries, *args, **kwargs)
+        out_file = out_dir / f"{file_prefix}_{dialect}.txt"
+        write_lexicon(out_file, entries)
 
 
 def flatten_match_results(data: Iterable) -> Generator:
@@ -250,23 +272,17 @@ def data_to_df(data: dict, update: bool = False, pron_ids: list = None):
     return pd.DataFrame(data_dict)
 
 
-def compare_transcriptions(database_updater):
+def compare_transcriptions(matching_words, updated_words):
     """Create a dataframe with lexicon data from the transformation rules.
 
-    Run both select and update queries on the lexicon database,
-    and filter results by the transcriptions that are affected by the rules.
+    Filter the updated_words, i.e. all lexicon transcriptions after update,
+    by the matching_words, i.e. rows that were affected by the rules.
 
     Returns
     -------
     pd.Dataframe
         Dataframe with original and updated transcriptions and their wordforms.
     """
-
-    # Select words matching the regex patterns
-    matching_words = database_updater.select_words_matching_rules()
-    # Update lexicon based on rules
-    updated_words = database_updater.update(include_id=True)
-
     matching_df = data_to_df(matching_words)
     matching_pron_ids = matching_df["pron_id"].to_list()
     updated_df = data_to_df(updated_words, pron_ids=matching_pron_ids)
@@ -388,14 +404,15 @@ def format_mfa_dict(lex_file: Union[str, Path], prob=None):
     def replace_phonemes(transcription: str):
         return re.sub(r"\bRS\b", " SJ ", transcription)
 
-    with open(lex_file) as l_file:
+    with open(lex_file, encoding="utf-8") as l_file:
         lex = l_file.readlines()
         formatted_lex = [format_line(line.split("\t"), prob) for line in lex]
 
     return formatted_lex
 
 
-def validate_phonemes(updated_lexicon: list, valid_phonemes: list):
+def validate_phonemes(updated_lexicon: list, valid_phonemes: list,
+                      return_transcriptions="valid"):
     """Validate phonemes in the updated transcriptions of the lexicon."""
     transcriptions: dict = {"valid": [], "invalid": []}
     for row in updated_lexicon:
@@ -408,4 +425,4 @@ def validate_phonemes(updated_lexicon: list, valid_phonemes: list):
                 "%s. Transcription contains invalid phonemes: %s",
                 error, row[-1])
             transcriptions["invalid"].append(row)
-    return transcriptions
+    return transcriptions.get(return_transcriptions, [])

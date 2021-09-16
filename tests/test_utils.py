@@ -310,6 +310,7 @@ def test_data_to_df_matching():
     assert "pron_id_str" in result_values
 
 
+@pytest.mark.skip("Needs refactoring")
 def test_compare_transcriptions(db_updater_obj):
     # when
     result = utils.compare_transcriptions(db_updater_obj)

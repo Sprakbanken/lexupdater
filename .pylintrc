@@ -154,6 +154,7 @@ disable=print-statement,
         unused-argument,
         super-with-arguments,
         arguments-differ,
+        no-member
 
 
 # Enable the message, report, category or checker with the given id(s). You can
