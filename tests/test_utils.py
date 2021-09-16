@@ -1,9 +1,12 @@
 """Test suite for helper functions in utils.py."""
+import re
 from typing import Generator
 
 import pandas as pd
 import pytest
 
+from lexupdater.constants import ruleset_schema, exemption_schema, \
+    dialect_schema
 from lexupdater import utils
 
 
@@ -108,7 +111,6 @@ def test_load_vars_from_module():
     assert "tests/delete_me" in result
     assert "tests/dummy_rules.py" in result
     assert "tests/dummy_exemptions.py" in result
-    assert "tests/dummy_newword.py" in result
     assert ["n_written"] in result
 
 
@@ -129,7 +131,7 @@ def test_load_data(module_file_path):
 def test_load_data_raises_error():
     file_path = "wrong_path.txt"
     # given
-    with pytest.raises(SystemExit):
+    with pytest.raises(AssertionError):
         # when
         utils.load_data(file_path)
 
@@ -137,20 +139,24 @@ def test_load_data_raises_error():
 @pytest.mark.parametrize(
     "paths,col_names",
     [
-        (["nyord02.csv"], ["token"]),
-        (["nyord.csv", "nyord02.csv"], ["token",
-                                        "transcription",
-                                        "alt_transcription_1",
-                                        "alt_transcription_2",
-                                        "alt_transcription_3",
-                                        "pos",
-                                        "morphology"]
-         ),
-        (["nyord02.csv"], ["word", "transcription", "feats"])
+        (["tests/dummy_newwords_2.csv"], ["token"]),
+        (
+            ["tests/dummy_newwords_1.csv", "tests/dummy_newwords_2.csv"],
+            [
+                "token",
+                "transcription",
+                "alt_transcription_1",
+                "alt_transcription_2",
+                "alt_transcription_3",
+                "pos",
+                "morphology"
+            ]
+        ),
+        (["tests/dummy_newwords_2.csv"], ["word", "transcription", "feats"])
     ],
     ids=["minimal_input", "maximal_input", "wrong_input"]
 )
-def test__load_newwords(paths, col_names):
+def test_load_newwords(paths, col_names):
     # given
     valid_col_names = [
         "token",
@@ -161,7 +167,287 @@ def test__load_newwords(paths, col_names):
         "pos",
         "morphology"
     ]
-    result = utils._load_newwords(paths, col_names)[:5]
+    result = utils.load_newwords(paths, col_names)[:5]
 
     assert isinstance(result, pd.DataFrame)
     assert all([col in valid_col_names for col in result.columns])
+
+
+def test_validate_objects(ruleset_list, some_dialects, exemptions_list):
+    # given
+    mixed_rules = ruleset_list + ["invalid_ruleset"]
+    mixed_exemptions = exemptions_list + ["invalid_exemption"]
+    mixed_dialects = some_dialects + ["invalid_dialect"]
+    # when
+    result_rules = utils.validate_objects(mixed_rules, ruleset_schema)
+    result_exemptions = utils.validate_objects(mixed_exemptions,
+                                               exemption_schema)
+    result_dialects = utils.validate_objects(mixed_dialects, dialect_schema)
+    # then
+    assert result_rules == ruleset_list
+    assert result_exemptions == exemptions_list
+    assert result_dialects == some_dialects
+
+
+def test_matching_data_to_dict():
+    # given
+    test_entries = [("pattern_str", [("word_str","transcription","pron_id")])]
+    expected = {
+        "pattern": ("pattern_str",),
+        "word": ("word_str",),
+        "transcription": ("transcription",),
+        "pron_id": ("pron_id",),
+    }
+    # when
+    result = utils.matching_data_to_dict(test_entries)
+    # then
+    assert str(result) == str(expected)
+
+
+@pytest.mark.parametrize(
+    "filter_ids,test_entries,expected",
+    [
+        [None,
+         (("w1","p1","f1","t1"),("w2","p2","f2","t2")),
+         {
+             "word": ("w1", "w2"),
+             "pos": ("p1", "p2"),
+             "feats": ("f1", "f2"),
+             "new_transcription": ("t1", "t2"),
+         }],
+        [None,
+         (("u1","w1","p1","f1","t1","pr1"),("u2","w2","p2","f2","t2","pr2")),
+         {
+            "unique_id": ("u1", "u2"),
+            "word": ("w1", "w2"),
+            "pos": ("p1", "p2"),
+            "feats": ("f1", "f2"),
+            "new_transcription": ("t1", "t2"),
+            "pron_id": ("pr1", "pr2"),
+         }
+        ],
+        [[1,2,3],
+         (("u1","w1","p1","f1","t1",1),("u2","w2","p2","f2","t2","pr2")),
+         {
+            "unique_id": ["u1"],
+            "word": ["w1"],
+            "pos": ["p1"],
+            "feats": ["f1"],
+            "new_transcription": ["t1"],
+            "pron_id": [1],
+         }]
+    ]
+)
+def test_updated_data_to_dict(filter_ids, test_entries,expected):
+    # when
+    result = utils.updated_data_to_dict(
+        test_entries, ids_to_filter_by=filter_ids)
+    # then
+    assert isinstance(result, dict)
+    assert str(result) == str(expected)
+
+
+@pytest.mark.parametrize(
+    "update_bool,filter_ids,expected",
+    [
+        (False,
+         [1,2],
+         pd.DataFrame({
+             "dialect": ["dialect_name", "dialect_name"],
+             "unique_id": ["u1","u2"],
+             "word": ["w1","w2"],
+             "pos": ["p1","p2"],
+             "feats": ["f1", "f2"],
+             "new_transcription": ["t1","t2"],
+             "pron_id": [1, 2],
+         })),
+        (True,
+         None,
+         pd.DataFrame({
+             "dialect": ["dialect_name", "dialect_name", "dialect_name"],
+             "unique_id": ["u1","u2", "u4"],
+             "word": ["w1","w2", "w4"],
+             "pos": ["p1","p2", "p4"],
+             "feats": ["f1", "f2", "f4"],
+             "new_transcription": ["t1","t2", "t4"],
+             "pron_id": [1, 2, 4],
+         }))
+    ]
+)
+def test_data_to_df_update(update_bool, filter_ids, expected):
+    # given
+    test_data = {"dialect_name": (
+        ("u1", "w1", "p1", "f1", "t1", 1),
+        ("u2", "w2", "p2", "f2", "t2", 2),
+        ("u4", "w4", "p4", "f4", "t4", 4))}
+    input_pron_ids = {1, 2, 4}
+    # when
+    result = utils.data_to_df(
+        test_data, update=update_bool, pron_ids=filter_ids)
+    # then
+    assert isinstance(result, pd.DataFrame)
+    assert len(result.index) == len(expected.index)
+    assert all([c in result.columns for c in expected.columns])
+    assert input_pron_ids.issuperset(set(result.pron_id))
+
+
+def test_data_to_df_matching():
+    # given
+    test_data = {"dialect_name": [
+        ("pattern_str", [("word_str","transcription_str", "pron_id_str")])
+    ]}
+    # when
+    result = utils.data_to_df(test_data)
+    result_values = result.iloc[0].values
+    # then
+    assert isinstance(result, pd.DataFrame)
+    assert len(result.columns) == 5
+    assert len(result.index) == 1
+    assert "dialect_name" in result_values
+    assert "pattern_str" in result_values
+    assert "word_str" in result_values
+    assert "transcription_str" in result_values
+    assert "pron_id_str" in result_values
+
+
+@pytest.mark.skip("Needs refactoring")
+def test_compare_transcriptions(db_updater_obj):
+    # when
+    result = utils.compare_transcriptions(db_updater_obj)
+    # then
+    assert isinstance(result, pd.DataFrame)
+    assert len(result.index) == 5
+
+
+def test_format_rulesets_and_exemptions(ruleset_fixture):
+    # given
+    expected_rule = (
+        "\n"
+        "test_rule_set = {'name': 'test_rule_set',\n"
+        "                 'areas': ['e_spoken'],\n"
+        "                 'rules': "  # there is no newline in the string here
+        "[{'pattern': 'transcription_pattern_to_replace',\n"
+        "                            'replacement': 'D DH \\\\1 EE1',\n"
+        "                            'constraints': [{'field': 'column_name',\n"
+        "                                             'pattern': 'value',\n"
+        "                                             'is_regex': True}]}]}\n")
+
+    expected_exemption = re.compile(
+        r"\nexemption_(\d+_\d+) = {(\s+)'ruleset': 'test_rule_set',(\s+)"
+        r"'words': \['exempt_word']}\n")
+    # when
+    rule_result, exemption_result = utils.format_rulesets_and_exemptions(
+        [ruleset_fixture]
+    )
+    # then
+    assert rule_result == expected_rule
+    exemption_match = re.match(expected_exemption, exemption_result)
+    assert exemption_match is not None
+
+
+@pytest.fixture
+def lexicon_dir_prefixes(tmp_path):
+    lex_dir = tmp_path / "lexica"
+    lex_dir.mkdir()
+    in_prefix = "lexupdater"
+    out_prefix = "mfa"
+    file_content = re.sub("\n        ", "\n", """
+        -abel	JJ	SIN|IND|NOM|MAS-FEM|POS	AA1 B AX0 L
+        -abels	JJ	SIN|IND|GEN|MAS-FEM|POS	AA1 B AX0 L S
+        -abelt	JJ	SIN|IND|NOM|NEU|POS	AA1 B AX0 L T
+        -abelts	JJ	SIN|IND|GEN|NEU|POS	AA1 B AX0 L T S
+        -able	JJ	SIN-PLU|DEF|NOM||POS	AA1 B L AX0
+        -ables	JJ	SIN-PLU|DEF|GEN||POS	AA1 B L AX0 S
+        """).lstrip()
+    for suffix in ("spoken","written"):
+        lex_file = lex_dir / f"{in_prefix}_dialect_{suffix}.txt"
+        lex_file.write_text(file_content)
+    return lex_dir, in_prefix, out_prefix
+
+
+@pytest.mark.parametrize(
+    "combine_files,expected_filenames,expected_content,other_keyword_args",
+    [
+        (False,["dialect_spoken.dict", "dialect_written.dict"], """
+-abel AA1 B AX0 L
+-abels AA1 B AX0 L S
+-abelt AA1 B AX0 L T
+-abelts AA1 B AX0 L T S
+-able AA1 B L AX0
+-ables AA1 B L AX0 S
+""".lstrip(), {}),
+        (True, ["dialect.dict"], """
+-abel 0.8 AA1 B AX0 L
+-abel 0.4 AA1 B AX0 L
+-abels 0.8 AA1 B AX0 L S
+-abels 0.4 AA1 B AX0 L S
+-abelt 0.8 AA1 B AX0 L T
+-abelt 0.4 AA1 B AX0 L T
+-abelts 0.8 AA1 B AX0 L T S
+-abelts 0.4 AA1 B AX0 L T S
+-able 0.8 AA1 B L AX0
+-able 0.4 AA1 B L AX0
+-ables 0.8 AA1 B L AX0 S
+-ables 0.4 AA1 B L AX0 S
+""".lstrip(),
+         dict(spoken_prob=0.8, written_prob=0.4)),
+    ],
+)
+def test_convert_lex_to_mfa(
+        lexicon_dir_prefixes, combine_files, expected_filenames,
+        expected_content, other_keyword_args):
+    """Test conversion of multiple files in a directory."""
+    # given
+    lex_dir, in_prefix, out_prefix = lexicon_dir_prefixes
+    expected_files = [
+        lex_dir / f"{out_prefix}_{filename}" for filename in expected_filenames
+    ]
+    # when
+    utils.convert_lex_to_mfa(
+        lex_dir=lex_dir,
+        dialects=["dialect_spoken","dialect_written"],
+        in_file_prefix=in_prefix,
+        out_file_prefix=out_prefix,
+        combine_dialect_forms=combine_files,
+        **other_keyword_args
+    )
+    # then
+    assert all([f in list(lex_dir.iterdir()) for f in expected_files])
+    result_content = expected_files[0].read_text()
+    assert result_content == expected_content
+
+
+@pytest.mark.parametrize(
+    "pron_prob,expected",
+    [
+        (None, [
+            '-abel AA1 B AX0 L\n',
+            '-abels AA1 B AX0 L S\n',
+            '-abelt AA1 B AX0 L T\n',
+            '-abelts AA1 B AX0 L T S\n',
+            '-able AA1 B L AX0\n',
+            '-ables AA1 B L AX0 S\n'
+        ]),
+        (0.8, [
+            '-abel 0.8 AA1 B AX0 L\n',
+            '-abels 0.8 AA1 B AX0 L S\n',
+            '-abelt 0.8 AA1 B AX0 L T\n',
+            '-abelts 0.8 AA1 B AX0 L T S\n',
+            '-able 0.8 AA1 B L AX0\n',
+            '-ables 0.8 AA1 B L AX0 S\n'
+        ])
+    ],
+    ids=["no_weighted_prons", "weighted_pronunciations"]
+)
+def test_format_mfa_dict(
+        lexicon_dir_prefixes, pron_prob, expected):
+    """Test conversion of two files merged into one, with probabilities."""
+    # given
+    lex_dir, in_prefix, out_prefix = lexicon_dir_prefixes
+    lex_file = lex_dir / f"{in_prefix}_dialect_spoken.txt"
+    # when
+    result = utils.format_mfa_dict(lex_file, prob=pron_prob)
+    # then
+    assert len(expected) == len(result)
+    assert all([e_line == r_line for e_line, r_line in zip(expected,
+                                                           result)]), result

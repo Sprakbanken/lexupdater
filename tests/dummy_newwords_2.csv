@@ -1,0 +1,10 @@
+token,transcription,pos,morphology,alt_transcription_1,alt_transcription_2,alt_transcription_3,number_of_years,freq,lemma,comment
+nettportalen,N EH1 T P OAH0 RT AA3 L NX0,NN,SIN|DEF|MAS,,,,22,781,nettportal,
+nettadresser,N EH2 T AH0 D R EH3 S AX0 R,NN,PLU|IND|MAS,,,,22,731,nettadresse,
+nettsurfing,N EH2 T S OEH3 R F IH0 NG,NN,SIN|IND|FEM,,,,22,655,nettsurfing,
+nettjenesten,N EH2 T T J EE3 N AX0 S T NX0,NN,SIN|DEF|MAS,,,,22,654,nettjeneste,
+nettporno,N EH1 T P OO3 RN OH0,NN,SIN|DEF|MAS,,,,22,612,nettporno,
+nettportal,N EH1 T P OAH0 RT AA3 L,NN,SIN|IND|MAS,,,,22,571,nettportal,
+nettavisa,N EH2 T AH0 V II3 S AH0,NN,SIN|DEF|FEM,,,,22,511,nettavis,
+nettauksjon,N EH1 T AEW0 K SJ OO3 N,NN,SIN|IND|MAS,,,,22,508,nettauksjon,
+nettselskaper,N EH2 T S AX0 L S K AA3 P AX0 R,NN,PLU|IND|FEM,,,,22,417,nettselskape,

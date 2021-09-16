@@ -28,7 +28,7 @@ class TestDatabaseUpdater:
     """
 
     def test_database_updater(
-        self, ruleset_fixture, some_dialects, exemptions_fixture
+        self, ruleset_list, some_dialects, exemptions_list
     ):
         """
         Test the constructor of the DatabaseUpdater
@@ -41,17 +41,17 @@ class TestDatabaseUpdater:
             # when
             result = db_handler.DatabaseUpdater(
                 DATABASE,
-                ruleset_fixture,
                 some_dialects,
-                exemptions_fixture,
-            )
+                rulesets=ruleset_list,
+                exemptions=exemptions_list)
             # then
             assert isinstance(result, db_handler.DatabaseUpdater)
             # Check that the patched function was called
             db_handler.DatabaseUpdater._connect_and_populate.assert_called()
 
     def test_connect_and_populate(
-        self, ruleset_fixture, some_dialects, exemptions_fixture
+        self, ruleset_list, some_dialects,
+        exemptions_list, wordlist_fixture
     ):
         """Test the constructor of the DatabaseUpdater."""
         # patch functions that are called by _connect_and_populate
@@ -63,13 +63,10 @@ class TestDatabaseUpdater:
             patch_cursor = patch_connection.cursor.return_value
 
             # when
-            _ = db_handler.DatabaseUpdater(
-                DATABASE,
-                ruleset_fixture,
-                some_dialects,
-                exemptions=exemptions_fixture,
-                newwords=None,
-            )
+            _ = db_handler.DatabaseUpdater(DATABASE, some_dialects,
+                                           rulesets=ruleset_list,
+                                           newwords=wordlist_fixture,
+                                           exemptions=exemptions_list)
             # then
             # Check that the patched functions were called
             patched_sqlite.connect.assert_called_with(DATABASE)
@@ -78,34 +75,30 @@ class TestDatabaseUpdater:
             patch_cursor.execute.assert_called()
 
     def test_select_words_matching_rules(self, db_updater_obj):
-        # given
-        assert all(result == [] for result in db_updater_obj.results.values())
         # when
-        db_updater_obj.select_words_matching_rules()
+        results = db_updater_obj.select_words_matching_rules()
         # then
         assert any(
-            [result != [] for result in db_updater_obj.results.values()]
+            [result != [] for result in results]
         )
 
     def test_update(self, db_updater_obj):
-        # given
-        assert all(result == [] for result in db_updater_obj.results.values())
         # when
-        db_updater_obj.update()
+        results = db_updater_obj.update()
         # then
         assert any(
-            [result != [] for result in db_updater_obj.results.values()]
+            [result != [] for result in results]
         )
 
     def test_update_results(self, db_updater_obj, all_dialects):
         # given
         test_dialect_name = sorted(list(all_dialects))[0]
         # when
-        db_updater_obj.update_results()
+        results = db_updater_obj.update_results()
         # then
-        assert isinstance(db_updater_obj.results, dict)
-        assert sorted(db_updater_obj.results.keys()) == sorted(all_dialects)
-        assert len(db_updater_obj.results.get(test_dialect_name)[0]) == 4
+        assert isinstance(results, dict)
+        assert sorted(results.keys()) == sorted(all_dialects)
+        assert len(results.get(test_dialect_name)[0]) == 4
 
     def test_get_base(self, db_updater_obj):
         # when
@@ -115,3 +108,23 @@ class TestDatabaseUpdater:
         assert isinstance(result, list)
         assert result != []
         assert result[0] is not None
+
+    def test__insert_newwords(self, db_updater_obj, wordlist_fixture):
+        # when
+        results = db_updater_obj.update_results()
+        input_words = wordlist_fixture["token"]
+        main_trans = wordlist_fixture["transcription"]
+        alt_trans = [
+            x[1] for x in [
+                wordlist_fixture["alt_transcription_1"],
+                wordlist_fixture["alt_transcription_2"],
+                wordlist_fixture["alt_transcription_3"]
+            ]
+        ]
+        # then
+        for d in results.keys():
+            result_words = [x[0] for x in results[d]]
+            result_trans = [x[3] for x in results[d]]
+            assert all(wd in result_words for wd in input_words)
+            assert all(tn in result_trans for tn in main_trans)
+            assert all(tn in result_trans for tn in alt_trans)

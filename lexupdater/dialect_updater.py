@@ -6,8 +6,8 @@ into variables to fill slots in SQL query templates.
 import logging
 from typing import List, Generator
 
-from .utils import filter_list_by_list
 from .constants import ruleset_schema, exemption_schema, WORD_NOT_IN
+from .utils import filter_list_by_list, validate_objects
 
 
 def parse_constraints(constraints: List):
@@ -123,11 +123,11 @@ def parse_rules(
         list: conditional values to fill placeholders
     """
     rule_exemptions = map_rule_exemptions(
-        exemption_schema.validate(exemptions)
+        validate_objects(exemptions, exemption_schema)
     )
+    validated_rules = validate_objects(rulesets, ruleset_schema)
 
-    for ruleset in rulesets:
-        ruleset = ruleset_schema.validate(ruleset)
+    for ruleset in validated_rules:
         rule_dialects = filter_list_by_list(ruleset["areas"], filter_dialects)
         if not rule_dialects:
             continue
@@ -140,7 +140,7 @@ def parse_rules(
 
         for rule in ruleset["rules"]:
             logging.debug("Rule pattern: %s", rule["pattern"])
-            logging.debug("Rule replacement: %s", rule["repl"])
+            logging.debug("Rule replacement: %s", rule["replacement"])
             cond_string, cond_values = parse_conditions(
                 rule, exempt_words
             )
@@ -149,7 +149,7 @@ def parse_rules(
                 yield (
                     dialect,
                     rule["pattern"],
-                    rule["repl"],
+                    rule["replacement"],
                     cond_string,
                     cond_values
                 )

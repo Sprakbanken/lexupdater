@@ -1,5 +1,4 @@
 """Connect to and update the database containing the pronunciation lexicon."""
-
 import logging
 import re
 import sqlite3
@@ -12,9 +11,10 @@ from .constants import (
     UPDATE_QUERY,
     WHERE_WORD_IN_STMT,
     SELECT_QUERY,
-    COL_WORD_PRON,
+    COL_WORD_PRON_ID,
     WHERE_REGEXP,
     COL_WORD_POS_FEATS_PRON,
+    COL_ID_WORD_FEATS_PRON_ID,
     NEWWORD_INSERT,
     NW_WORD_COLS,
     NW_PRON_COLS,
@@ -55,7 +55,7 @@ class DatabaseUpdater:
     rulesets: list
         List of ruleset dictionaries, which are validated with
         rule_schema from the config.constants module
-    dialect_names: list
+    dialects: list
         List of dialects to update transcription entries for
     exemptions:
         List of exemption dictionaries, containing words
@@ -63,23 +63,44 @@ class DatabaseUpdater:
     """
 
     def __init__(
-        self, db, rulesets, dialect_names, newwords=None, exemptions=None,
-    ):
+            self, db, dialects, rulesets=None, newwords=None, exemptions=None):
         """Set object attributes, connect to db and create temp tables."""
-        if exemptions is None:
-            exemptions = []
         self._db = db
         self.word_table = "words_tmp"
         self.pron_table = "pron_tmp"
-        self.newwords = newwords
-        self.dialects = dialect_schema.validate(dialect_names)
-        self.parsed_rules = parse_rules(
-            self.dialects,
-            rulesets,
-            exemptions
-        )
-        self.results = {dialect: [] for dialect in self.dialects}
+        self.dialects = dialect_schema.validate(dialects)
+        self._rulesets = []
+        self._exemptions = [] if exemptions is None else exemptions
+        self._newwords = newwords
+        if rulesets is not None:
+            self.rulesets = rulesets
         self._connect_and_populate()
+
+    @property
+    def rulesets(self):
+        """List of ruleset dicts."""
+        return self._rulesets
+
+    @rulesets.setter
+    def rulesets(self, new_rulesets):
+        self._rulesets = new_rulesets
+#            RuleSet.from_dict(rule_dict) for rule_dict in new_rulesets]
+        self.parsed_rules = list(parse_rules(
+            self.dialects,
+            self._rulesets,
+            self._exemptions
+        ))
+
+    @property
+    def exemptions(self):
+        "List of exemption dicts."
+        return self._exemptions
+
+    @property
+    def newwords(self):
+        """Pandas DataFrame of new word entries."""
+        return self._newwords
+
 
     def _connect_and_populate(self):
         """Connect to db. Create and populate temp tables."""
@@ -158,17 +179,34 @@ class DatabaseUpdater:
             self._cursor.execute(insert_stmt)
             self._connection.commit()
 
-    def select_words_matching_rules(self):
+    def select_words_matching_rules(self, rules: list = None):
         """Apply a SELECT SQL query for each rule.
 
         Construct the SQL query with values from the rules and exemptions
         before applying it.
+
+        Parameters
+        ----------
+        rules: list
+            Optional list of rules to run the queries with.
+            If None, use self.parsed_rules
+
+        Returns
+        -------
+        dict
+            Format: {dialect: [
+            (rule_pattern, (db_field1, db_field2, ...)),
+            ...]}
         """
-        # The replacement string _ is not used for this query
+        if rules is not None:
+            self.rulesets = rules
+        # Reset the result lists before populating it again
+        matching_entries: dict = {dialect: [] for dialect in self.dialects}
         logging.info("Fetch words that match the rule patterns")
+        # The replacement string _ is not used for this query
         for dialect, pattern, _, conditional, conditions in self.parsed_rules:
             query = SELECT_QUERY.format(
-                columns=COL_WORD_PRON,
+                columns=COL_WORD_PRON_ID,
                 word_table=self.word_table,
                 pron_table=dialect,
                 where_regex=WHERE_REGEXP,
@@ -183,14 +221,32 @@ class DatabaseUpdater:
                 len(word_match),
                 dialect
             )
-            self.results[dialect] += [(pattern, word_match)]
+            matching_entries[dialect] += [(pattern, word_match)]
+        return matching_entries
 
-    def update(self):
+    def update(self, rules: list = None, include_id: bool = False):
         """Apply SQL UPDATE queries to the dialect temp tables.
 
         Fill in the query templates with the rules and exemptions before
         applying them.
+
+        Parameters
+        ----------
+        rules: list
+            Optional list of rules to run the updates with.
+            If None, use self.parsed_rules
+        include_id: bool
+            If include_id is True, the results attribute will include a column
+            with the unique_id of the word entry, and the pron_id of the
+            transcription.
+
+        Returns
+        -------
+        dict
+            Format: {dialect: [(database_field1, database_field2,...), ...]}
         """
+        if rules is not None:
+            self.rulesets = rules
         logging.info("Apply rule patterns, update transcriptions")
         for dialect, pattern, replacement, conditional, conditions in \
                 self.parsed_rules:
@@ -205,30 +261,43 @@ class DatabaseUpdater:
             logging.debug("Execute SQL Query: %s %s", query, values)
             self._cursor.execute(query, values)
             self._connection.commit()
-        self.update_results()
+        return self.update_results(include_id)
 
-    def update_results(self):
+    def update_results(self, include_id: bool = False) -> dict:
         """Assign updated lexicon state to the results attribute.
 
         For each dialect, fetch the state of the lexicon
         after the rules have been applied,
         and update the results dictionary with the new values.
 
+        If include_id is True, the results attribute will include a column
+        with the unique_id of the word entry, and the pron_id of the
+        transcription.
+
+        Returns
+        -------
         results: dict
             Dialect names are keys, and the resulting collection of values
             from each field in the database are the values
         """
+        results: dict = {dialect: [] for dialect in self.dialects}
+        columns_to_fetch = (
+            COL_ID_WORD_FEATS_PRON_ID if include_id
+            else COL_WORD_POS_FEATS_PRON
+        )
+
         for dialect in self.dialects:
             stmt = SELECT_QUERY.format(
-                columns=COL_WORD_POS_FEATS_PRON,
+                columns=columns_to_fetch,
                 word_table=self.word_table,
                 pron_table=dialect,
                 where_regex='',
                 where_word_in_stmt=''
             )
             logging.debug("Execute SQL Query: %s", stmt)
-            self.results[dialect] = self._cursor.execute(stmt).fetchall()
+            results[dialect] = self._cursor.execute(stmt).fetchall()
             logging.debug("Update results for %s ", dialect)
+        return results
 
     def get_base(self):
         """Select the state of the lexicon before the updates.
@@ -253,10 +322,28 @@ class DatabaseUpdater:
         )
         return result
 
+    def get_tmp_table_state(self):
+        """Fetch the state of the temporary tables, including new word
+        entries."""
+        stmt = SELECT_QUERY.format(
+            columns=COL_ID_WORD_FEATS_PRON_ID,
+            word_table=self.word_table,
+            pron_table=self.pron_table,
+            where_regex='',
+            where_word_in_stmt=''
+        )
+        result = self._cursor.execute(stmt).fetchall()
+        logging.debug(
+            "Fetched %s results from the temp tables with SQL query: \n%s ",
+            len(result),
+            stmt
+        )
+        return result
+
     def get_connection(self):
         """Return the object instance's sqlite3 connection."""
         return self._connection
 
-    def close_connection(self):
+    def close(self):
         """Close the object instance's sqlite3 connection."""
         self._connection.close()
