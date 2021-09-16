@@ -1,9 +1,9 @@
 """Configure input data to update the lexicon transcriptions."""
 
-DATABASE = "data/input/backend-db03.db"
+DATABASE = "backend-db03.db"
 """Path to the backend db"""
 
-OUTPUT_DIR = "data/output"
+OUTPUT_DIR = "lexica"
 """Path to the output folder for the lexica"""
 
 RULES_FILE = "rules.py"
@@ -40,3 +40,4 @@ Corresponds to names of pronunciation temp tables created in the backend db.
 """
 
 VALID_PHONEMES = "phoneme_inventory.txt"
+"""List of valid phonemes for the transcriptions of the database."""

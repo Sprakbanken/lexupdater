@@ -58,13 +58,14 @@ Flagg | Forklaring  | Gyldige verdier/eksempler
 `-e, --exemptions-file` | Python-fil med lister over ord som er unntatt regel-oppdateringene. | `exemptions.py`
 `--no-exemptions`  | Ignorer unntakene til reglene. |
 `-n, --newword-files` | CSV-filer med nyord som skal legges til.  |   `nyord.csv, nyord2.csv`
-`-db, --database` | Filsti til backend-databasen i filstrukturen. | `data/input/backend-db03.db` 
-`-o, --output-dir` | Filmappe hvor output blir lagret. | `data/output`
+`-db, --database` | Filsti til backend-databasen i filstrukturen. | `backend-db03.db` 
+`-o, --output-dir` | Filmappe hvor output blir lagret. | `lexica`
 `-v, --verbose`  | Skriv ut logg-beskjeder til terminalen. `-vv` gir mer detaljerte beskjer, for debugging. |
 `-h, --help` | Print informasjon om alle argumentene og avslutt. |
 ||
 __Sub-kommando__ | __Forklaring__ | _Kjør `python -m lexupdater KOMMANDO -h` for å se mulige argumenter/valg_
 `base` | Eksporter base-leksikonet før oppdateringer. |  
+`compare` | Sammenlign originale og oppdaterte transkripsjoner som matcher reglene.  |
 `convert` | Konverter formatet på leksikonfiler for å brukes med MFA.  |  
 `insert` | Eksporter base-leksikonet med nyordsoppdateringer. |
 `match`  | Hent ut leksikonrader som matcher reglene i rules.py | 
@@ -104,7 +105,7 @@ som en vanlig fil, samt å installere pakken med `pip`.
 python setup.py bdist --formats=wininst
 ```
 
-### OS-uavhengig (ikke ferdig testet)
+### OS-uavhengig
 ```shell
 python setup.py bdist_wheel
 ```
@@ -114,5 +115,5 @@ Etter at python-pakken er bygget, vil den ligge i `dist`-mappen. Den kan nå
 installeres med `pip`: 
 
 ```shell
-pip install dist/lexupdater-0.3.0-py2.py3-none-any.whl      # OS-uavhengig
+pip install dist/lexupdater-0.*.whl      # OS-uavhengig
 ```

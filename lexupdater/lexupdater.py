@@ -1,15 +1,23 @@
 """Transcription updates for a pronunciation lexicon in sqlite3 db format."""
 
-import datetime
 import logging
 import pathlib
 import pprint
-from pathlib import Path
 from contextlib import closing
+from datetime import datetime
+from pathlib import Path
 
 import click
 
+from .constants import (
+    newword_column_names,
+    LEX_PREFIX,
+    MATCH_PREFIX,
+    NEW_PREFIX,
+    dialect_schema
+)
 from .db_handler import DatabaseUpdater
+from .rule_objects import save_rules_and_exemptions
 from .utils import (
     write_lexicon,
     flatten_match_results,
@@ -17,13 +25,9 @@ from .utils import (
     load_module_from_path,
     load_newwords,
     convert_lex_to_mfa,
-    validate_phonemes
-)
-from .constants import (
-    newword_column_names,
-    LEX_PREFIX,
-    MATCH_PREFIX,
-    NEW_PREFIX
+    validate_phonemes,
+    write_lex_per_dialect,
+    compare_transcriptions
 )
 
 
@@ -219,7 +223,7 @@ def main(ctx, database, dialects, rules_file, exemptions_file,
         newwords = load_newwords(newword_files, newword_column_names)
 
         click.secho('Run full update', fg="cyan")
-        click.echo(f"{datetime.datetime.now()} Loading database")
+        click.echo(f"{datetime.now()} Loading database")
         with closing(
                 DatabaseUpdater(
                     database,
@@ -230,11 +234,12 @@ def main(ctx, database, dialects, rules_file, exemptions_file,
         ) as db_obj:
             updated_lex = db_obj.update()
         for dialect, data in updated_lex.items():
-            validated_transcriptions = validate_phonemes(data, valid_phonemes)
+            validated_transcriptions = validate_phonemes(
+                data, valid_phonemes, return_transcriptions="invalid")
             write_lexicon(output_dir / f"{LEX_PREFIX}_{dialect}.txt", data)
             write_lexicon(
                 output_dir / f"invalid_transcriptions_{dialect}.txt",
-                validated_transcriptions["invalid"])
+                validated_transcriptions)
         click.secho(f"Database closed. Files written to {output_dir}",
                     fg="green")
 
@@ -263,7 +268,7 @@ def write_base(ctx, database, output_dir):
     with closing(
             DatabaseUpdater(
                 db=database,
-                dialects=list()
+                dialects=[]
             )
     ) as db_obj:
         base = db_obj.get_base()
@@ -326,10 +331,8 @@ def match_words(ctx, database, dialects, rules_file, exemptions_file,
                 exemptions=exemptions)
     ) as db_obj:
         matches = db_obj.select_words_matching_rules()
-    for dialect, data in matches.items():
-        flat_matches = flatten_match_results(data)
-        out_file = (output_dir / f"{MATCH_PREFIX}_{dialect}.txt")
-        write_lexicon(out_file, flat_matches)
+    write_lex_per_dialect(
+        matches, output_dir, MATCH_PREFIX, flatten_match_results)
 
 
 @main.command("update")
@@ -395,16 +398,79 @@ def update_dialects(
                 exemptions=exemptions)
     ) as db_obj:
         updated_lex = db_obj.update()
-    for dialect, data in updated_lex.items():
-        out_file = (output_dir / f"{LEX_PREFIX}_{dialect}.txt")
-        write_lexicon(out_file, data)
-        if check_phonemes:
-            validated = validate_phonemes(data, ctx.obj["valid_phonemes"])
-            invalid_transcriptions_file = (
-                output_dir / f"invalid_transcriptions_{dialect}.txt")
-            write_lexicon(invalid_transcriptions_file, validated["invalid"])
-            click.secho(f"{len(validated['invalid'])} invalid transcriptions "
-                        f"in {invalid_transcriptions_file}", fg="magenta")
+    write_lex_per_dialect(updated_lex, output_dir, LEX_PREFIX, None)
+    if check_phonemes:
+        write_lex_per_dialect(
+            updated_lex, output_dir, "invalid_transcriptions",
+            validate_phonemes,
+            valid_phonemes=ctx.obj["valid_phonemes"],
+            return_transcriptions="invalid")
+
+@main.command("compare")
+@click.option(
+    "-db",
+    "--database",
+    type=click.Path(resolve_path=True, dir_okay=False, path_type=pathlib.Path),
+    help="The path to the lexicon database.",
+    cls=default_from_context('database'),
+)
+@click.option(
+    "-d",
+    "--dialects",
+    type=str,
+    multiple=True,
+    callback=split_multiple_args,
+    help="Apply replacement rules on one or more specified dialects. "
+         "Args must be separated by a simple comma (,) and no white-space.",
+    cls=default_from_context('dialects'),
+)
+@click.option(
+    "-r",
+    "--rules-file",
+    type=click.Path(resolve_path=True, exists=True, path_type=pathlib.Path),
+    help="Apply replacement rules from the given file path.",
+    cls=default_from_context('rules_file'),
+)
+@click.option(
+    "-e",
+    "--exemptions-file",
+    type=click.Path(resolve_path=True, exists=True, path_type=pathlib.Path),
+    help="Apply exemptions from the given file path to the rules.",
+    cls=default_from_context('exemptions_file'),
+)
+@click.option(
+    "-o",
+    "--output-dir",
+    type=click.Path(resolve_path=True, file_okay=False, path_type=pathlib.Path),
+    help="The directory path that files are written to.",
+    cls=default_from_context('output_dir'),
+    callback=ensure_path,
+)
+@click.pass_context
+def compare_matching_updated_transcriptions(
+        ctx, database, dialects, rules_file, exemptions_file, output_dir):
+    """Compare original and updated transcriptions that match the rules."""
+    click.secho("Compare transcriptions before and after dialect updates",
+                fg="cyan")
+    rulesets = load_data(rules_file)
+    exemptions = load_data(exemptions_file)
+    with closing(
+            DatabaseUpdater(
+                db=database,
+                dialects=dialects,
+                rulesets=rulesets,
+                exemptions=exemptions)
+    ) as db_obj:
+        matching_words = db_obj.select_words_matching_rules()
+        updated_words = db_obj.update(include_id=True)
+    comparison = compare_transcriptions(matching_words, updated_words)
+    # save updates to files and convert them
+    write_lex_per_dialect(updated_words, output_dir, LEX_PREFIX, None)
+    convert_lex_to_mfa(
+        lex_dir=output_dir,
+        combine_dialect_forms=True)
+    now = datetime.now().strftime("%Y-%m-%d_%H%M")
+    comparison.to_csv(output_dir / f"comparison_{now}.txt")
 
 
 @main.command("insert")
@@ -501,3 +567,64 @@ def convert_format(ctx, lexicon_dir, combine, spoken_prob, written_prob):
         written_prob=written_prob,
         spoken_prob=spoken_prob,
     )
+
+
+def generate_new_lexica(
+        new_rulesets=None,
+        use_ruleset_areas=False,
+        data_dir=".",
+        lex_dir="lexica",
+        db_path="backend-db03.db",
+):
+    """Generate updated lexica files with a list of new rule objects.
+
+    Save the rules and exemptions to disk.
+    Update the lexicon database with those files,
+    and write the updated lexica to the "lexica" directory.
+    Convert the format to be compatible with the MFA algorithm.
+
+    Parameters
+    ----------
+    new_rulesets: list[Rule]
+    use_ruleset_areas: bool
+        If True, only generate lexica for the areas of the given rulesets.
+        If False, update and write new lexicon files for all dialects.
+    data_dir: str
+        Path for saving rules and exemptions to files
+    lex_dir: str
+        Path for saving lexicon files
+    db_path: str
+        Path to lexicon database
+    """
+    try:
+        # Lagre regelsettene til filer
+        save_rules_and_exemptions(new_rulesets, output_dir=data_dir)
+    except (TypeError, ValueError, AttributeError) as error:
+        print(error)
+        print("Generating lexica with existing rules from rules.py")
+
+    data_dir = Path(data_dir)
+    rulesets = load_data(data_dir / "rules.py")
+    exemptions = load_data(data_dir / "exemptions.py")
+    dialects = (
+        [d for r_dict in rulesets for d in r_dict["areas"]]
+        if use_ruleset_areas else dialect_schema.schema
+    )
+
+    with closing(
+        DatabaseUpdater(
+            db=db_path,
+            dialects=dialects,
+            rulesets=rulesets,
+            newwords=None,
+            exemptions=exemptions)
+    ) as db_obj:
+        # Oppdater leksika med lexupdater
+        updated_lex = db_obj.update()
+    write_lex_per_dialect(updated_lex, Path(lex_dir), LEX_PREFIX, None)
+    # Konverter leksika til et format som passer FA-algoritmen
+    convert_lex_to_mfa(
+            lex_dir=lex_dir,
+            dialects=dialects,
+            combine_dialect_forms=True,
+        )

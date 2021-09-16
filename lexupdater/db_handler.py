@@ -179,11 +179,17 @@ class DatabaseUpdater:
             self._cursor.execute(insert_stmt)
             self._connection.commit()
 
-    def select_words_matching_rules(self):
+    def select_words_matching_rules(self, rules: list = None):
         """Apply a SELECT SQL query for each rule.
 
         Construct the SQL query with values from the rules and exemptions
         before applying it.
+
+        Parameters
+        ----------
+        rules: list
+            Optional list of rules to run the queries with.
+            If None, use self.parsed_rules
 
         Returns
         -------
@@ -192,8 +198,10 @@ class DatabaseUpdater:
             (rule_pattern, (db_field1, db_field2, ...)),
             ...]}
         """
+        if rules is not None:
+            self.rulesets = rules
         # Reset the result lists before populating it again
-        matching_entries = {dialect: [] for dialect in self.dialects}
+        matching_entries: dict = {dialect: [] for dialect in self.dialects}
         logging.info("Fetch words that match the rule patterns")
         # The replacement string _ is not used for this query
         for dialect, pattern, _, conditional, conditions in self.parsed_rules:
@@ -216,21 +224,29 @@ class DatabaseUpdater:
             matching_entries[dialect] += [(pattern, word_match)]
         return matching_entries
 
-    def update(self, include_id: bool = False):
+    def update(self, rules: list = None, include_id: bool = False):
         """Apply SQL UPDATE queries to the dialect temp tables.
 
         Fill in the query templates with the rules and exemptions before
         applying them.
 
-        If include_id is True, the results attribute will include a column
-        with the unique_id of the word entry, and the pron_id of the
-        transcription.
+        Parameters
+        ----------
+        rules: list
+            Optional list of rules to run the updates with.
+            If None, use self.parsed_rules
+        include_id: bool
+            If include_id is True, the results attribute will include a column
+            with the unique_id of the word entry, and the pron_id of the
+            transcription.
 
         Returns
         -------
         dict
             Format: {dialect: [(database_field1, database_field2,...), ...]}
         """
+        if rules is not None:
+            self.rulesets = rules
         logging.info("Apply rule patterns, update transcriptions")
         for dialect, pattern, replacement, conditional, conditions in \
                 self.parsed_rules:
