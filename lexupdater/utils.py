@@ -347,9 +347,9 @@ def convert_lex_to_mfa(
     """
     if probabilities is None:
         probabilities = {"spoken": 1.0, "written": 1.0}
-    directory = Path(lex_dir)
+    lex_dir = Path(lex_dir)
     logging.info("Converting lexica for %s to MFA format", dialects)
-    files = list(directory.iterdir())
+    files = list(lex_dir.iterdir())
     filename_pattern = re.compile(
         r"(?P<in_prefix>[\w_]+)_"
         r"(?P<dialect>"
@@ -359,17 +359,16 @@ def convert_lex_to_mfa(
     matches = [re.match(filename_pattern, lex_file.name) for lex_file in files]
     formatted_lexica = defaultdict(dict)
     for lex_file, rgx_match in zip(files, matches):
-        if rgx_match is None: continue
-        prefix = rgx_match.group("in_prefix")
-        dialect = rgx_match.group("dialect")
-        area = rgx_match.group("area")
-        form = rgx_match.group("form")
-        if prefix != in_file_prefix or dialect not in dialects: continue
-        with open(lex_file) as l_file:
+        if rgx_match is None:
+            continue
+        prefix, dialect, area, form = rgx_match.groups()
+        if prefix != in_file_prefix or dialect not in dialects:
+            continue
+        with open(lex_file, encoding="utf-8") as l_file:
             lexicon = l_file.readlines()
         if not combine_dialect_forms:
             formatted_lexicon = format_mfa_dict(lexicon)
-            out_file = directory / f"{out_file_prefix}_{dialect}.dict"
+            out_file = lex_dir / f"{out_file_prefix}_{dialect}.dict"
             logging.debug("Write reformatted lexicon to %s", out_file)
             write_lexicon(out_file, formatted_lexicon, delimiter=" ")
         else:
@@ -391,7 +390,7 @@ def replace_phonemes(transcription: str):
     return re.sub(r"\bRS\b", " SJ ", transcription)
 
 
-def format_line(line, prob):
+def format_line(line: list, prob: float = None):
     """Format the MFA dictionary line."""
     word = line[0]
     transcription = replace_phonemes(line[-1])
@@ -400,7 +399,7 @@ def format_line(line, prob):
     return f"{word} {transcription}"
 
 
-def format_mfa_dict(lexicon: Iterable = None, prob=None) -> List:
+def format_mfa_dict(lexicon: Iterable = None, prob: float = None) -> List:
     """Format a lexicon list for the Montreal Forced Aligner algorithm.
 
     Parameters
@@ -409,6 +408,8 @@ def format_mfa_dict(lexicon: Iterable = None, prob=None) -> List:
         Lexicon to convert: The list contains strings with tab-separated
         values, where the first value is the wordform and the last value is
         the transcription.
+    prob: float
+        Probability that will be assigned to the lexicon lines
     """
     return [format_line(line.split("\t"), prob) for line in lexicon]
 
