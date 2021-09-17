@@ -16,7 +16,8 @@ from .utils import (
     filter_list_by_list,
     load_data,
     validate_objects,
-    format_rulesets_and_exemptions
+    format_rulesets_and_exemptions,
+    ensure_path_exists
 )
 
 
@@ -379,10 +380,12 @@ def check_duplicate_ruleset_names(rulesets: Iterable):
     return duplicates
 
 
-def save_rules_and_exemptions(ruleset_list: list, output_dir: str = "."):
+def save_rules_and_exemptions(
+        ruleset_list: list, output_dir: Union[str, Path] = "."):
     """Format rule sets and exemptions, and save to their designated files."""
-    rule_file = Path(output_dir) / "rules.py"
-    exemptions_file = Path(output_dir) / "exemptions.py"
+    out_dir = ensure_path_exists(output_dir)
+    rule_file = out_dir / "rules.py"
+    exemptions_file = out_dir / "exemptions.py"
     verify_all_rulesets(rule_file, ruleset_list)
     rules, exemptions = format_rulesets_and_exemptions(ruleset_list)
     with rule_file.open(mode="a+", encoding="utf-8") as r_file:
