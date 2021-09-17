@@ -295,7 +295,7 @@ def test_data_to_df_update(update_bool, filter_ids, expected):
 def test_data_to_df_matching():
     # given
     test_data = {"dialect_name": [
-        ("pattern_str", [("word_str","transcription_str", "pron_id_str")])
+        ("pattern_str", [("word_str", "transcription_str", "pron_id_str")])
     ]}
     # when
     result = utils.data_to_df(test_data)
@@ -311,13 +311,20 @@ def test_data_to_df_matching():
     assert "pron_id_str" in result_values
 
 
-@pytest.mark.skip("Needs refactoring")
 def test_compare_transcriptions(db_updater_obj):
+    test_data_updated = {"dialect_name": (
+        ("u1", "w1", "p1", "f1", "t1", 1),
+        ("u2", "w2", "p2", "f2", "t2", 2),
+        ("u4", "w4", "p4", "f4", "t4", 4))}
+    test_data_matching = {"dialect_name": [
+        ("pattern_str", [("word_str", "transcription_str", "pron_id_str")]),
+        ("pattern_str", [("w1", "t1", 1)])
+    ]}
     # when
-    result = utils.compare_transcriptions(db_updater_obj)
+    result = utils.compare_transcriptions(test_data_matching, test_data_updated)
     # then
     assert isinstance(result, pd.DataFrame)
-    assert len(result.index) == 5
+    assert len(result.index) == 1
 
 
 def test_format_rulesets_and_exemptions(ruleset_fixture):
