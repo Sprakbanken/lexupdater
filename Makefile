@@ -1,5 +1,5 @@
 setup:
-	python -m venv .venv && . .venv/bin/activate
+	python -m venv --clear .venv && . .venv/bin/activate
 	pip install --upgrade pip
 	pip install -r requirements.txt
 
@@ -10,14 +10,16 @@ clean-pyc:
 	find . -name '__pycache__' -exec rm -fr {} +
 
 clean-test:
+	find . -name 'delete_me' -exec rm -fr {} +
 	rm -f .coverage
 	rm -f .coverage.*
+
 
 clean: clean-pyc clean-test
 
 test: clean
 	. .venv/bin/activate
-	PYTHONPATH=. pytest tests --cov=lexupdater --cov-report=term-missing
+	PYTHONPATH=. pytest tests --cov=lexupdater --cov-report=term-missing:skip-covered
 
 mypy:
 	. .venv/bin/activate
@@ -28,4 +30,4 @@ lint:
 	PYLINTRC=.pylintrc
 	PYTHONPATH=. pylint lexupdater -j 4 --reports=y
 
-check: test lint mypy
+check: test lint mypy clean-test
