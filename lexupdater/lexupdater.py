@@ -27,7 +27,8 @@ from .utils import (
     convert_lex_to_mfa,
     validate_phonemes,
     write_lex_per_dialect,
-    compare_transcriptions
+    compare_transcriptions,
+    ensure_path_exists
 )
 
 
@@ -38,9 +39,8 @@ def configure(ctx, param, filename):
 
 
 def ensure_path(ctx, param, path):
-    """Make sure directory exists."""
-    path.mkdir(exist_ok=True, parents=True)
-    return path
+    """Create dir paths given by command line."""
+    return ensure_path_exists(path)
 
 
 def default_from_context(default_name):
@@ -406,6 +406,7 @@ def update_dialects(
             valid_phonemes=ctx.obj["valid_phonemes"],
             return_transcriptions="invalid")
 
+
 @main.command("compare")
 @click.option(
     "-db",
@@ -464,13 +465,13 @@ def compare_matching_updated_transcriptions(
         matching_words = db_obj.select_words_matching_rules()
         updated_words = db_obj.update(include_id=True)
     comparison = compare_transcriptions(matching_words, updated_words)
+    now = datetime.now().strftime("%Y-%m-%d_%H%M")
+    comparison.to_csv(output_dir / f"comparison_{now}.txt")
     # save updates to files and convert them
     write_lex_per_dialect(updated_words, output_dir, LEX_PREFIX, None)
     convert_lex_to_mfa(
         lex_dir=output_dir,
         combine_dialect_forms=True)
-    now = datetime.now().strftime("%Y-%m-%d_%H%M")
-    comparison.to_csv(output_dir / f"comparison_{now}.txt")
 
 
 @main.command("insert")
@@ -535,11 +536,11 @@ def insert_newwords(ctx, database, dialects, newword_files, output_dir):
          "converted .dict files will be written to."
 )
 @click.option(
-    "-co",
-    "--combine",
+    "-sep",
+    "--separate-forms",
     is_flag=True,
-    help="Merge dialect_spoken and dialect_written transcriptions in "
-         "the MFA dictionary, and weight the pronunciations with probabilities."
+    help="Keep spoken and written forms of dialect transcriptions "
+         "as separate MFA-formatted lexica."
 )
 @click.option(
     "-s",
@@ -558,14 +559,15 @@ def insert_newwords(ctx, database, dialects, newword_files, output_dir):
          "form in the MFA dictionary, if --combine is enabled."
 )
 @click.pass_context
-def convert_format(ctx, lexicon_dir, combine, spoken_prob, written_prob):
+def convert_format(ctx, lexicon_dir, separate_forms, spoken_prob, written_prob):
     """Convert lexicon formats to comply with MFA."""
     click.secho("Convert lexica to MFA dict format", fg="cyan")
     convert_lex_to_mfa(
         lex_dir=lexicon_dir,
-        combine_dialect_forms=combine,
-        written_prob=written_prob,
-        spoken_prob=spoken_prob,
+        combine_dialect_forms=not separate_forms,
+        probabilities=dict(
+            written=written_prob,
+            spoken=spoken_prob),
     )
 
 
@@ -589,13 +591,14 @@ def generate_new_lexica(
     use_ruleset_areas: bool
         If True, only generate lexica for the areas of the given rulesets.
         If False, update and write new lexicon files for all dialects.
-    data_dir: str
+    data_dir: str or Path
         Path for saving rules and exemptions to files
-    lex_dir: str
+    lex_dir: str or Path
         Path for saving lexicon files
-    db_path: str
+    db_path: str or Path
         Path to lexicon database
     """
+    data_dir = ensure_path_exists(data_dir)
     try:
         # Lagre regelsettene til filer
         save_rules_and_exemptions(new_rulesets, output_dir=data_dir)
@@ -603,7 +606,6 @@ def generate_new_lexica(
         print(error)
         print("Generating lexica with existing rules from rules.py")
 
-    data_dir = Path(data_dir)
     rulesets = load_data(data_dir / "rules.py")
     exemptions = load_data(data_dir / "exemptions.py")
     dialects = (

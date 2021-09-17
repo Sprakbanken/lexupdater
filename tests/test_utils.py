@@ -1,5 +1,6 @@
 """Test suite for helper functions in utils.py."""
 import re
+from pathlib import Path
 from typing import Generator
 
 import pandas as pd
@@ -294,7 +295,7 @@ def test_data_to_df_update(update_bool, filter_ids, expected):
 def test_data_to_df_matching():
     # given
     test_data = {"dialect_name": [
-        ("pattern_str", [("word_str","transcription_str", "pron_id_str")])
+        ("pattern_str", [("word_str", "transcription_str", "pron_id_str")])
     ]}
     # when
     result = utils.data_to_df(test_data)
@@ -310,13 +311,20 @@ def test_data_to_df_matching():
     assert "pron_id_str" in result_values
 
 
-@pytest.mark.skip("Needs refactoring")
 def test_compare_transcriptions(db_updater_obj):
+    test_data_updated = {"dialect_name": (
+        ("u1", "w1", "p1", "f1", "t1", 1),
+        ("u2", "w2", "p2", "f2", "t2", 2),
+        ("u4", "w4", "p4", "f4", "t4", 4))}
+    test_data_matching = {"dialect_name": [
+        ("pattern_str", [("word_str", "transcription_str", "pron_id_str")]),
+        ("pattern_str", [("w1", "t1", 1)])
+    ]}
     # when
-    result = utils.compare_transcriptions(db_updater_obj)
+    result = utils.compare_transcriptions(test_data_matching, test_data_updated)
     # then
     assert isinstance(result, pd.DataFrame)
-    assert len(result.index) == 5
+    assert len(result.index) == 1
 
 
 def test_format_rulesets_and_exemptions(ruleset_fixture):
@@ -328,7 +336,7 @@ def test_format_rulesets_and_exemptions(ruleset_fixture):
         "                 'rules': "  # there is no newline in the string here
         "[{'pattern': 'transcription_pattern_to_replace',\n"
         "                            'replacement': 'D DH \\\\1 EE1',\n"
-        "                            'constraints': [{'field': 'column_name',\n"
+        "                            'constraints': [{'field': 'pos',\n"
         "                                             'pattern': 'value',\n"
         "                                             'is_regex': True}]}]}\n")
 
@@ -366,9 +374,9 @@ def lexicon_dir_prefixes(tmp_path):
 
 
 @pytest.mark.parametrize(
-    "combine_files,expected_filenames,expected_content,other_keyword_args",
+    "combine_files,expected_filenames,expected_content,probabilities",
     [
-        (False,["dialect_spoken.dict", "dialect_written.dict"], """
+        (False, ["dialect_spoken.dict", "dialect_written.dict"], """
 -abel AA1 B AX0 L
 -abels AA1 B AX0 L S
 -abelt AA1 B AX0 L T
@@ -390,31 +398,31 @@ def lexicon_dir_prefixes(tmp_path):
 -ables 0.8 AA1 B L AX0 S
 -ables 0.4 AA1 B L AX0 S
 """.lstrip(),
-         dict(spoken_prob=0.8, written_prob=0.4)),
+         dict(spoken=0.8, written=0.4)),
     ],
+    ids=["individual", "combined"]
 )
 def test_convert_lex_to_mfa(
         lexicon_dir_prefixes, combine_files, expected_filenames,
-        expected_content, other_keyword_args):
+        expected_content, probabilities):
     """Test conversion of multiple files in a directory."""
     # given
     lex_dir, in_prefix, out_prefix = lexicon_dir_prefixes
-    expected_files = [
-        lex_dir / f"{out_prefix}_{filename}" for filename in expected_filenames
-    ]
     # when
     utils.convert_lex_to_mfa(
         lex_dir=lex_dir,
-        dialects=["dialect_spoken","dialect_written"],
+        dialects=["dialect_spoken", "dialect_written"],
         in_file_prefix=in_prefix,
         out_file_prefix=out_prefix,
         combine_dialect_forms=combine_files,
-        **other_keyword_args
+        probabilities=probabilities
     )
     # then
-    assert all([f in list(lex_dir.iterdir()) for f in expected_files])
-    result_content = expected_files[0].read_text()
-    assert result_content == expected_content
+    result = list(lex_dir.glob(f"{out_prefix}_*.dict"))
+    expected = [f"{out_prefix}_{f_name}" for f_name in expected_filenames]
+    for filename in result:
+        assert filename.name in expected
+        assert filename.read_text() == expected_content
 
 
 @pytest.mark.parametrize(
@@ -444,10 +452,18 @@ def test_format_mfa_dict(
     """Test conversion of two files merged into one, with probabilities."""
     # given
     lex_dir, in_prefix, out_prefix = lexicon_dir_prefixes
-    lex_file = lex_dir / f"{in_prefix}_dialect_spoken.txt"
+    lex_file = Path(lex_dir / f"{in_prefix}_dialect_spoken.txt")
+    with open(lex_file) as fp:
+        lexicon = fp.readlines()
     # when
-    result = utils.format_mfa_dict(lex_file, prob=pron_prob)
+    result = utils.format_mfa_dict(lexicon, prob=pron_prob)
     # then
     assert len(expected) == len(result)
     assert all([e_line == r_line for e_line, r_line in zip(expected,
                                                            result)]), result
+
+
+def test_ensure_path_exists(tmp_path):
+    input_path = tmp_path / "new_folder"
+    utils.ensure_path_exists(input_path)
+    assert input_path.exists()

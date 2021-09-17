@@ -65,14 +65,63 @@ def test_convert_formats(tmp_path):
 
     (output_dir / "updated_lexicon_n_written.txt").write_text(
         "-elser	NN	PLU|IND|NOM|NEU-MAS-FEM	EH1 L S AA0 R")
-    expected_file = "NB_nob_n_written.dict"
+    expected_file = "NB_nob_n.dict"
     runner = CliRunner()
     # when
     result = runner.invoke(
         lexupdater.main,
-        f"-c tests/dummy_config.py  convert -l {str(output_dir)}"
+        f"-c tests/dummy_config.py convert -l {str(output_dir)}"
     )
     result_files = [file_path.name for file_path in output_dir.iterdir()]
     # then
     assert result.exit_code == 0
     assert expected_file in result_files
+
+
+def test_compare_command(tmp_path):
+    output_dir = (tmp_path / "dummy_output")
+    output_dir.mkdir()
+    runner = CliRunner()
+    # when
+    result = runner.invoke(
+        lexupdater.main,
+        f"-c tests/dummy_config.py compare -o {str(output_dir)}"
+    )
+    expected_files = list(output_dir.glob("comparison_*.txt"))
+    result_files = list(output_dir.iterdir())
+    # then
+    assert result.exit_code == 0
+    assert [f in result_files for f in expected_files]
+
+
+@pytest.mark.parametrize(
+    "arg,expected",
+    [
+        (["first,second,third"], ["first", "second", "third"]),
+        (["first second third"], ["first second third"]),
+        (["first", "second", "third"], ["first", "second", "third"]),
+    ],
+    ids=["string_list", "string", "arglist"]
+)
+def test_split_multiple_args(arg, expected):
+    # when
+    result = lexupdater.split_multiple_args("ctx", "param", arg)
+    # then
+    assert result == expected
+
+
+def test_generate_new_lexica(tmp_path, ruleset_fixture):
+    from lexupdater.constants import LEX_PREFIX, MFA_PREFIX
+    test_output = tmp_path / "test_output"
+    # when
+    lexupdater.generate_new_lexica(
+        [ruleset_fixture],
+        use_ruleset_areas=True,
+        data_dir=test_output,
+        lex_dir=test_output,
+        db_path="tests/dummy_data.db"
+    )
+    assert (test_output / "rules.py").exists()
+    assert (test_output / "exemptions.py").exists()
+    assert (test_output / f"{LEX_PREFIX}_e_spoken.txt").exists()
+    assert (test_output / f"{MFA_PREFIX}_e.dict").exists()
