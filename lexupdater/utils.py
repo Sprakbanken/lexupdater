@@ -399,7 +399,7 @@ def format_line(line: list, prob: float = None):
     return f"{word} {transcription}"
 
 
-def format_mfa_dict(lexicon: Iterable = None, prob: float = None) -> List:
+def format_mfa_dict(lexicon: Iterable, prob: float = None) -> List:
     """Format a lexicon list for the Montreal Forced Aligner algorithm.
 
     Parameters
