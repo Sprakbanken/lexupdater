@@ -461,3 +461,9 @@ def test_format_mfa_dict(
     assert len(expected) == len(result)
     assert all([e_line == r_line for e_line, r_line in zip(expected,
                                                            result)]), result
+
+
+def test_ensure_path_exists(tmp_path):
+    input_path = tmp_path / "new_folder"
+    utils.ensure_path_exists(input_path)
+    assert input_path.exists()

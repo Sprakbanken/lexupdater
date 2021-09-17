@@ -27,7 +27,8 @@ from .utils import (
     convert_lex_to_mfa,
     validate_phonemes,
     write_lex_per_dialect,
-    compare_transcriptions
+    compare_transcriptions,
+    ensure_path_exists
 )
 
 
@@ -38,9 +39,8 @@ def configure(ctx, param, filename):
 
 
 def ensure_path(ctx, param, path):
-    """Make sure directory exists."""
-    path.mkdir(exist_ok=True, parents=True)
-    return path
+    """Create dir paths given by command line."""
+    return ensure_path_exists(path)
 
 
 def default_from_context(default_name):
@@ -591,13 +591,14 @@ def generate_new_lexica(
     use_ruleset_areas: bool
         If True, only generate lexica for the areas of the given rulesets.
         If False, update and write new lexicon files for all dialects.
-    data_dir: str
+    data_dir: str or Path
         Path for saving rules and exemptions to files
-    lex_dir: str
+    lex_dir: str or Path
         Path for saving lexicon files
-    db_path: str
+    db_path: str or Path
         Path to lexicon database
     """
+    data_dir = ensure_path_exists(data_dir)
     try:
         # Lagre regelsettene til filer
         save_rules_and_exemptions(new_rulesets, output_dir=data_dir)
@@ -605,7 +606,6 @@ def generate_new_lexica(
         print(error)
         print("Generating lexica with existing rules from rules.py")
 
-    data_dir = Path(data_dir)
     rulesets = load_data(data_dir / "rules.py")
     exemptions = load_data(data_dir / "exemptions.py")
     dialects = (

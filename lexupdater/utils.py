@@ -17,6 +17,13 @@ from schema import Schema, SchemaError
 from .constants import dialect_schema, MFA_PREFIX, LEX_PREFIX
 
 
+def ensure_path_exists(path):
+    """Make sure a directory exists and is a Path object."""
+    path_obj = Path(path)
+    path_obj.mkdir(exist_ok=True, parents=True)
+    return path_obj
+
+
 def write_lexicon(output_file: Union[str, Path], data: Iterable,
                   delimiter='\t'):
     """Write a simple txt file with the results of the SQL queries.
