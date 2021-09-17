@@ -76,3 +76,19 @@ def test_convert_formats(tmp_path):
     # then
     assert result.exit_code == 0
     assert expected_file in result_files
+
+
+def test_compare_command(tmp_path):
+    output_dir = (tmp_path / "dummy_output")
+    output_dir.mkdir()
+    runner = CliRunner()
+    # when
+    result = runner.invoke(
+        lexupdater.main,
+        f"-c tests/dummy_config.py compare -o {str(output_dir)}"
+    )
+    expected_files = list(output_dir.glob("comparison_*.txt"))
+    result_files = list(output_dir.iterdir())
+    # then
+    assert result.exit_code == 0
+    assert [f in result_files for f in expected_files]
