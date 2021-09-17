@@ -1,5 +1,5 @@
 setup:
-	python -m venv .venv && . .venv/bin/activate
+	python -m venv --clear .venv && . .venv/bin/activate
 	pip install --upgrade pip
 	pip install -r requirements.txt
 
@@ -12,6 +12,8 @@ clean-pyc:
 clean-test:
 	rm -f .coverage
 	rm -f .coverage.*
+	find . -name 'delete_me' -exec rm -fr {} +
+
 
 clean: clean-pyc clean-test
 
@@ -28,4 +30,4 @@ lint:
 	PYLINTRC=.pylintrc
 	PYTHONPATH=. pylint lexupdater -j 4 --reports=y
 
-check: test lint mypy
+check: test lint mypy clean
