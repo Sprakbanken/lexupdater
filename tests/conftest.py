@@ -16,7 +16,7 @@ def rule_fixture():
         pattern="transcription_pattern_to_replace",
         replacement=r"D DH \1 EE1",
         constraints=[
-            {"field": "column_name", "pattern": "value", "is_regex": True}
+            {"field": "pos", "pattern": "value", "is_regex": True}
         ]
     )
 

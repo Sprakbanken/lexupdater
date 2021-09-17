@@ -92,3 +92,36 @@ def test_compare_command(tmp_path):
     # then
     assert result.exit_code == 0
     assert [f in result_files for f in expected_files]
+
+
+@pytest.mark.parametrize(
+    "arg,expected",
+    [
+        (["first,second,third"], ["first", "second", "third"]),
+        (["first second third"], ["first second third"]),
+        (["first", "second", "third"], ["first", "second", "third"]),
+    ],
+    ids=["string_list", "string", "arglist"]
+)
+def test_split_multiple_args(arg, expected):
+    # when
+    result = lexupdater.split_multiple_args("ctx", "param", arg)
+    # then
+    assert result == expected
+
+
+def test_generate_new_lexica(tmp_path, ruleset_fixture):
+    from lexupdater.constants import LEX_PREFIX, MFA_PREFIX
+    test_output = tmp_path / "test_output"
+    # when
+    lexupdater.generate_new_lexica(
+        [ruleset_fixture],
+        use_ruleset_areas=True,
+        data_dir=test_output,
+        lex_dir=test_output,
+        db_path="tests/dummy_data.db"
+    )
+    assert (test_output / "rules.py").exists()
+    assert (test_output / "exemptions.py").exists()
+    assert (test_output / f"{LEX_PREFIX}_e_spoken.txt").exists()
+    assert (test_output / f"{MFA_PREFIX}_e.dict").exists()
