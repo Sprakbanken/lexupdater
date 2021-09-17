@@ -393,6 +393,7 @@ def lexicon_dir_prefixes(tmp_path):
 """.lstrip(),
          dict(spoken=0.8, written=0.4)),
     ],
+    ids=["individual", "combined"]
 )
 def test_convert_lex_to_mfa(
         lexicon_dir_prefixes, combine_files, expected_filenames,
@@ -400,22 +401,21 @@ def test_convert_lex_to_mfa(
     """Test conversion of multiple files in a directory."""
     # given
     lex_dir, in_prefix, out_prefix = lexicon_dir_prefixes
-    expected_files = [
-        lex_dir / f"{out_prefix}_{filename}" for filename in expected_filenames
-    ]
     # when
     utils.convert_lex_to_mfa(
         lex_dir=lex_dir,
-        dialects=["dialect_spoken","dialect_written"],
+        dialects=["dialect_spoken", "dialect_written"],
         in_file_prefix=in_prefix,
         out_file_prefix=out_prefix,
         combine_dialect_forms=combine_files,
         probabilities=probabilities
     )
     # then
-    assert all([f in list(lex_dir.iterdir()) for f in expected_files])
-    result_content = expected_files[0].read_text()
-    assert result_content == expected_content
+    result = list(lex_dir.glob(f"{out_prefix}_*.dict"))
+    expected = [f"{out_prefix}_{f_name}" for f_name in expected_filenames]
+    for filename in result:
+        assert filename.name in expected
+        assert filename.read_text() == expected_content
 
 
 @pytest.mark.parametrize(
@@ -446,7 +446,8 @@ def test_format_mfa_dict(
     # given
     lex_dir, in_prefix, out_prefix = lexicon_dir_prefixes
     lex_file = Path(lex_dir / f"{in_prefix}_dialect_spoken.txt")
-    lexicon = lex_file.read_text().split("\n")
+    with open(lex_file) as fp:
+        lexicon = fp.readlines()
     # when
     result = utils.format_mfa_dict(lexicon, prob=pron_prob)
     # then
