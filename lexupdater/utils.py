@@ -67,6 +67,12 @@ def write_lex_per_dialect(
         write_lexicon(out_file, entries)
 
 
+def strip_ids(data_entries):
+    """Strip away the number ID-entries."""
+    return [line[1:-1] if isinstance(line[-1], int) else line
+            for line in data_entries if line]
+
+
 def flatten_match_results(data: Iterable) -> Generator:
     """Flatten a nested list of rule pattern matches.
 
