@@ -429,25 +429,25 @@ def test_convert_lex_to_mfa(
     "pron_prob,expected",
     [
         (None, [
-            '-abel AA1 B AX0 L\n',
-            '-abels AA1 B AX0 L S\n',
-            '-abelt AA1 B AX0 L T\n',
-            '-abelts AA1 B AX0 L T S\n',
-            '-able AA1 B L AX0\n',
-            '-ables AA1 B L AX0 S\n'
+            ('-abel', 'AA1', 'B', 'AX0', 'L'),
+            ('-abels', 'AA1', 'B', 'AX0', 'L', 'S'),
+            ('-abelt', 'AA1', 'B', 'AX0', 'L', 'T'),
+            ('-abelts', 'AA1', 'B', 'AX0', 'L', 'T', 'S'),
+            ('-able', 'AA1', 'B', 'L', 'AX0'),
+            ('-ables', 'AA1', 'B', 'L', 'AX0', 'S')
         ]),
         (0.8, [
-            '-abel 0.8 AA1 B AX0 L\n',
-            '-abels 0.8 AA1 B AX0 L S\n',
-            '-abelt 0.8 AA1 B AX0 L T\n',
-            '-abelts 0.8 AA1 B AX0 L T S\n',
-            '-able 0.8 AA1 B L AX0\n',
-            '-ables 0.8 AA1 B L AX0 S\n'
+            ('-abel', 0.8, 'AA1', 'B', 'AX0', 'L'),
+            ('-abels', 0.8, 'AA1', 'B', 'AX0', 'L', 'S'),
+            ('-abelt', 0.8, 'AA1', 'B', 'AX0', 'L', 'T'),
+            ('-abelts', 0.8, 'AA1', 'B', 'AX0', 'L', 'T', 'S'),
+            ('-able', 0.8, 'AA1', 'B', 'L', 'AX0'),
+            ('-ables', 0.8, 'AA1', 'B', 'L', 'AX0', 'S')
         ])
     ],
     ids=["no_weighted_prons", "weighted_pronunciations"]
 )
-def test_format_mfa_dict(
+def test_fetch_mfa_dict_items(
         lexicon_dir_prefixes, pron_prob, expected):
     """Test conversion of two files merged into one, with probabilities."""
     # given
@@ -456,7 +456,7 @@ def test_format_mfa_dict(
     with open(lex_file) as fp:
         lexicon = fp.readlines()
     # when
-    result = utils.format_mfa_dict(lexicon, prob=pron_prob)
+    result = list(utils.fetch_mfa_dict_items(lexicon, prob=pron_prob))
     # then
     assert len(expected) == len(result)
     assert all([e_line == r_line for e_line, r_line in zip(expected,
