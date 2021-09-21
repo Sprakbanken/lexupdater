@@ -28,7 +28,8 @@ from .utils import (
     validate_phonemes,
     write_lex_per_dialect,
     compare_transcriptions,
-    ensure_path_exists
+    ensure_path_exists,
+    strip_ids
 )
 
 
@@ -468,7 +469,7 @@ def compare_matching_updated_transcriptions(
     now = datetime.now().strftime("%Y-%m-%d_%H%M")
     comparison.to_csv(output_dir / f"comparison_{now}.txt")
     # save updates to files and convert them
-    write_lex_per_dialect(updated_words, output_dir, LEX_PREFIX, None)
+    write_lex_per_dialect(updated_words, output_dir, LEX_PREFIX, strip_ids)
     convert_lex_to_mfa(
         lex_dir=output_dir,
         combine_dialect_forms=True)
