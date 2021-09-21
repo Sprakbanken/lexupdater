@@ -24,12 +24,13 @@ def ensure_path_exists(path):
     return path_obj
 
 
-def write_lexicon(output_file: Union[str, Path], data: Iterable,
-                  delimiter='\t'):
+def write_lexicon(output_file: Union[str, Path],data: Iterable,delimiter='\t'):
     """Write a simple txt file with the results of the SQL queries.
 
     Parameters
     ----------
+    delimiter: str
+        character to separate items in a row
     output_file: str
         Name of the file to write data to
     data: Iterable[dict]
@@ -65,6 +66,12 @@ def write_lex_per_dialect(
             entries = preprocess(entries, *args, **kwargs)
         out_file = out_dir / f"{file_prefix}_{dialect}.txt"
         write_lexicon(out_file, entries)
+
+
+def strip_ids(data_entries):
+    """Strip away the number ID-entries."""
+    return [line[1:-1] if isinstance(line[-1], int) else line
+            for line in data_entries if line]
 
 
 def flatten_match_results(data: Iterable) -> Generator:
@@ -374,12 +381,12 @@ def convert_lex_to_mfa(
         with open(lex_file, encoding="utf-8") as l_file:
             lexicon = l_file.readlines()
         if not combine_dialect_forms:
-            formatted_lexicon = format_mfa_dict(lexicon)
+            formatted_lexicon = fetch_mfa_dict_items(lexicon)
             out_file = lex_dir / f"{out_file_prefix}_{dialect}.dict"
             logging.debug("Write reformatted lexicon to %s", out_file)
             write_lexicon(out_file, formatted_lexicon, delimiter=" ")
         else:
-            formatted_lexica[area][form] = format_mfa_dict(
+            formatted_lexica[area][form] = fetch_mfa_dict_items(
                 lexicon, prob=probabilities.get(form)
             )
     if combine_dialect_forms:
@@ -389,24 +396,15 @@ def convert_lex_to_mfa(
             ]
             out_file = lex_dir / f"{out_file_prefix}_{area}.dict"
             logging.debug("Write reformatted lexicon to %s", out_file)
-            write_lexicon(out_file, combined_lexicon, delimiter=" ")
+            write_lexicon(out_file, combined_lexicon, delimiter=' ')
 
 
 def replace_phonemes(transcription: str):
     """Substitute phonemes to be valid in the MFA algorithm."""
-    return re.sub(r"\bRS\b", " SJ ", transcription)
+    return re.sub(r"\bRS\b", "SJ", transcription)
 
 
-def format_line(line: list, prob: float = None):
-    """Format the MFA dictionary line."""
-    word = line[0]
-    transcription = replace_phonemes(line[-1])
-    if prob is not None:
-        return f"{word} {prob} {transcription}"
-    return f"{word} {transcription}"
-
-
-def format_mfa_dict(lexicon: Iterable, prob: float = None) -> List:
+def fetch_mfa_dict_items(lexicon: list, prob: float = None):
     """Format a lexicon list for the Montreal Forced Aligner algorithm.
 
     Parameters
@@ -418,7 +416,14 @@ def format_mfa_dict(lexicon: Iterable, prob: float = None) -> List:
     prob: float
         Probability that will be assigned to the lexicon lines
     """
-    return [format_line(line.split("\t"), prob) for line in lexicon]
+    for entry in lexicon:
+        line = entry.split("\t")
+        word = line[0]
+        transcription = replace_phonemes(line[-1]).split()
+        if prob is not None:
+            yield word, prob, *transcription
+        else:
+            yield word, *transcription
 
 
 def validate_phonemes(updated_lexicon: list, valid_phonemes: list,
