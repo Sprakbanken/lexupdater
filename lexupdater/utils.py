@@ -421,9 +421,9 @@ def fetch_mfa_dict_items(lexicon: list, prob: float = None):
         word = line[0]
         transcription = replace_phonemes(line[-1]).split()
         if prob is not None:
-            yield word, prob, *transcription
+            yield (word, prob, *transcription)
         else:
-            yield word, *transcription
+            yield (word, *transcription)
 
 
 def validate_phonemes(updated_lexicon: list, valid_phonemes: list,
