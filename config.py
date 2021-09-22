@@ -7,14 +7,40 @@ OUTPUT_DIR = "lexica"
 """Path to the output folder for the lexica"""
 
 RULES_FILE = "rules.py"
-"""Path to file with dialect update rules.
+"""Path to file with pronunciation replacement rulesets for dialect updates.
 
 Note that multiple rules may affect the same  pronunciations,
 and that the ordering of the rules may matter.
+
+"areas" is the list of dialects which should be affected by the rule.
+    Dialect names are specified in config.py.
+
+"name" is the name of the ruleset.
+    These should be unique, and are mapped to exemption words.
+
+"rules" contains a list of replacement rules.
+    Each rule consists of
+    "pattern", which is a regex pattern for a certain transcription,
+    "replacement" which is a string to replace the pattern with,
+    and "constraints", an optional list of dicts constraining
+    the replacement only to words with given metadata.
+    In the constraints dicts,
+        "field" gives the word metadata field (corresponding to fields in the
+        NST lexicon),
+        "pattern" is the pattern that should be matched in the field,
+        either a regex or a literal,
+        and "is_regex", which should be True if the pattern is a regex and
+        False otherwise.
+
+Note that multiple rules may affect the same pronunciations,
+and that the ordering of the rules may be of importance for the result.
 """
 
 EXEMPTIONS_FILE = "exemptions.py"
-"""Path to file with exemption dicts"""
+"""Path to file with exemptions: 
+
+List of dicts with words to be exempted from the specified rulesets.
+"""
 
 NEWWORD_FILES = [
         "nyord.csv",
