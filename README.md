@@ -72,6 +72,28 @@ __Sub-kommando__ | __Forklaring__ | _Kjør `python -m lexupdater KOMMANDO -h` fo
 `update` | Oppdater dialekttranskripsjoner med regler og unntak. | 
 
 
+## Oppdater regel- og unntakslistene automatisk
+Regler og unntak utvikles i repoet `rulebook`, og lagres til filene `rules.py` og `exemptions.py`. 
+
+Disse kan lastes ned automatisk til dette repoet via 
+shell-skriptet [`download_rules.sh`](download_rules.sh), hvis du har en 
+[personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token)
+for GitHub-repoer,
+og du har tilgang til det private repoet [`rulebook`](https://github.com/Ingerid/rulebook/tree/main).
+
+Bytt ut `token-tekst-her` med reell token i kommando-valgene nedenfor. 
+
+* Eksporter miljøvariabelen `GITHUB_TOKEN` før du kjører skriptet
+    ```
+    export GITHUB_TOKEN=token-tekst-her         # Eksporter variabelen med token
+    ./download_rules.sh  
+    ```
+
+* Evt. gi din token som et argument til skriptet.
+    ```
+    ./download_rules.sh token-tekst-her         # Gi token som argument
+    ```
+
 # For utviklere
 
 I filen  `Makefile` er det flere automatiserte steg som kan kjøres med 
