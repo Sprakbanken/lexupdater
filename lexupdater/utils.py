@@ -401,7 +401,9 @@ def convert_lex_to_mfa(
 
 def replace_phonemes(transcription: str):
     """Substitute phonemes to be valid in the MFA algorithm."""
-    return re.sub(r"\bRS\b", "SJ", transcription)
+    sub1 = re.sub(r"\bRS\b", "SJ", transcription)
+    sub2 = re.sub(r"\b_\b", "", sub1)
+    return sub2
 
 
 def fetch_mfa_dict_items(lexicon: list, prob: float = None):
