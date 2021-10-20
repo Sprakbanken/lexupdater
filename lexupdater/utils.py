@@ -299,12 +299,16 @@ def compare_transcriptions(matching_words, updated_words):
     pd.Dataframe
         Dataframe with original and updated transcriptions and their wordforms.
     """
+    logging.info("Start transcription comparison")
     matching_df = data_to_df(matching_words)
+    logging.info("Created match table")
     matching_pron_ids = matching_df["pron_id"].to_list()
     updated_df = data_to_df(updated_words, pron_ids=matching_pron_ids)
+    logging.info("Created updated table")
 
     comparison = matching_df.merge(
         updated_df, how='outer', on=["pron_id", "word", "dialect"]).dropna()
+    logging.info("Merged tables")
     return comparison
 
 
