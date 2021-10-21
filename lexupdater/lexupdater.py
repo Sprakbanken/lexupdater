@@ -28,8 +28,7 @@ from .utils import (
     validate_phonemes,
     write_lex_per_dialect,
     compare_transcriptions,
-    ensure_path_exists,
-    strip_ids
+    ensure_path_exists
 )
 
 
