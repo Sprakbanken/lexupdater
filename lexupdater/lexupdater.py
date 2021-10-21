@@ -468,11 +468,6 @@ def compare_matching_updated_transcriptions(
     comparison = compare_transcriptions(matching_words, updated_words)
     now = datetime.now().strftime("%Y-%m-%d_%H%M")
     comparison.to_csv(output_dir / f"comparison_{now}.txt")
-    # save updates to files and convert them
-    write_lex_per_dialect(updated_words, output_dir, LEX_PREFIX, strip_ids)
-    convert_lex_to_mfa(
-        lex_dir=output_dir,
-        combine_dialect_forms=True)
 
 
 @main.command("insert")
