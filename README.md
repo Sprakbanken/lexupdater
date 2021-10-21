@@ -99,23 +99,13 @@ Bytt ut `token-tekst-her` med reell token i kommando-valgene nedenfor.
 I filen  `Makefile` er det flere automatiserte steg som kan kjøres med 
 `make <prossessnavn>`-kommandoer:   
 
-## Sett opp kodemiljøet
-
-```shell
-make setup
-```
-
-## Test koden
-Kjør automatiske enhets- og integrasjonstester: 
-```shell
-make test
-```
-
 ## Sjekk kodekvalitet
-Kjør en linter på koden for å se hvordan den forholder seg til 
-pep8-konvensjonene: 
+Denne kommandoen er "alt-i-ett", 
+og kjører prosessene `test` (automatiske enhets- og integrasjonstester), 
+`lint` (kodekvalitet i henhold til pep8-konvensjonene), og 
+`mypy` (overenstemmelse av variabler og deres angitte datatyper)
 ```shell
-make lint
+make check
 ```
 
 ## Bygg `lexupdater` som en python-pakke
