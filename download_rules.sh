@@ -10,7 +10,7 @@ function download_file {
   curl \
       -H "Authorization: token ${GITHUB_TOKEN}" \
       -o $GIT_RESPONSE \
-      -L "https://api.github.com/repos/Ingerid/rulebook/contents/${FILE}"
+      -L "https://api.github.com/repos/Ingerid/rulebook/contents/${FILE}?ref=develop"
 
   URL=$( grep -E 'download_url": ' $GIT_RESPONSE |  sed -E s'/.*"download_url": "(.*)",.*/\1/' )
 

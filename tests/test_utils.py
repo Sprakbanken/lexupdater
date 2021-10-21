@@ -206,18 +206,16 @@ def test_matching_data_to_dict():
 
 
 @pytest.mark.parametrize(
-    "filter_ids,test_entries,expected",
+    "test_entries,expected",
     [
-        [None,
-         (("w1","p1","f1","t1"),("w2","p2","f2","t2")),
+        [(("w1","p1","f1","t1"),("w2","p2","f2","t2")),
          {
              "word": ("w1", "w2"),
              "pos": ("p1", "p2"),
              "feats": ("f1", "f2"),
              "new_transcription": ("t1", "t2"),
          }],
-        [None,
-         (("u1","w1","p1","f1","t1","pr1"),("u2","w2","p2","f2","t2","pr2")),
+        [(("u1","w1","p1","f1","t1","pr1"),("u2","w2","p2","f2","t2","pr2")),
          {
             "unique_id": ("u1", "u2"),
             "word": ("w1", "w2"),
@@ -226,45 +224,22 @@ def test_matching_data_to_dict():
             "new_transcription": ("t1", "t2"),
             "pron_id": ("pr1", "pr2"),
          }
-        ],
-        [[1,2,3],
-         (("u1","w1","p1","f1","t1",1),("u2","w2","p2","f2","t2","pr2")),
-         {
-            "unique_id": ["u1"],
-            "word": ["w1"],
-            "pos": ["p1"],
-            "feats": ["f1"],
-            "new_transcription": ["t1"],
-            "pron_id": [1],
-         }]
+        ]
     ]
 )
-def test_updated_data_to_dict(filter_ids, test_entries,expected):
+def test_updated_data_to_dict(test_entries,expected):
     # when
     result = utils.updated_data_to_dict(
-        test_entries, ids_to_filter_by=filter_ids)
+        test_entries)
     # then
     assert isinstance(result, dict)
     assert str(result) == str(expected)
 
 
 @pytest.mark.parametrize(
-    "update_bool,filter_ids,expected",
+    "expected",
     [
-        (False,
-         [1,2],
-         pd.DataFrame({
-             "dialect": ["dialect_name", "dialect_name"],
-             "unique_id": ["u1","u2"],
-             "word": ["w1","w2"],
-             "pos": ["p1","p2"],
-             "feats": ["f1", "f2"],
-             "new_transcription": ["t1","t2"],
-             "pron_id": [1, 2],
-         })),
-        (True,
-         None,
-         pd.DataFrame({
+        pd.DataFrame({
              "dialect": ["dialect_name", "dialect_name", "dialect_name"],
              "unique_id": ["u1","u2", "u4"],
              "word": ["w1","w2", "w4"],
@@ -272,24 +247,22 @@ def test_updated_data_to_dict(filter_ids, test_entries,expected):
              "feats": ["f1", "f2", "f4"],
              "new_transcription": ["t1","t2", "t4"],
              "pron_id": [1, 2, 4],
-         }))
+         })
     ]
 )
-def test_data_to_df_update(update_bool, filter_ids, expected):
+def test_data_to_df_update(expected):
     # given
     test_data = {"dialect_name": (
         ("u1", "w1", "p1", "f1", "t1", 1),
         ("u2", "w2", "p2", "f2", "t2", 2),
         ("u4", "w4", "p4", "f4", "t4", 4))}
-    input_pron_ids = {1, 2, 4}
     # when
     result = utils.data_to_df(
-        test_data, update=update_bool, pron_ids=filter_ids)
+        test_data, update=True)
     # then
     assert isinstance(result, pd.DataFrame)
     assert len(result.index) == len(expected.index)
     assert all([c in result.columns for c in expected.columns])
-    assert input_pron_ids.issuperset(set(result.pron_id))
 
 
 def test_data_to_df_matching():
