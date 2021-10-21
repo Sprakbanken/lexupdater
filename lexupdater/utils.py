@@ -223,7 +223,7 @@ def matching_data_to_dict(entries: dict) -> Dict[str, list]:
     }
 
 
-def updated_data_to_dict(entries: tuple, ids_to_filter_by: list = None) -> Dict:
+def updated_data_to_dict(entries: tuple) -> Dict:
     """Convert the return value of update_results to a dict of lists.
 
     Parameters
@@ -231,49 +231,38 @@ def updated_data_to_dict(entries: tuple, ids_to_filter_by: list = None) -> Dict:
     entries: tuple
         Tuple of tuples with data entries,
         with either four or six items per tuple.
-    ids_to_filter_by: list
-        If given, only return data entries where the pron_id is in this list
     """
-    if ids_to_filter_by is None:
-        try:
-            word, pos, feats, pron = zip(*entries)
-            return {
-                "word": word,
-                "pos": pos,
-                "feats": feats,
-                "new_transcription": pron
-            }
-        except ValueError:
-            uid, word, pos, feats, pron, pron_id = zip(*entries)
-            return {
-                "unique_id": uid,
-                "word": word,
-                "pos": pos,
-                "feats": feats,
-                "new_transcription": pron,
-                "pron_id": pron_id,
-            }
-    else:
-        data_dict: dict = {}
-        keys = ["unique_id", "word", "pos", "feats", "new_transcription",
-                "pron_id"]
-        for row in entries:
-            if row[-1] not in ids_to_filter_by:
-                continue
-            for key, value in zip(keys, row):
-                data_dict.setdefault(key, []).extend([value])
 
-        return data_dict
+    try:
+        word, pos, feats, pron = zip(*entries)
+        return {
+            "word": word,
+            "pos": pos,
+            "feats": feats,
+            "new_transcription": pron
+        }
+    except ValueError:
+        uid, word, pos, feats, pron, pron_id = zip(*entries)
+        return {
+            "unique_id": uid,
+            "word": word,
+            "pos": pos,
+            "feats": feats,
+            "new_transcription": pron,
+            "pron_id": pron_id,
+        }
 
 
-def data_to_df(data: dict, update: bool = False, pron_ids: list = None):
-    """Create a dataframe with results from DatabaseUpdater methods."""
+def data_to_df(data: dict, update: bool = False):
+    """Create a dataframe with results from DatabaseUpdater methods.
+
+    If update, a df with updated records is created, else a df with
+    records regex patterns and matches is created"""
+
     data_dict: dict = {}
-    update = update if pron_ids is None else True
     for dialect, entries in data.items():
         if update:
-            entry_dict = updated_data_to_dict(
-                entries, ids_to_filter_by=pron_ids)
+            entry_dict = updated_data_to_dict(entries)
         else:
             try:
                 entry_dict = matching_data_to_dict(entries)
@@ -299,12 +288,13 @@ def compare_transcriptions(matching_words, updated_words):
     pd.Dataframe
         Dataframe with original and updated transcriptions and their wordforms.
     """
+    logging.info("Start transcription comparison")
     matching_df = data_to_df(matching_words)
-    matching_pron_ids = matching_df["pron_id"].to_list()
-    updated_df = data_to_df(updated_words, pron_ids=matching_pron_ids)
+    updated_df = data_to_df(updated_words, update=True)
 
     comparison = matching_df.merge(
-        updated_df, how='outer', on=["pron_id", "word", "dialect"]).dropna()
+        updated_df, how='inner', on=["pron_id", "word", "dialect"])
+    logging.info("Merged tables")
     return comparison
 
 
