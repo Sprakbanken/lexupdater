@@ -271,6 +271,7 @@ def data_to_df(data: dict, update: bool = False, pron_ids: list = None):
     data_dict: dict = {}
     update = update if pron_ids is None else True
     for dialect, entries in data.items():
+        logging.info(f"Handling dialect: {dialect}")
         if update:
             entry_dict = updated_data_to_dict(
                 entries, ids_to_filter_by=pron_ids)
@@ -303,6 +304,7 @@ def compare_transcriptions(matching_words, updated_words):
     matching_df = data_to_df(matching_words)
     logging.info("Created match table")
     matching_pron_ids = matching_df["pron_id"].to_list()
+    logging.info(f"Len of ids: {len(matching_pron_ids)}")
     updated_df = data_to_df(updated_words, pron_ids=matching_pron_ids)
     logging.info("Created updated table")
 
