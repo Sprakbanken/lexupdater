@@ -234,12 +234,12 @@ def main(ctx, database, dialects, rules_file, exemptions_file,
         ) as db_obj:
             updated_lex = db_obj.update()
         for dialect, data in updated_lex.items():
-            validated_transcriptions = validate_phonemes(
+            invalid_transcriptions = validate_phonemes(
                 data, valid_phonemes, return_transcriptions="invalid")
             write_lexicon(output_dir / f"{LEX_PREFIX}_{dialect}.txt", data)
             write_lexicon(
                 output_dir / f"invalid_transcriptions_{dialect}.txt",
-                validated_transcriptions)
+                invalid_transcriptions)
         click.secho(f"Database closed. Files written to {output_dir}",
                     fg="green")
 
@@ -465,8 +465,8 @@ def compare_matching_updated_transcriptions(
         matching_words = db_obj.select_words_matching_rules()
         updated_words = db_obj.update(include_id=True)
     comparison = compare_transcriptions(matching_words, updated_words)
-    now = datetime.now().strftime("%Y-%m-%d_%H%M")
-    comparison.to_csv(output_dir / f"comparison_{now}.txt")
+    # now = datetime.now().strftime("%Y-%m-%d_%H%M")
+    comparison.to_csv(output_dir / "comparison.txt")
 
 
 @main.command("insert")
