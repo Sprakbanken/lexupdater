@@ -87,11 +87,11 @@ def test_compare_command(tmp_path):
         lexupdater.main,
         f"-c tests/dummy_config.py compare -o {str(output_dir)}"
     )
-    expected_files = list(output_dir.glob("comparison_*.txt"))
+    expected_file = output_dir / "comparison.txt"
     result_files = list(output_dir.iterdir())
     # then
     assert result.exit_code == 0
-    assert [f in result_files for f in expected_files]
+    assert expected_file in result_files
 
 
 @pytest.mark.parametrize(
