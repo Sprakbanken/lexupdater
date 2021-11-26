@@ -93,14 +93,17 @@ class DatabaseUpdater:
 
     @property
     def exemptions(self):
-        "List of exemption dicts."
+        """List of exemption dicts."""
         return self._exemptions
+
+    @exemptions.setter
+    def exemptions(self, new_exemptions):
+        self._exemptions = new_exemptions
 
     @property
     def newwords(self):
         """Pandas DataFrame of new word entries."""
         return self._newwords
-
 
     def _connect_and_populate(self):
         """Connect to db. Create and populate temp tables."""
