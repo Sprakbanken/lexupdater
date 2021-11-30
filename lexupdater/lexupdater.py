@@ -465,8 +465,11 @@ def compare_matching_updated_transcriptions(
         matching_words = db_obj.select_words_matching_rules()
         updated_words = db_obj.update(include_id=True)
     comparison = compare_transcriptions(matching_words, updated_words)
-    # now = datetime.now().strftime("%Y-%m-%d_%H%M")
-    comparison.to_csv(output_dir / "comparison.txt")
+
+    for dialect in dialects:
+        # now = datetime.now().strftime("%Y-%m-%d_%H%M")
+        filename = (output_dir / f"comparison_{dialect}.txt")
+        comparison[comparison["dialect"] == dialect].to_csv(filename)
 
 
 @main.command("insert")
