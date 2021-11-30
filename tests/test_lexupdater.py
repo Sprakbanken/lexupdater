@@ -87,7 +87,7 @@ def test_compare_command(tmp_path):
         lexupdater.main,
         f"-c tests/dummy_config.py compare -o {str(output_dir)}"
     )
-    expected_file = output_dir / "comparison.txt"
+    expected_file = output_dir / "comparison_n_written.txt"
     result_files = list(output_dir.iterdir())
     # then
     assert result.exit_code == 0
