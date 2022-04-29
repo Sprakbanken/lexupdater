@@ -22,6 +22,12 @@ def rule_fixture():
 
 
 @pytest.fixture
+def proper_constraints():
+    """List with a real-valued constraint dictionary."""
+    return [{"field": "pos", "pattern": r"NN", "is_regex": False}]
+
+
+@pytest.fixture
 def ruleset_fixture(rule_fixture):
     """Dummy rule set object."""
     return RuleSet(

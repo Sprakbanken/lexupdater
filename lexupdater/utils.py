@@ -84,9 +84,9 @@ def flatten_match_results(data: Iterable) -> Generator:
         the second is the collection of lexicon rows
         that match the rule pattern
     """
-    for pattern, words in data:
+    for rule, words in data:
         for item in words:
-            yield [pattern] + list(item)
+            yield [rule] + list(item)
 
 
 def filter_list_by_list(check_list, filter_list):
@@ -211,20 +211,14 @@ def validate_objects(obj_list: list, obj_schema: Schema) -> list:
     return filter_list_by_list(obj_list, obj_schema.schema)
 
 
-def matching_data_to_dict(entries: dict) -> Dict[str, list]:
-    """Convert results of select_words_matching_rules to a dict of lists."""
+def matching_data_to_dict(entries: Iterable) -> Dict[str, Tuple[str]]:
+    """Unpack results of select_words_matching_rules, and map them to column names."""
     flat_data = flatten_match_results(entries)
-    patterns, words, transcriptions, pron_ids = zip(*flat_data)
-    return {
-        "pattern": patterns,
-        "word": words,
-        "transcription": transcriptions,
-        "pron_id": pron_ids,
-    }
+    return dict(zip(("rule_id", "word", "transcription", "pron_id"), zip(*flat_data)))
 
 
 def updated_data_to_dict(entries: tuple) -> Dict:
-    """Convert the return value of update_results to a dict of lists.
+    """Convert the return value of fetch_dialect_updates to a dict of lists.
 
     Parameters
     ----------

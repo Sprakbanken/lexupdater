@@ -5,11 +5,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - uses: actions/setup-python@v1
+    - uses: actions/setup-python@v3
       with:
-        python-version: 3.7
+        python-version: '3.x'
         architecture: x64
-    - run: make setup
-    - run: make test
-    - run: make lint
-    - run: make mypy
+    - name: Install dependencies
+      run: |
+        pip install --upgrade pip pylint pytest pytest-cov mypy -r requirements.txt
+    - name: Run pytest
+      run: python -m pytest tests --cov=lexupdater --cov-report=term-missing:skip-covered
+    - name: Check code with pylint
+      run: python -m pylint lexupdater --reports=y

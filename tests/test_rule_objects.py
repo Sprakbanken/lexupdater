@@ -8,12 +8,6 @@ from lexupdater.constants import ruleset_schema, rule_schema
 from lexupdater import rule_objects
 
 
-@pytest.fixture
-def proper_constraints():
-    """List with a real-valued constraint dictionary."""
-    return [{"field": "pos", "pattern": r"NN", "is_regex": False}]
-
-
 def test_create_constraint_dict():
     # given
     expected = {
@@ -86,8 +80,8 @@ class TestRule:
         assert result.replacement == r"D DH \1 EE1"
         assert result.constraints == []
         assert result.is_valid
-        # id_ is a hash of pattern and replacement
-        assert result.id_ == rule_fixture.id_
+        # hash_ is a hash of pattern and replacement
+        assert result.hash_ == rule_fixture.hash_
         # equality check also includes constraints
         assert result != rule_fixture
 
@@ -172,15 +166,15 @@ class TestRule:
         assert "constraints" in result.keys()
         assert rule_schema.is_valid(result)
 
-    def test_id_(self, rule_fixture, proper_constraints):
+    def test_rule_hash_(self, rule_fixture, proper_constraints):
         # given
-        original_id = rule_fixture.id_
+        original_id = rule_fixture.hash_
         # when
         rule_fixture.constraints += proper_constraints
-        same_id = rule_fixture.id_
+        same_id = rule_fixture.hash_
         rule_fixture.pattern = "some_new_pattern"
         rule_fixture.replacement = r"T EH0 S T \1"
-        new_id = rule_fixture.id_
+        new_id = rule_fixture.hash_
         # then
         assert original_id == same_id
         assert original_id != new_id
@@ -251,18 +245,22 @@ class TestRuleSet:
         # then
         assert ruleset_fixture.rules == original_rules
 
-    def test_index_rules(self, rule_fixture, ruleset_fixture):
+    def test_index(self, rule_fixture, ruleset_fixture):
         # when
-        result_idx = ruleset_fixture.view_rules_index(rule_obj=rule_fixture)
-        result_rule = ruleset_fixture.view_rules_index(idx=0)
-        result_index = ruleset_fixture.view_rules_index()
+        result_index = ruleset_fixture.rules_index
         # then
-        assert isinstance(result_idx, int)
-        assert result_idx == 0
-        assert isinstance(result_rule, rule_objects.Rule)
-        assert result_rule == rule_fixture
         assert isinstance(result_index, dict)
         assert str(result_index) == "{0: " + str(rule_fixture) + "}"
+
+    def test_get_rule(self, rule_fixture, ruleset_fixture):
+        result_rule = ruleset_fixture.get_rule(rule_fixture.hash_)
+        assert isinstance(result_rule, rule_objects.Rule)
+        assert result_rule == rule_fixture
+
+    def test_get_idx_number(self, rule_fixture, ruleset_fixture):
+        result_idx = ruleset_fixture.get_idx_number(rule_fixture)
+        assert isinstance(result_idx, int)
+        assert result_idx == 0
 
     def test_add_rule_no_dupes(self, ruleset_fixture):
         # given

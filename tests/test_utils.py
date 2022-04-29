@@ -192,9 +192,9 @@ def test_validate_objects(ruleset_list, some_dialects, exemptions_list):
 
 def test_matching_data_to_dict():
     # given
-    test_entries = [("pattern_str", [("word_str","transcription","pron_id")])]
+    test_entries = [("rule_id", [("word_str","transcription","pron_id")])]
     expected = {
-        "pattern": ("pattern_str",),
+        "rule_id": ("rule_id",),
         "word": ("word_str",),
         "transcription": ("transcription",),
         "pron_id": ("pron_id",),

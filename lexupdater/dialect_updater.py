@@ -8,6 +8,7 @@ from typing import List, Generator
 
 from .constants import ruleset_schema, exemption_schema, WORD_NOT_IN
 from .utils import filter_list_by_list, validate_objects
+from .rule_objects import map_rule_exemptions
 
 
 def parse_constraints(constraints: List):
@@ -62,35 +63,13 @@ def parse_exemptions(exemption_words):
     return exemption_string
 
 
-def map_rule_exemptions(exemptions):
-    """Reduce the list of exemption dictionaries to a single dictionary.
-
-    The keys are the name of the corresponding ruleset,
-    and the exempt words are the values.
-
-    Parameters
-    ----------
-    exemptions: list
-        list of strings, which should correspond
-
-    Returns
-    -------
-    dict
-    """
-    return {
-        exemption["ruleset"]: exemption["words"]
-        for exemption in exemptions
-    }
-
-
-def parse_conditions(rule: dict, exempt_words: list) -> tuple:
+def parse_conditions(constraints: list, exempt_words: list) -> tuple:
     """Create an SQL WHERE-query fragment based on constraints and exemptions.
 
     The conditional fragment is meant to be inserted in
     a SELECT or UPDATE query, along with the values
     that fill the placeholder slots.
     """
-    constraints = rule["constraints"]
     is_constrained = bool(constraints)
     if not is_constrained and not exempt_words:
         return "", []
@@ -142,7 +121,7 @@ def parse_rules(
             logging.debug("Rule pattern: %s", rule["pattern"])
             logging.debug("Rule replacement: %s", rule["replacement"])
             cond_string, cond_values = parse_conditions(
-                rule, exempt_words
+                rule["constraints"], exempt_words
             )
             for dialect in rule_dialects:
                 print(".", end="")

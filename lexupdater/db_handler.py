@@ -1,8 +1,10 @@
 """Connect to and update the database containing the pronunciation lexicon."""
+from collections import defaultdict
 import logging
 import re
 import sqlite3
 
+from .rule_objects import construct_rulesets
 from .constants import (
     dialect_schema,
     CREATE_PRON_TABLE_STMT,
@@ -19,7 +21,7 @@ from .constants import (
     NW_WORD_COLS,
     NW_PRON_COLS,
 )
-from .dialect_updater import parse_rules
+from .dialect_updater import parse_conditions
 from .newword_updater import parse_newwords
 
 
@@ -78,18 +80,12 @@ class DatabaseUpdater:
 
     @property
     def rulesets(self):
-        """List of ruleset dicts."""
+        """List of ruleset objects."""
         return self._rulesets
 
     @rulesets.setter
     def rulesets(self, new_rulesets):
-        self._rulesets = new_rulesets
-#            RuleSet.from_dict(rule_dict) for rule_dict in new_rulesets]
-        self.parsed_rules = list(parse_rules(
-            self.dialects,
-            self._rulesets,
-            self._exemptions
-        ))
+        self._rulesets = construct_rulesets(new_rulesets, self.exemptions, self.dialects)
 
     @property
     def exemptions(self):
@@ -183,61 +179,60 @@ class DatabaseUpdater:
             self._connection.commit()
 
     def select_words_matching_rules(self, rules: list = None):
-        """Apply a SELECT SQL query for each rule.
-
-        Construct the SQL query with values from the rules and exemptions
-        before applying it.
+        """Select all rows that match the patterns in `rules`.
 
         Parameters
         ----------
         rules: list
             Optional list of rules to run the queries with.
-            If None, use self.parsed_rules
+            Default is self.rulesets.
 
         Returns
         -------
         dict
-            Format: {dialect: [
-            (rule_pattern, (db_field1, db_field2, ...)),
-            ...]}
+            {dialect: [(rule_id, db_field1, db_field2, ...), ...], dialect2: [...]}
         """
         if rules is not None:
             self.rulesets = rules
-        # Reset the result lists before populating it again
-        matching_entries: dict = {dialect: [] for dialect in self.dialects}
+        matching_entries = defaultdict(list)
         logging.info("Fetch words that match the rule patterns")
-        # The replacement string _ is not used for this query
-        for dialect, pattern, _, conditional, conditions in self.parsed_rules:
-            query = SELECT_QUERY.format(
-                columns=COL_WORD_PRON_ID,
-                word_table=self.word_table,
-                pron_table=dialect,
-                where_regex=WHERE_REGEXP,
-                where_word_in_stmt=f" AND {conditional}" if conditional else ""
-            )
-            values = tuple([pattern] + conditions)
-            logging.debug("Execute SQL Query: %s %s", query, values)
-            word_match = self._cursor.execute(query, values).fetchall()
-            logging.info(
-                "Regex pattern '%s' covers %s matching words for dialect %s",
-                pattern,
-                len(word_match),
-                dialect
-            )
-            matching_entries[dialect] += [(pattern, word_match)]
+        for ruleset in self.rulesets:
+            for dialect in ruleset.areas:
+                for rule in ruleset.rules:
+                    pattern = rule.pattern
+                    cond_string, cond_values = parse_conditions(
+                        rule.constraints,  ruleset.exempt_words
+                    )
+                    conditions = f" AND {cond_string}" if cond_string else ""
+                    query = SELECT_QUERY.format(
+                        columns=COL_WORD_PRON_ID,
+                        word_table=self.word_table,
+                        pron_table=dialect,
+                        where_regex=WHERE_REGEXP,
+                        where_word_in_stmt=conditions
+                    )
+                    values = (pattern, *cond_values)
+                    logging.debug("Execute SQL Query: %s %s", query, values)
+                    word_match = self._cursor.execute(query, values).fetchall()
+                    logging.info(
+                        "Regex pattern '%s' covers %s matching words for dialect %s",
+                        pattern,
+                        len(word_match),
+                        dialect
+                    )
+                    matching_entries[dialect].append((rule.id_, word_match))
         return matching_entries
 
     def update(self, rules: list = None, include_id: bool = False):
-        """Apply SQL UPDATE queries to the dialect temp tables.
+        """Update the lexicon database with transformations defined by the `rules`.
 
-        Fill in the query templates with the rules and exemptions before
-        applying them.
+        Construct SQL UPDATE queries with the rules and exemptions before
+        applying them to the dialect temp tables.
 
         Parameters
         ----------
         rules: list
-            Optional list of rules to run the updates with.
-            If None, use self.parsed_rules
+            Optional list of rules to run the updates with. Default is self.rulesets.
         include_id: bool
             If include_id is True, the results attribute will include a column
             with the unique_id of the word entry, and the pron_id of the
@@ -251,27 +246,28 @@ class DatabaseUpdater:
         if rules is not None:
             self.rulesets = rules
         logging.info("Apply rule patterns, update transcriptions")
-        for dialect, pattern, replacement, conditional, conditions in \
-                self.parsed_rules:
-            where_word = WHERE_WORD_IN_STMT.format(
-                word_table=self.word_table, conditions=conditional
-            ) if conditional else ""
-            query = UPDATE_QUERY.format(
-                dialect=dialect,
-                where_word_in_stmt=where_word
-            )
-            values = tuple([pattern, replacement] + conditions)
-            logging.debug("Execute SQL Query: %s %s", query, values)
-            self._cursor.execute(query, values)
-            self._connection.commit()
-        return self.update_results(include_id)
+        for ruleset in self.rulesets:
+            exemptions = ruleset.exempt_words
+            for dialect in ruleset.areas:
+                for rule in ruleset.rules:
+                    cond_string, cond_values = parse_conditions(
+                        rule.constraints, exemptions
+                    )
+                    where_word = WHERE_WORD_IN_STMT.format(
+                        word_table=self.word_table, conditions=cond_string
+                    ) if cond_string else ""
+                    query = UPDATE_QUERY.format(
+                        dialect=dialect,
+                        where_word_in_stmt=where_word
+                    )
+                    values = (rule.pattern, rule.replacement, *cond_values)
+                    logging.debug("Execute SQL Query: %s %s", query, values)
+                    self._cursor.execute(query, values)
+                    self._connection.commit()
+        return self.fetch_dialect_updates(include_id=include_id)
 
-    def update_results(self, include_id: bool = False) -> dict:
-        """Assign updated lexicon state to the results attribute.
-
-        For each dialect, fetch the state of the lexicon
-        after the rules have been applied,
-        and update the results dictionary with the new values.
+    def fetch_dialect_updates(self, include_id: bool = False) -> dict:
+        """Fetch the state of the lexicon db from the dialect temp tables.
 
         If include_id is True, the results attribute will include a column
         with the unique_id of the word entry, and the pron_id of the
@@ -299,7 +295,6 @@ class DatabaseUpdater:
             )
             logging.debug("Execute SQL Query: %s", stmt)
             results[dialect] = self._cursor.execute(stmt).fetchall()
-            logging.debug("Update results for %s ", dialect)
         return results
 
     def get_base(self):

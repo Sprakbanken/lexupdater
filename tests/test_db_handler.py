@@ -94,7 +94,7 @@ class TestDatabaseUpdater:
         # given
         test_dialect_name = sorted(list(all_dialects))[0]
         # when
-        results = db_updater_obj.update_results()
+        results = db_updater_obj.fetch_dialect_updates()
         # then
         assert isinstance(results, dict)
         assert sorted(results.keys()) == sorted(all_dialects)
@@ -111,7 +111,7 @@ class TestDatabaseUpdater:
 
     def test__insert_newwords(self, db_updater_obj, wordlist_fixture):
         # when
-        results = db_updater_obj.update_results()
+        results = db_updater_obj.fetch_dialect_updates()
         input_words = wordlist_fixture["token"]
         main_trans = wordlist_fixture["transcription"]
         alt_trans = [
