@@ -74,18 +74,17 @@ def test_parse_conditions(rule):
         ['NN', 'MAS', 'biler', 'båter']
     )
     # when
-    result = dialect_updater.parse_conditions(rule, input_exemptions)
+    result = dialect_updater.parse_conditions(rule["constraints"], input_exemptions)
     # then
     assert result == expected
 
 
-def test_parse_conditions_without_conditions(rule):
+def test_parse_conditions_without_conditions():
     # given
-    input_rule = rule.copy()
-    input_rule["constraints"] = []
+    input_constraints = []
     input_exemptions = []
     # when
-    result = dialect_updater.parse_conditions(input_rule, input_exemptions)
+    result = dialect_updater.parse_conditions(input_constraints, input_exemptions)
     # then
     assert result == ("", [])
 

@@ -48,6 +48,7 @@ class Rule:
             constraints,
             constraint_schema
         )
+        self.id_ = self.hash_
         if not self.is_valid:
             logging.error("Instatiated an invalid rule: %s", self)
 
@@ -89,7 +90,7 @@ class Rule:
         return hash(str(self)) == hash(str(other))
 
     @property
-    def id_(self):
+    def hash_(self):
         """Identifier to differ between rules in the RuleSet.rules collection.
 
         This property is deliberately not implemented as the magic
@@ -113,7 +114,7 @@ class Rule:
 
     @property
     def constraints(self):
-        """Extra conditions for the rule to apply to a word's transcription.
+        """Conditions for the rule to apply to a word's transcription.
 
         Each constraint specifies a field (e.g. "pos" or "feats"),
         a pattern (e.g. "NN" or "FEM") and a boolean value is_regex,
@@ -189,15 +190,17 @@ class RuleSet:
             self.add_multiple_rules(rules)
 
     @classmethod
-    def from_dict(cls, ruleset_dict: dict):
+    def from_dict(cls, ruleset_dict: dict, exemptions: list = None):
         """Instantiate a RuleSet object from a valid ruleset dictionary.
 
         Parameters
         ----------
         ruleset_dict: dict
             Format is {"name": str, "areas": list, "rules": list}
+        exemptions: list
+            Words that are exempt from the rules in the ruleset.
         """
-        instance = cls(**ruleset_dict, exempt_words=None)
+        instance = cls(**ruleset_dict, exempt_words=exemptions)
         return instance
 
     def to_dict(self):
@@ -268,27 +271,41 @@ class RuleSet:
     def exempt_words(self, new_exemptions):
         self._exempt_words = list(set(new_exemptions))
 
-    def view_rules_index(self, rule_obj: Rule = None, idx: int = None):
-        """Regular and reverse lookup of rules in the ruleset.
+    @property
+    def idx_to_id(self):
+        """Mapping of rules index to the rule.hash_ number."""
+        return {i: rule.hash_ for i, rule in enumerate(self._rules)}
 
-        If rule_obj is provided, return the corresponding index
-        number of the rule in the rules attribute
+    @property
+    def id_to_idx(self):
+        """Reverse mapping of rule.hash_ numbers to the rules index."""
+        return {id_: i for i, id_ in self.idx_to_id.items()}
 
-        If idx is provided, return the corresponding rule from the rules
-        attribute.
+    def get_idx_number(self, rule: Union[Rule, int]) -> int:
+        """Reverse index lookup of a ``Rule`` object.
 
-        If no args: Return a dictionary with enumerated rules as dicts.
-        Format
-        {index_number: {"pattern":str, "replacement": str, "constraints": list}
+        Parameters
+        ----------
+        rule: Rule or int
+            Either, provide a ``Rule`` object directly, or the ``Rule.hash_`` integer attribute
+
+        Returns
+        -------
+        int: The corresponding index number of the rule in the `self.rules` list.
         """
-        idx_to_id = {i: rule.id_ for i, rule in enumerate(self._rules)}
-        id_to_index = {id_: i for i, id_ in idx_to_id.items()}
-        idx_to_dict = {i: rule.to_dict() for i, rule in enumerate(self._rules)}
+        if isinstance(rule, Rule):
+            return self.id_to_idx.get(rule.hash_)
+        if isinstance(rule, int):
+            return self.id_to_idx.get(rule)
 
-        if rule_obj is not None and rule_obj.id_ in id_to_index:
-            return id_to_index[rule_obj.id_]
-        if idx is not None and idx in idx_to_id:
-            return self._rules[idx]
+    def get_rule(self, rule_id: int):
+        """Lookup a ``Rule`` object given a Rule.hash_ number."""
+        return self._rules[self.get_idx_number(rule_id)]
+
+    @property
+    def rules_index(self) -> dict:
+        """Turn the indexed list of rules into a dictionary."""
+        idx_to_dict = {i: rule.to_dict() for i, rule in enumerate(self._rules)}
         return idx_to_dict
 
     def add_rule(self,
@@ -329,12 +346,14 @@ class RuleSet:
         if rule not in self.rules:
             self._rules.append(rule)
             logging.debug("Adding %s to self.rules", rule)
+            rule.id_ = f"{self.name}_{self.get_idx_number(rule)}"
         else:
-            index_number = self.view_rules_index(rule_obj=rule)
             logging.debug(
                 "Skipping: Rule with pattern=%s and replacement=%s already "
-                "exists: self.rules[%s]", rule.pattern, rule.replacement,
-                index_number)
+                "exists: %s (<ruleset[name]>_<ruleset.rules[index_number]>)",
+                rule.pattern,
+                rule.replacement,
+                f"{self.name}_{self.get_idx_number(rule)}")
 
     def add_multiple_rules(self, rule_list):
         """Add a collection of rules to self.rules."""
@@ -355,6 +374,47 @@ class RuleSet:
             "words": self.exempt_words,
         }
         return exemption_schema.validate(exemption)
+
+
+def construct_rulesets(
+    rulesets: list,
+    exemptions: list,
+    dialects: list
+) -> List:
+    """Create RuleSet objects from a list of ruleset dicts.
+
+    Returns
+    -------
+    list of RuleSet object, with corresponding exemption words.
+    """
+    rule_exemptions = map_rule_exemptions(
+        validate_objects(exemptions, exemption_schema)
+    )
+    validated_rules = []
+    for rule_dict in rulesets:
+        rule_dialects = rule_dict["areas"]
+        rule_dict["areas"] = filter_list_by_list(rule_dialects, dialects)
+        validated_rules.append(
+            RuleSet.from_dict(rule_dict, exemptions=rule_exemptions.get(rule_dict["name"]))
+        )
+    return validated_rules
+
+
+def map_rule_exemptions(exemptions: List[str]) -> dict:
+    """Reduce the list of exemption dictionaries to a single dictionary.
+
+    The keys are the name of the corresponding ruleset,
+    and the exempt words are the values.
+
+    Parameters
+    ----------
+    exemptions: list
+        list of dicts of the form ``{'ruleset': str, 'words': list}``
+    """
+    return {
+        exemption["ruleset"]: exemption["words"]
+        for exemption in exemptions
+    }
 
 
 def verify_all_rulesets(rule_file: Union[str, Path], ruleset_list: list):
