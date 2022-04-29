@@ -48,7 +48,7 @@ def regexp(reg_pat, item):
 class DatabaseUpdater:
     """Handler of the db connection.
 
-    Applies updates on temporary tables.
+    Construct queries with the input data, apply them to the database, and return the results.
 
     Parameters
     ----------
@@ -57,7 +57,7 @@ class DatabaseUpdater:
     rulesets: list
         List of ruleset dictionaries, which are validated with
         rule_schema from the config.constants module
-    dialects: list
+    temp_tables: list
         List of dialects to update transcription entries for
     exemptions:
         List of exemption dictionaries, containing words
@@ -65,12 +65,12 @@ class DatabaseUpdater:
     """
 
     def __init__(
-            self, db, dialects, rulesets=None, newwords=None, exemptions=None):
+            self, db, temp_tables, rulesets=None, newwords=None, exemptions=None):
         """Set object attributes, connect to db and create temp tables."""
         self._db = db
         self.word_table = "words_tmp"
         self.pron_table = "pron_tmp"
-        self.dialects = dialect_schema.validate(dialects)
+        self.dialects = dialect_schema.validate(temp_tables)
         self._rulesets = []
         self._exemptions = [] if exemptions is None else exemptions
         self._newwords = newwords
@@ -178,7 +178,7 @@ class DatabaseUpdater:
             self._cursor.execute(insert_stmt)
             self._connection.commit()
 
-    def select_words_matching_rules(self, rules: list = None):
+    def select_pattern_matches(self, rules: list = None):
         """Select all rows that match the patterns in `rules`.
 
         Parameters

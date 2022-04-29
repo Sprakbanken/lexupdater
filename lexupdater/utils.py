@@ -212,7 +212,7 @@ def validate_objects(obj_list: list, obj_schema: Schema) -> list:
 
 
 def matching_data_to_dict(entries: Iterable) -> Dict[str, Tuple[str]]:
-    """Unpack results of select_words_matching_rules, and map them to column names."""
+    """Unpack results of select_pattern_matches, and map them to column names."""
     flat_data = flatten_match_results(entries)
     return dict(zip(("rule_id", "word", "transcription", "pron_id"), zip(*flat_data)))
 

@@ -76,7 +76,7 @@ class TestDatabaseUpdater:
 
     def test_select_words_matching_rules(self, db_updater_obj):
         # when
-        results = db_updater_obj.select_words_matching_rules()
+        results = db_updater_obj.select_pattern_matches()
         # then
         assert any(
             [result != [] for result in results]
