@@ -341,7 +341,7 @@ class DatabaseUpdater:
         self._cursor.execute(query, values)
         self._connection.commit()
 
-    def update(self, rulesets: list = None, include_id: bool = False):
+    def update(self, rulesets: list, include_id: bool = False):
         """Update the lexicon database with transformations defined by the `rules`.
 
         Construct SQL UPDATE queries with the rules and exemptions before
