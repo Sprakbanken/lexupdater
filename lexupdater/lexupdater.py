@@ -8,16 +8,18 @@ from datetime import datetime
 from pathlib import Path
 
 import click
+import pandas as pd
 
 from .constants import (
     newword_column_names,
     LEX_PREFIX,
     MATCH_PREFIX,
     NEW_PREFIX,
-    dialect_schema
+    dialect_schema,
+    COL_WORDFORM
 )
 from .db_handler import DatabaseUpdater
-from .rule_objects import save_rules_and_exemptions
+from .rule_objects import save_rules_and_exemptions, construct_rulesets
 from .utils import (
     write_lexicon,
     flatten_match_results,
@@ -203,7 +205,7 @@ def main(ctx, database, dialects, rules_file, exemptions_file,
     Note that all modifications in the backend db target temp tables,
     so the db isn't modified.
     The modifications to the lexicon are written to
-    new, dialect-specific files.
+    new, temp-table-specific files.
     """
     ctx.ensure_object(dict)
     valid_phonemes.remove("")
@@ -216,8 +218,7 @@ def main(ctx, database, dialects, rules_file, exemptions_file,
     # Log starting time
     logging.info("START")
 
-
-    if ctx.invoked_subcommand is None:
+    if ctx.invoked_subcommand is None:  # else the subcommand is called by default
         rulesets = load_data(rules_file)
         exemptions = load_data(exemptions_file) if not no_exemptions else None
         newwords = load_newwords(newword_files, newword_column_names)
@@ -232,7 +233,7 @@ def main(ctx, database, dialects, rules_file, exemptions_file,
                     newwords=newwords,
                     exemptions=exemptions)
         ) as db_obj:
-            updated_lex = db_obj.update()
+            updated_lex = db_obj.update(rulesets)
         for dialect, data in updated_lex.items():
             invalid_transcriptions = validate_phonemes(
                 data, valid_phonemes, return_transcriptions="invalid")
@@ -267,8 +268,8 @@ def write_base(ctx, database, output_dir):
                 fg="cyan")
     with closing(
             DatabaseUpdater(
-                db=database,
-                dialects=[]
+                db=ctx.obj.get("database"),
+                temp_tables=[]
             )
     ) as db_obj:
         base = db_obj.get_base()
@@ -325,12 +326,11 @@ def match_words(ctx, database, dialects, rules_file, exemptions_file,
     exemptions = load_data(exemptions_file)
     with closing(
             DatabaseUpdater(
-                db=database,
-                dialects=dialects,
-                rulesets=rulesets,
-                exemptions=exemptions)
+                db=ctx.obj.get("database"),
+                temp_tables=dialects,
+            )
     ) as db_obj:
-        matches = db_obj.select_words_matching_rules()
+        matches = db_obj.select_pattern_matches(rulesets)
     write_lex_per_dialect(
         matches, output_dir, MATCH_PREFIX, flatten_match_results)
 
@@ -392,12 +392,11 @@ def update_dialects(
     exemptions = load_data(exemptions_file)
     with closing(
             DatabaseUpdater(
-                db=database,
-                dialects=dialects,
-                rulesets=rulesets,
-                exemptions=exemptions)
+                db=ctx.obj.get("database"),
+                temp_tables=dialects
+            )
     ) as db_obj:
-        updated_lex = db_obj.update()
+        updated_lex = db_obj.update(rulesets)
     write_lex_per_dialect(updated_lex, output_dir, LEX_PREFIX, None)
     if check_phonemes:
         write_lex_per_dialect(
@@ -409,70 +408,60 @@ def update_dialects(
 
 @main.command("compare")
 @click.option(
-    "-db",
-    "--database",
-    type=click.Path(resolve_path=True, dir_okay=False, path_type=pathlib.Path),
-    help="The path to the lexicon database.",
-    cls=default_from_context('database'),
-)
-@click.option(
-    "-d",
-    "--dialects",
-    type=str,
+    "-id",
+    "--rule-id",
+    "rule_ids",
     multiple=True,
-    callback=split_multiple_args,
-    help="Apply replacement rules on one or more specified dialects. "
-         "Args must be separated by a simple comma (,) and no white-space.",
-    cls=default_from_context('dialects'),
-)
-@click.option(
-    "-r",
-    "--rules-file",
-    type=click.Path(resolve_path=True, exists=True, path_type=pathlib.Path),
-    help="Apply replacement rules from the given file path.",
-    cls=default_from_context('rules_file'),
-)
-@click.option(
-    "-e",
-    "--exemptions-file",
-    type=click.Path(resolve_path=True, exists=True, path_type=pathlib.Path),
-    help="Apply exemptions from the given file path to the rules.",
-    cls=default_from_context('exemptions_file'),
-)
-@click.option(
-    "-o",
-    "--output-dir",
-    type=click.Path(resolve_path=True, file_okay=False, path_type=pathlib.Path),
-    help="The directory path that files are written to.",
-    cls=default_from_context('output_dir'),
-    callback=ensure_path,
+    help="String to identify a specific rule to extract updates from. "
+         "Format: <ruleset name>_<index number in the ruleset list>, or "
+         "<ruleset name>, e.g. nasal_retroflex_1, or nasal_retroflex"
 )
 @click.pass_context
 def compare_matching_updated_transcriptions(
-        ctx, database, dialects, rules_file, exemptions_file, output_dir):
-    """Compare original and updated transcriptions that match the rules."""
+        ctx, rule_ids):
+    """Extract transcriptions before and after updates.
+
+    The -id/--rule-id option can be specified multiple times, for several rulesets or rules.
+    """
     click.secho("Compare transcriptions before and after dialect updates",
                 fg="cyan")
-    rulesets = load_data(rules_file)
-    exemptions = load_data(exemptions_file)
+    start = datetime.now()
+    rules = load_data(ctx.obj.get("rules_file"))
+    exemptions = load_data(ctx.obj.get("exemptions_file"))
+    dialects = ctx.obj.get("dialects")
+    rulesets = list(construct_rulesets(rules, exemptions, use_dialects=dialects))
+    output_dir = ctx.obj.get("output_dir")
+
     with closing(
-            DatabaseUpdater(
-                db=database,
-                dialects=dialects,
-                rulesets=rulesets,
-                exemptions=exemptions)
+            DatabaseUpdater(db=ctx.obj.get("database"), temp_tables=dialects)
     ) as db_obj:
-        matching_words = db_obj.select_words_matching_rules()
-        updated_words = db_obj.update(include_id=True)
-    comparison = compare_transcriptions(matching_words, updated_words)
-
-    for dialect in dialects:
-        # now = datetime.now().strftime("%Y-%m-%d_%H%M")
+        df_gen = db_obj.select_updates(rulesets, rule_ids)
+        try:
+            comparison_df = pd.concat(df_gen)
+        except ValueError:
+            logging.info("No output transcriptions.")
+            click.secho("Done processing, no output.",
+                        fg="yellow")
+            return
+    #comparison = compare_transcriptions(matching_words, updated_words)
+    end = datetime.now()
+    column_map = {
+        "p.unique_id": "unique_id",
+        "p.nofabet": "transcription",
+        "p.pron_id": "pron_id",
+        COL_WORDFORM: "word",
+    }
+    comparison_df.rename(columns=column_map, inplace=True)
+    for dialect in comparison_df.dialect.unique():
         filename = (output_dir / f"comparison_{dialect}.txt")
-        comparison["arrow"] = len(comparison.index)*["===>>>"]
-        columns = ["rule_id", "word", "transcription", "arrow", "new_transcription"]
-        comparison[comparison["dialect"] == dialect][columns].to_csv(filename)
-
+        comparison_df["arrow"] = "===>"
+        columns = ["pron_id", "rule_id", "word", "transcription", "arrow", "new_transcription"]
+        comparison_df[comparison_df["dialect"] == dialect][columns].to_csv(filename)
+    click.secho(f"Done processing. "
+                f"Output is in {output_dir}/comparison_*.txt files.",
+                fg="cyan")
+    click.secho(f"Processing time: {str(end-start)}, Total time: {str(datetime.now()-start)}",
+                fg="yellow")
 
 @main.command("insert")
 @click.option(
@@ -517,10 +506,9 @@ def insert_newwords(ctx, database, dialects, newword_files, output_dir):
     with closing(
             DatabaseUpdater(
                 db=database,
-                dialects=dialects,
+                temp_tables=dialects,
                 newwords=newwords)
     ) as db_obj:
-        # Oppdater leksika med lexupdater
         lex_with_newwords = db_obj.get_tmp_table_state()
     write_lexicon((output_dir / f"{NEW_PREFIX}.txt"), lex_with_newwords)
 
@@ -616,9 +604,8 @@ def generate_new_lexica(
     with closing(
         DatabaseUpdater(
             db=db_path,
-            dialects=dialects,
+            temp_tables=dialects,
             rulesets=rulesets,
-            newwords=None,
             exemptions=exemptions)
     ) as db_obj:
         # Oppdater leksika med lexupdater

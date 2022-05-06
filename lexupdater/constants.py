@@ -169,9 +169,12 @@ WHERE_WORD_IN_STMT = (
 
 WHERE_REGEXP = "WHERE REGEXP(?,nofabet)"
 
-WORD_NOT_IN = "w.wordform NOT IN"
+COL_WORDFORM = "w.wordform"
+COL_pUID = "p.unique_id"
+COL_PRON = "p.nofabet"
+COL_PRONID = "p.pron_id"
 
-COL_WORD_PRON_ID = "w.wordform, p.nofabet, p.pron_id "
+COL_WORD_PRON_ID = ", ".join([COL_WORDFORM, COL_PRON, COL_PRONID]) + " "
 
 COL_ID_WORD_FEATS_PRON_ID = (
     "w.unique_id, w.wordform, w.pos, w.feats, p.nofabet, p.pron_id "

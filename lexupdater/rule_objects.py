@@ -379,9 +379,11 @@ class RuleSet:
 def construct_rulesets(
     rulesets: list,
     exemptions: list,
-    dialects: list
+    use_dialects: list = None
 ) -> List:
     """Create RuleSet objects from a list of ruleset dicts.
+
+    If `use_dialects` is given, the RuleSet.areas property will be filtered against that list.
 
     Returns
     -------
@@ -390,14 +392,15 @@ def construct_rulesets(
     rule_exemptions = map_rule_exemptions(
         validate_objects(exemptions, exemption_schema)
     )
-    validated_rules = []
-    for rule_dict in rulesets:
-        rule_dialects = rule_dict["areas"]
-        rule_dict["areas"] = filter_list_by_list(rule_dialects, dialects)
-        validated_rules.append(
-            RuleSet.from_dict(rule_dict, exemptions=rule_exemptions.get(rule_dict["name"]))
-        )
-    return validated_rules
+    for ruleset in rulesets:
+        try:
+            ruleset = RuleSet.from_dict(
+                ruleset, exemptions=rule_exemptions.get(ruleset.get("name"))
+            )
+        except TypeError:
+            logging.error("Already a RuleSet: %s", ruleset.name)
+        ruleset.areas = filter_list_by_list(ruleset.areas, use_dialects)
+        yield ruleset
 
 
 def map_rule_exemptions(exemptions: List[str]) -> dict:
