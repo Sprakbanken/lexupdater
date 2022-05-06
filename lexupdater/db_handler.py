@@ -7,7 +7,7 @@ import sqlite3
 
 import pandas as pd
 
-from .utils import coordinate_constraints, add_placeholders, get_batch
+from .utils import coordinate_constraints, add_placeholders
 from .rule_objects import construct_rulesets
 from .constants import (
     dialect_schema,
@@ -15,7 +15,6 @@ from .constants import (
     CREATE_WORD_TABLE_STMT,
     INSERT_STMT,
     UPDATE_QUERY,
-    WHERE_WORD_IN_STMT,
     SELECT_QUERY,
     COL_WORD_PRON_ID,
     WHERE_REGEXP,
