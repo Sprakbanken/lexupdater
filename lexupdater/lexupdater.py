@@ -246,23 +246,8 @@ def main(ctx, database, dialects, rules_file, exemptions_file,
 
 
 @main.command("base")
-@click.option(
-    "-db",
-    "--database",
-    type=click.Path(resolve_path=True, dir_okay=False, path_type=pathlib.Path),
-    help="The path to the lexicon database.",
-    cls=default_from_context('database'),
-)
-@click.option(
-    "-o",
-    "--output-dir",
-    type=click.Path(resolve_path=True, file_okay=False, path_type=pathlib.Path),
-    help="The directory path that files are written to.",
-    cls=default_from_context('output_dir'),
-    callback=ensure_path,
-)
 @click.pass_context
-def write_base(ctx, database, output_dir):
+def write_base(ctx):
     """Export the base lexicon prior to updates."""
     click.secho("Write the base lexicon to file.",
                 fg="cyan")
@@ -273,57 +258,22 @@ def write_base(ctx, database, output_dir):
             )
     ) as db_obj:
         base = db_obj.get_base()
-    write_lexicon((output_dir / "base.txt"), base)
+    write_lexicon((ctx.obj.get("output_dir") / "base.txt"), base)
 
 
 @main.command("match")
-@click.option(
-    "-db",
-    "--database",
-    type=click.Path(resolve_path=True, dir_okay=False, path_type=pathlib.Path),
-    help="The path to the lexicon database.",
-    cls=default_from_context('database'),
-)
-@click.option(
-    "-d",
-    "--dialects",
-    type=str,
-    multiple=True,
-    callback=split_multiple_args,
-    help="Apply replacement rules on one or more specified dialects. "
-         "Args must be separated by a simple comma (,) and no white-space.",
-    cls=default_from_context('dialects'),
-)
-@click.option(
-    "-r",
-    "--rules-file",
-    type=click.Path(resolve_path=True, exists=True, path_type=pathlib.Path),
-    help="Apply replacement rules from the given file path.",
-    cls=default_from_context('rules_file'),
-)
-@click.option(
-    "-e",
-    "--exemptions-file",
-    type=click.Path(resolve_path=True, exists=True, path_type=pathlib.Path),
-    help="Apply exemptions from the given file path to the rules.",
-    cls=default_from_context('exemptions_file'),
-)
-@click.option(
-    "-o",
-    "--output-dir",
-    type=click.Path(resolve_path=True, file_okay=False, path_type=pathlib.Path),
-    help="The directory path that files are written to.",
-    cls=default_from_context('output_dir'),
-    callback=ensure_path,
-)
 @click.pass_context
-def match_words(ctx, database, dialects, rules_file, exemptions_file,
-                output_dir):
+def match_words(ctx):
     """Fetch database entries that match the replacement rules."""
     click.secho("Match database entries to dialect update rules",
                 fg="cyan")
-    rulesets = load_data(rules_file)
-    exemptions = load_data(exemptions_file)
+    # Preprocess input data
+    rules = load_data(ctx.obj.get("rules_file"))
+    exemptions = load_data(ctx.obj.get("exemptions_file"))
+    dialects = ctx.obj.get("dialects")
+    rulesets = construct_rulesets(rules, exemptions, dialects)
+    output_dir = ctx.obj.get("output_dir")
+
     with closing(
             DatabaseUpdater(
                 db=ctx.obj.get("database"),
@@ -337,45 +287,6 @@ def match_words(ctx, database, dialects, rules_file, exemptions_file,
 
 @main.command("update")
 @click.option(
-    "-db",
-    "--database",
-    type=click.Path(resolve_path=True, dir_okay=False, path_type=pathlib.Path),
-    help="The path to the lexicon database.",
-    cls=default_from_context('database'),
-)
-@click.option(
-    "-d",
-    "--dialects",
-    type=str,
-    multiple=True,
-    callback=split_multiple_args,
-    help="Apply replacement rules on one or more specified dialects. "
-         "Args must be separated by a simple comma (,) and no white-space.",
-    cls=default_from_context('dialects'),
-)
-@click.option(
-    "-r",
-    "--rules-file",
-    type=click.Path(resolve_path=True, exists=True, path_type=pathlib.Path),
-    help="Apply replacement rules from the given file path.",
-    cls=default_from_context('rules_file'),
-)
-@click.option(
-    "-e",
-    "--exemptions-file",
-    type=click.Path(resolve_path=True, exists=True, path_type=pathlib.Path),
-    help="Apply exemptions from the given file path to the rules.",
-    cls=default_from_context('exemptions_file'),
-)
-@click.option(
-    "-o",
-    "--output-dir",
-    type=click.Path(resolve_path=True, file_okay=False, path_type=pathlib.Path),
-    help="The directory path that files are written to.",
-    cls=default_from_context('output_dir'),
-    callback=ensure_path,
-)
-@click.option(
     "-p",
     "--check-phonemes",
     is_flag=True,
@@ -384,12 +295,15 @@ def match_words(ctx, database, dialects, rules_file, exemptions_file,
 )
 @click.pass_context
 def update_dialects(
-        ctx, database, dialects, rules_file, exemptions_file, output_dir,
-        check_phonemes):
+        ctx, check_phonemes):
     """Update dialect transcriptions with rules."""
     click.secho("Update dialect transcriptions", fg="cyan")
-    rulesets = load_data(rules_file)
-    exemptions = load_data(exemptions_file)
+    rules = load_data(ctx.obj.get("rules_file"))
+    exemptions = load_data(ctx.obj.get("exemptions_file"))
+    dialects = ctx.obj.get("dialects")
+    rulesets = construct_rulesets(rules, exemptions, use_dialects=dialects)
+    output_dir = ctx.obj.get("output_dir")
+
     with closing(
             DatabaseUpdater(
                 db=ctx.obj.get("database"),
@@ -464,45 +378,14 @@ def compare_matching_updated_transcriptions(
                 fg="yellow")
 
 @main.command("insert")
-@click.option(
-    "-db",
-    "--database",
-    type=click.Path(resolve_path=True, dir_okay=False, path_type=pathlib.Path),
-    help="The path to the lexicon database.",
-    cls=default_from_context('database'),
-)
-@click.option(
-    "-d",
-    "--dialects",
-    type=str,
-    multiple=True,
-    callback=split_multiple_args,
-    help="Apply replacement rules on one or more specified dialects. "
-         "Args must be separated by a simple comma (,) and no white-space.",
-    cls=default_from_context('dialects'),
-)
-@click.option(
-    "-n",
-    "--newword-files",
-    type=click.Path(resolve_path=True, exists=True, path_type=pathlib.Path),
-    multiple=True,
-    callback=split_multiple_args,
-    help="Paths to csv files with new words to add to the lexicon.",
-    cls=default_from_context('newword_files'),
-)
-@click.option(
-    "-o",
-    "--output-dir",
-    type=click.Path(resolve_path=True, file_okay=False, path_type=pathlib.Path),
-    help="The directory path that files are written to.",
-    cls=default_from_context('output_dir'),
-    callback=ensure_path,
-)
 @click.pass_context
-def insert_newwords(ctx, database, dialects, newword_files, output_dir):
+def insert_newwords(ctx):
     """Insert new word entries to the lexicon."""
     click.secho("Add new words to database", fg="cyan")
-    newwords = load_newwords(newword_files, newword_column_names)
+    newwords = load_newwords(ctx.obj.get("newword_files"), newword_column_names)
+    database = ctx.obj.get("database")
+    dialects = ctx.obj.get("dialects")
+    output_dir = ctx.obj.get("output_dir")
     with closing(
             DatabaseUpdater(
                 db=database,
