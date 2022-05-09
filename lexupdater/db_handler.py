@@ -241,45 +241,51 @@ class DatabaseUpdater:
         for ruleset in rulesets:  # TODO: move this nested loop out of the DatabaseUpdater class
             for dialect in ruleset.areas:
                 for rule in ruleset.rules:
+                    logging.info("Process rule %s for dialect %s", rule.id_, dialect)
                     # create SQLite query constraints
                     conditions, condition_values = parse_conditions(
                         rule.constraints, ruleset.exempt_words
                     )
-                    #
-                    if (not rule_ids) or (rule.id_ in rule_ids) or (ruleset.name in rule_ids):
-                        logging.info("Select rows matching rule %s", rule.id_)
-                        condition_str = coordinate_constraints(
-                            conditions, add_prefix="AND")
+                    is_tracked_rule = (
+                            (not rule_ids) or (rule.id_ in rule_ids) or (ruleset.name in rule_ids)
+                    )
+                    if is_tracked_rule:
+
                         # Retrieve the rule-matching rows before updates
                         select_q, select_v = self._construct_select_query_pre_update(
-                            columns, self.word_table, dialect, rule.pattern, condition_str,
+                            columns, self.word_table, dialect, rule.pattern, conditions,
                             condition_values
                         )
 
                         preupdate_match = self._run_selection(select_q, select_v)
-                        match_df = pd.DataFrame(preupdate_match, columns=columns)
 
-                        # TODO: Double check that df is overwritten for every new rule
-                        match_df.loc[:, "rule_id"] = rule.id_  # track rule.id_ in the output
-                        match_df.loc[:, "dialect"] = dialect
-                        update_q, update_v = self._construct_update_query_simple(
-                            dialect, rule.pattern, rule.replacement)
+                        update_q, update_v = self._construct_update_query_restricted(
+                            dialect, rule.pattern, rule.replacement, conditions, condition_values)
                         self._run_update(update_q, update_v)
-                        # Fetch the transcriptions from the same rows after the update
+
+                        # Retrieve transcriptions from the same rows after the update
+                        match_df = pd.DataFrame(preupdate_match, columns=columns)
                         pron_ids = match_df[COL_PRONID].to_list()
-                        select_q, select_v = self._construct_select_query_post_update(
-                            ",".join([COL_PRON, COL_PRONID]), dialect, COL_PRONID, pron_ids)
-                        postupdate_match = self._run_selection(select_q, select_v)
-                        updated_df = pd.DataFrame(postupdate_match, columns=["new_transcription",
+                        try:
+                            select_q, select_v = self._construct_select_query_post_update(
+                                ",".join([COL_PRON, COL_PRONID]), dialect, COL_PRONID, pron_ids)
+                            postupdate_match = self._run_selection(select_q, select_v)
+                            updated_df = pd.DataFrame(postupdate_match, columns=["new_transcription",
                                                                              COL_PRONID])
-                        # extract the only element of each tuple in the selection result list
-                        # match_df.loc[:, "new_transcription"] = [t[0] for t in postupdate_match]
-                        comparison_df = match_df.merge(
-                            updated_df, how='inner', on=[COL_PRONID])
-                        yield comparison_df
+
+                            comparison_df = match_df.merge(updated_df, how='inner', on=[COL_PRONID])
+                            # track data transformation metadata
+                            comparison_df.loc[:, "rule_id"] = rule.id_  # definition of update
+                            comparison_df.loc[:, "dialect"] = dialect  # affected database table
+
+                            logging.info("%s rows matching rule %s", len(comparison_df.index),
+                                         rule.id_)
+                            yield comparison_df
+                        except Exception as e:
+                            logging.error(e)
                     else:
-                        update_q, update_v = self._construct_update_query_simple(
-                            dialect, rule.pattern, rule.replacement)
+                        update_q, update_v = self._construct_update_query_restricted(
+                            dialect, rule.pattern, rule.replacement, conditions, condition_values)
                         self._run_update(update_q, update_v)
 
     def _construct_select_query(self, dialect, pattern, constraints, exempt_words):
@@ -304,8 +310,9 @@ class DatabaseUpdater:
         return query, values
 
     def _construct_select_query_pre_update(self, columns, word_table, pron_table,
-                                           pattern, condition_str,
+                                           pattern, conditions,
                                            condition_vals):
+        condition_str = coordinate_constraints(conditions, add_prefix="AND")
         query = (
             f"SELECT {', '.join(columns)} "
             f"FROM {word_table} w "
@@ -331,7 +338,10 @@ class DatabaseUpdater:
     def _construct_update_query_restricted(self, dialect: str, pattern: str, replacement: str,
                                            conditions: list, cond_values: list):
         condition_str = coordinate_constraints(conditions, "WHERE")
-        condition = f"WHERE unique_id IN (SELECT unique_id FROM {self.word_table} {condition_str})"
+        condition = (
+            f"WHERE unique_id IN (SELECT unique_id FROM {self.word_table} w "
+            f" {condition_str})"
+        )
         query = UPDATE_QUERY.format(dialect=dialect, where_word_in_stmt=condition)
         values = (pattern, replacement, *cond_values)
         return query, values

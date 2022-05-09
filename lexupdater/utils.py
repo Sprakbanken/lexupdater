@@ -1,6 +1,7 @@
 """Utility functions for lexupdater"""
 
 import csv
+import functools
 import importlib
 import logging
 import re
@@ -11,6 +12,7 @@ from pathlib import Path
 from typing import Union, Iterable, List, Generator, Tuple, Dict
 
 import autopep8
+import click
 import pandas as pd
 from schema import Schema, SchemaError
 
@@ -24,7 +26,7 @@ def ensure_path_exists(path):
     return path_obj
 
 
-def write_lexicon(output_file: Union[str, Path],data: Iterable,delimiter='\t'):
+def write_lexicon(output_file: Union[str, Path], data: Iterable, delimiter='\t'):
     """Write a simple txt file with the results of the SQL queries.
 
     Parameters
@@ -437,3 +439,17 @@ def add_placeholders(vals):
 def coordinate_constraints(constraints, add_prefix: str = ''):
     coordination = ' AND '.join(c for c in constraints)
     return f" {add_prefix} {coordination}" if (add_prefix and coordination) else coordination
+
+
+def time_process(f):
+    """Take the time of the process from """
+    def new_func(*args, **kwargs):
+
+        start = datetime.now()
+        result = f(*args, **kwargs)
+        end = datetime.now()
+        click.secho(f"Processing time (decorator): {str(end - start)}", fg="yellow")
+        return result
+
+    functools.update_wrapper(new_func, f)
+    return new_func

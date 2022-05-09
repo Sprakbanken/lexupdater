@@ -85,7 +85,7 @@ def test_compare_command(tmp_path):
     # when
     result = runner.invoke(
         lexupdater.main,
-        f"-c tests/dummy_config.py compare -o {str(output_dir)}"
+        f"-c tests/dummy_config.py -o {str(output_dir)} compare"
     )
     expected_file = output_dir / "comparison_n_written.txt"
     result_files = list(output_dir.iterdir())
@@ -110,12 +110,12 @@ def test_split_multiple_args(arg, expected):
     assert result == expected
 
 
-def test_generate_new_lexica(tmp_path, ruleset_fixture):
+def test_generate_new_lexica(tmp_path, ruleset_list):
     from lexupdater.constants import LEX_PREFIX, MFA_PREFIX
     test_output = tmp_path / "test_output"
     # when
     lexupdater.generate_new_lexica(
-        [ruleset_fixture],
+        ruleset_list,
         use_ruleset_areas=True,
         data_dir=test_output,
         lex_dir=test_output,

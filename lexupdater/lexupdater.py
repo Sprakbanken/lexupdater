@@ -19,7 +19,7 @@ from .constants import (
     COL_WORDFORM
 )
 from .db_handler import DatabaseUpdater
-from .rule_objects import save_rules_and_exemptions, construct_rulesets
+from .rule_objects import save_rules_and_exemptions, construct_rulesets, RuleSet
 from .utils import (
     write_lexicon,
     flatten_match_results,
@@ -221,6 +221,7 @@ def main(ctx, database, dialects, rules_file, exemptions_file,
     if ctx.invoked_subcommand is None:  # else the subcommand is called by default
         rulesets = load_data(rules_file)
         exemptions = load_data(exemptions_file) if not no_exemptions else None
+        rulesets = construct_rulesets(rulesets, exemptions, use_dialects=dialects)
         newwords = load_newwords(newword_files, newword_column_names)
 
         click.secho('Run full update', fg="cyan")
@@ -228,10 +229,8 @@ def main(ctx, database, dialects, rules_file, exemptions_file,
         with closing(
                 DatabaseUpdater(
                     database,
-                    dialects,
-                    rulesets=rulesets,
-                    newwords=newwords,
-                    exemptions=exemptions)
+                    temp_tables=dialects,
+                    newwords=newwords)
         ) as db_obj:
             updated_lex = db_obj.update(rulesets)
         for dialect, data in updated_lex.items():
@@ -335,10 +334,13 @@ def compare_matching_updated_transcriptions(
         ctx, rule_ids):
     """Extract transcriptions before and after updates.
 
-    The -id/--rule-id option can be specified multiple times, for several rulesets or rules.
+    By default, extract "before/after"-comparisons for all rules (`-r/--rules-file`).
+    If `-id/--rule-id` option can be specified multiple times, to specify several rulesets or
+    rules.
     """
-    click.secho("Compare transcriptions before and after dialect updates",
-                fg="cyan")
+    click.secho(f"Compare transcriptions before and after these transformation rules: \n"
+                f"{rule_ids}", fg="cyan")
+    logging.info("Rule_ids to select updates from:  %s", rule_ids)
     start = datetime.now()
     rules = load_data(ctx.obj.get("rules_file"))
     exemptions = load_data(ctx.obj.get("exemptions_file"))
@@ -351,11 +353,10 @@ def compare_matching_updated_transcriptions(
     ) as db_obj:
         df_gen = db_obj.select_updates(rulesets, rule_ids)
         try:
-            comparison_df = pd.concat(df_gen)
-        except ValueError:
-            logging.info("No output transcriptions.")
-            click.secho("Done processing, no output.",
-                        fg="yellow")
+            comparison_df = pd.concat(df_gen, join="inner", ignore_index=True)
+        except ValueError as e:
+            logging.error("No output transcriptions. %s", e)
+            click.secho("Done processing, no output.", fg="yellow")
             return
     #comparison = compare_transcriptions(matching_words, updated_words)
     end = datetime.now()
@@ -374,8 +375,10 @@ def compare_matching_updated_transcriptions(
     click.secho(f"Done processing. "
                 f"Output is in {output_dir}/comparison_*.txt files.",
                 fg="cyan")
-    click.secho(f"Processing time: {str(end-start)}, Total time: {str(datetime.now()-start)}",
-                fg="yellow")
+    click.secho(f"Processing time command: {str(end-start)}, Total time:"
+                f" {str(datetime.now()-start)}",
+                fg="red")
+
 
 @main.command("insert")
 @click.pass_context
@@ -479,20 +482,17 @@ def generate_new_lexica(
 
     rulesets = load_data(data_dir / "rules.py")
     exemptions = load_data(data_dir / "exemptions.py")
-    dialects = (
-        [d for r_dict in rulesets for d in r_dict["areas"]]
-        if use_ruleset_areas else dialect_schema.schema
-    )
+    rulesets = [RuleSet(**r_dict, exempt_words=exemptions) for r_dict in rulesets]
+    dialects = list({d for r in rulesets for d in r.areas}) if use_ruleset_areas else \
+        dialect_schema.schema
 
     with closing(
         DatabaseUpdater(
             db=db_path,
-            temp_tables=dialects,
-            rulesets=rulesets,
-            exemptions=exemptions)
+            temp_tables=dialects,)
     ) as db_obj:
         # Oppdater leksika med lexupdater
-        updated_lex = db_obj.update()
+        updated_lex = db_obj.update(rulesets)
     write_lex_per_dialect(updated_lex, Path(lex_dir), LEX_PREFIX, None)
     # Konverter leksika til et format som passer FA-algoritmen
     convert_lex_to_mfa(
