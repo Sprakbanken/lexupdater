@@ -8,7 +8,7 @@ import sqlite3
 import pandas as pd
 
 from .utils import coordinate_constraints, add_placeholders
-from .rule_objects import construct_rulesets
+from .rule_objects import construct_rulesets, RuleSet
 from .constants import (
     dialect_schema,
     CREATE_PRON_TABLE_STMT,
@@ -92,7 +92,7 @@ class DatabaseUpdater:
 
     @rulesets.setter
     def rulesets(self, new_rulesets):
-        self._rulesets = construct_rulesets(new_rulesets, self.exemptions, self.dialects)
+        self._rulesets = construct_rulesets(new_rulesets, self.exemptions)
 
     @property
     def exemptions(self):
@@ -238,18 +238,17 @@ class DatabaseUpdater:
         """
         # define data fields to retrieve/compare
         columns = (COL_pUID, COL_PRONID, COL_WORDFORM, COL_PRON)
-        for ruleset in rulesets:  # TODO: move this nested loop out of the DatabaseUpdater class
+        for ruleset in rulesets:
             for dialect in ruleset.areas:
                 for rule in ruleset.rules:
+                    is_tracked = (ruleset.name in rule_ids) or (rule.id_ in rule_ids)
                     logging.info("Process rule %s for dialect %s", rule.id_, dialect)
                     # create SQLite query constraints
                     conditions, condition_values = parse_conditions(
                         rule.constraints, ruleset.exempt_words
                     )
-                    is_tracked_rule = (
-                            (not rule_ids) or (rule.id_ in rule_ids) or (ruleset.name in rule_ids)
-                    )
-                    if is_tracked_rule:
+
+                    if is_tracked:
 
                         # Retrieve the rule-matching rows before updates
                         select_q, select_v = self._construct_select_query_pre_update(

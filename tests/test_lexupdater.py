@@ -85,9 +85,9 @@ def test_compare_command(tmp_path):
     # when
     result = runner.invoke(
         lexupdater.main,
-        f"-c tests/dummy_config.py -o {str(output_dir)} compare"
+        f"-c tests/dummy_config.py -o {str(output_dir)} track-changes -id masc"
     )
-    expected_file = output_dir / "comparison_n_written.txt"
+    expected_file = output_dir / "changelog_masc.csv"
     result_files = list(output_dir.iterdir())
     # then
     assert result.exit_code == 0

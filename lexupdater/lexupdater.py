@@ -19,7 +19,13 @@ from .constants import (
     COL_WORDFORM
 )
 from .db_handler import DatabaseUpdater
-from .rule_objects import save_rules_and_exemptions, construct_rulesets, RuleSet
+from .rule_objects import (
+    save_rules_and_exemptions,
+    construct_rulesets,
+    RuleSet,
+    index_rulesets,
+    filter_rulesets_by_dialects
+)
 from .utils import (
     write_lexicon,
     flatten_match_results,
@@ -221,11 +227,11 @@ def main(ctx, database, dialects, rules_file, exemptions_file,
     if ctx.invoked_subcommand is None:  # else the subcommand is called by default
         rulesets = load_data(rules_file)
         exemptions = load_data(exemptions_file) if not no_exemptions else None
-        rulesets = construct_rulesets(rulesets, exemptions, use_dialects=dialects)
+        rulesets = construct_rulesets(rulesets, exemptions)
         newwords = load_newwords(newword_files, newword_column_names)
 
-        click.secho('Run full update', fg="cyan")
-        click.echo(f"{datetime.now()} Loading database")
+        start = datetime.now()
+        click.secho(f'{start} Run full update. ', fg="cyan")
         with closing(
                 DatabaseUpdater(
                     database,
@@ -300,7 +306,7 @@ def update_dialects(
     rules = load_data(ctx.obj.get("rules_file"))
     exemptions = load_data(ctx.obj.get("exemptions_file"))
     dialects = ctx.obj.get("dialects")
-    rulesets = construct_rulesets(rules, exemptions, use_dialects=dialects)
+    rulesets = construct_rulesets(rules, exemptions)
     output_dir = ctx.obj.get("output_dir")
 
     with closing(
@@ -319,7 +325,7 @@ def update_dialects(
             return_transcriptions="invalid")
 
 
-@main.command("compare")
+@main.command("track-changes")
 @click.option(
     "-id",
     "--rule-id",
@@ -330,7 +336,7 @@ def update_dialects(
          "<ruleset name>, e.g. nasal_retroflex_1, or nasal_retroflex"
 )
 @click.pass_context
-def compare_matching_updated_transcriptions(
+def track_rule_changes(
         ctx, rule_ids):
     """Extract transcriptions before and after updates.
 
@@ -344,40 +350,37 @@ def compare_matching_updated_transcriptions(
     start = datetime.now()
     rules = load_data(ctx.obj.get("rules_file"))
     exemptions = load_data(ctx.obj.get("exemptions_file"))
-    dialects = ctx.obj.get("dialects")
-    rulesets = list(construct_rulesets(rules, exemptions, use_dialects=dialects))
+    # Load the ruleset dicts from rules.py into RuleSet objects
+    rulesets = list(construct_rulesets(rules, exemptions))
+    ruleset_index = index_rulesets(rulesets)
+    chosen_rule_order = sorted([ruleset_index[rule_id] for rule_id in rule_ids])
+    last_relevant_rule = chosen_rule_order[-1] + 1
+    dialects = list({d for rule_id in rule_ids for d in rulesets[ruleset_index[rule_id]].areas})
+    relevant_rulesets = filter_rulesets_by_dialects(rulesets[:last_relevant_rule], dialects)
     output_dir = ctx.obj.get("output_dir")
 
     with closing(
             DatabaseUpdater(db=ctx.obj.get("database"), temp_tables=dialects)
     ) as db_obj:
-        df_gen = db_obj.select_updates(rulesets, rule_ids)
-        try:
-            comparison_df = pd.concat(df_gen, join="inner", ignore_index=True)
-        except ValueError as e:
-            logging.error("No output transcriptions. %s", e)
-            click.secho("Done processing, no output.", fg="yellow")
-            return
-    #comparison = compare_transcriptions(matching_words, updated_words)
+        df_gen = db_obj.select_updates(relevant_rulesets, rule_ids)
+        for rule_id, df in zip(rule_ids, df_gen):
+            try:
+                df["arrow"] = "===>"
+                df.to_csv(
+                    output_dir / f"changelog_{rule_id}.csv",
+                    columns=["dialect","p.pron_id","rule_id","w.wordform","p.nofabet",
+                              "arrow", "new_transcription"],
+                    header=["dialect","pron_id", "rule_id", "word", "transcription", "arrow", "new_transcription"]
+                )
+            except Exception as e:
+                logging.error(e)
     end = datetime.now()
-    column_map = {
-        "p.unique_id": "unique_id",
-        "p.nofabet": "transcription",
-        "p.pron_id": "pron_id",
-        COL_WORDFORM: "word",
-    }
-    comparison_df.rename(columns=column_map, inplace=True)
-    for dialect in comparison_df.dialect.unique():
-        filename = (output_dir / f"comparison_{dialect}.txt")
-        comparison_df["arrow"] = "===>"
-        columns = ["pron_id", "rule_id", "word", "transcription", "arrow", "new_transcription"]
-        comparison_df[comparison_df["dialect"] == dialect][columns].to_csv(filename)
     click.secho(f"Done processing. "
                 f"Output is in {output_dir}/comparison_*.txt files.",
                 fg="cyan")
     click.secho(f"Processing time command: {str(end-start)}, Total time:"
                 f" {str(datetime.now()-start)}",
-                fg="red")
+                fg="yellow")
 
 
 @main.command("insert")

@@ -1,7 +1,7 @@
 import logging
 from collections import Counter
 from pathlib import Path
-from typing import List, Union, Iterable
+from typing import List, Union, Iterable, Generator
 
 from schema import SchemaError
 
@@ -379,28 +379,47 @@ class RuleSet:
 def construct_rulesets(
     rulesets: list,
     exemptions: list,
-    use_dialects: list = None
-) -> List:
-    """Create RuleSet objects from a list of ruleset dicts.
-
-    If `use_dialects` is given, the RuleSet.areas property will be filtered against that list.
+) -> Generator:
+    """Create RuleSet objects from a list of ruleset dicts and their corresponding exemptions.
 
     Returns
     -------
-    list of RuleSet object, with corresponding exemption words.
+    Generator[tuple]: (ruleset name, RuleSet object)
+        The RuleSet object's attribute exempt_words is also populated.
     """
     rule_exemptions = map_rule_exemptions(
         validate_objects(exemptions, exemption_schema)
     )
     for ruleset in rulesets:
+        name = ruleset.get("name")
         try:
             ruleset = RuleSet.from_dict(
-                ruleset, exemptions=rule_exemptions.get(ruleset.get("name"))
+                ruleset, exemptions=rule_exemptions.get(name)
             )
         except TypeError:
-            logging.error("Already a RuleSet: %s", ruleset.name)
-        ruleset.areas = filter_list_by_list(ruleset.areas, use_dialects)
+            logging.error("Already a RuleSet: %s", name)
         yield ruleset
+
+
+def filter_rulesets_by_dialects(rulesets, dialects) -> Generator:
+    """Filter the rulesets (and their 'areas' attribute) by the given dialects."""
+    for ruleset in rulesets:
+        ruleset.areas = filter_list_by_list(ruleset.areas, dialects)
+        if ruleset.areas:
+            yield ruleset
+
+
+def index_rulesets(rulesets: list):
+    """Create an index of the rulesets where the name is the key and the value is the index
+    number in the original list."""
+    return {ruleset.name: idx for idx, ruleset in enumerate(rulesets)}
+
+
+def filter_relevant_rulesets(rulesets, rule_ids, ruleset_index):
+    chosen_rule_order = sorted([ruleset_index[rule_id] for rule_id in rule_ids])
+    last_relevant_rule = chosen_rule_order[-1] + 1
+    dialects = {rulesets[ridx].areas for ridx in chosen_rule_order}
+    return filter_rulesets_by_dialects(rulesets[:last_relevant_rule], list(dialects))
 
 
 def map_rule_exemptions(exemptions: List[str]) -> dict:
