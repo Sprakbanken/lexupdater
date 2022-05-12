@@ -16,15 +16,13 @@ from .constants import (
     MATCH_PREFIX,
     NEW_PREFIX,
     dialect_schema,
-    COL_WORDFORM
+    CHANGE_PREFIX
 )
 from .db_handler import DatabaseUpdater
 from .rule_objects import (
     save_rules_and_exemptions,
-    construct_rulesets,
     RuleSet,
-    index_rulesets,
-    filter_rulesets_by_dialects
+    preprocess_rules
 )
 from .utils import (
     write_lexicon,
@@ -35,7 +33,6 @@ from .utils import (
     convert_lex_to_mfa,
     validate_phonemes,
     write_lex_per_dialect,
-    compare_transcriptions,
     ensure_path_exists
 )
 
@@ -225,9 +222,9 @@ def main(ctx, database, dialects, rules_file, exemptions_file,
     logging.info("START")
 
     if ctx.invoked_subcommand is None:  # else the subcommand is called by default
-        rulesets = load_data(rules_file)
-        exemptions = load_data(exemptions_file) if not no_exemptions else None
-        rulesets = construct_rulesets(rulesets, exemptions)
+        if no_exemptions:
+            exemptions_file = None
+        rulesets, dialects = preprocess_rules(rules_file, exemptions_file)
         newwords = load_newwords(newword_files, newword_column_names)
 
         start = datetime.now()
@@ -270,13 +267,14 @@ def write_base(ctx):
 @click.pass_context
 def match_words(ctx):
     """Fetch database entries that match the replacement rules."""
+    # TODO: Deprecate command
     click.secho("Match database entries to dialect update rules",
                 fg="cyan")
     # Preprocess input data
-    rules = load_data(ctx.obj.get("rules_file"))
-    exemptions = load_data(ctx.obj.get("exemptions_file"))
+    rules_file = ctx.obj.get("rules_file")
+    exemptions_file = ctx.obj.get("exemptions_file")
     dialects = ctx.obj.get("dialects")
-    rulesets = construct_rulesets(rules, exemptions, dialects)
+    rulesets, dialects = preprocess_rules(rules_file, exemptions_file)
     output_dir = ctx.obj.get("output_dir")
 
     with closing(
@@ -303,10 +301,11 @@ def update_dialects(
         ctx, check_phonemes):
     """Update dialect transcriptions with rules."""
     click.secho("Update dialect transcriptions", fg="cyan")
-    rules = load_data(ctx.obj.get("rules_file"))
-    exemptions = load_data(ctx.obj.get("exemptions_file"))
-    dialects = ctx.obj.get("dialects")
-    rulesets = construct_rulesets(rules, exemptions)
+    start = datetime.now()
+    rules_file = ctx.obj.get("rules_file")
+    exemptions_file = ctx.obj.get("exemptions_file")
+    rulesets, dialects = preprocess_rules(
+        rules_file, exemptions_file, config_dialects=ctx.obj.get("dialects"))
     output_dir = ctx.obj.get("output_dir")
 
     with closing(
@@ -323,60 +322,66 @@ def update_dialects(
             validate_phonemes,
             valid_phonemes=ctx.obj["valid_phonemes"],
             return_transcriptions="invalid")
+    end = datetime.now()
+    click.secho(f"Done processing. "
+                f"Output is in {output_dir}/{LEX_PREFIX}_*.txt files.",
+                fg="cyan")
+    click.secho(f"Processing time for {ctx.command}: {str(end-start)}",
+                fg="yellow")
 
 
 @main.command("track-changes")
-@click.option(
-    "-id",
-    "--rule-id",
+@click.argument(
     "rule_ids",
-    multiple=True,
-    help="String to identify a specific rule to extract updates from. "
-         "Format: <ruleset name>_<index number in the ruleset list>, or "
-         "<ruleset name>, e.g. nasal_retroflex_1, or nasal_retroflex"
+    nargs=-1,
+    required=True
 )
 @click.pass_context
 def track_rule_changes(
         ctx, rule_ids):
-    """Extract transcriptions before and after updates.
+    """Extract transcriptions before and after updates by given rule_ids, and write to csv files.
 
-    By default, extract "before/after"-comparisons for all rules (`-r/--rules-file`).
-    If `-id/--rule-id` option can be specified multiple times, to specify several rulesets or
-    rules.
+    RULE_IDS format:    <ruleset name>_<.rules index number> or <ruleset name>
+    Examples:           nasal_retroflex_0 retroflex errorfix_3
     """
     click.secho(f"Compare transcriptions before and after these transformation rules: \n"
                 f"{rule_ids}", fg="cyan")
-    logging.info("Rule_ids to select updates from:  %s", rule_ids)
     start = datetime.now()
-    rules = load_data(ctx.obj.get("rules_file"))
-    exemptions = load_data(ctx.obj.get("exemptions_file"))
-    # Load the ruleset dicts from rules.py into RuleSet objects
-    rulesets = list(construct_rulesets(rules, exemptions))
-    ruleset_index = index_rulesets(rulesets)
-    chosen_rule_order = sorted([ruleset_index[rule_id] for rule_id in rule_ids])
-    last_relevant_rule = chosen_rule_order[-1] + 1
-    dialects = list({d for rule_id in rule_ids for d in rulesets[ruleset_index[rule_id]].areas})
-    relevant_rulesets = filter_rulesets_by_dialects(rulesets[:last_relevant_rule], dialects)
+    rules_file = ctx.obj.get("rules_file")
+    exemptions_file = ctx.obj.get("exemptions_file")
     output_dir = ctx.obj.get("output_dir")
+    rulesets, dialects = preprocess_rules(
+        rules_file, exemptions_file, rule_ids, config_dialects=ctx.obj.get("dialects"))
 
     with closing(
             DatabaseUpdater(db=ctx.obj.get("database"), temp_tables=dialects)
     ) as db_obj:
-        df_gen = db_obj.select_updates(relevant_rulesets, rule_ids)
-        for rule_id, df in zip(rule_ids, df_gen):
+        df_gen = db_obj.select_updates(rulesets, rule_ids)
+
+        for df in df_gen:
+            rule_id = df["rule_id"].unique()[0]
+            dialect = df["dialect"].unique()[0]
+            df["arrow"] = "===>"
+            columns_to_write = {
+                'dialect': 'dialect',
+                'p.pron_id': 'pron_id',
+                'rule_id': 'rule_id',
+                'w.wordform': 'word',
+                'p.nofabet': 'transcription',
+                'arrow': 'arrow',
+                'new_transcription': 'new_transcription'}
+            filename = output_dir / f"{CHANGE_PREFIX}_{dialect}_{rule_id}.csv"
             try:
-                df["arrow"] = "===>"
                 df.to_csv(
-                    output_dir / f"changelog_{rule_id}.csv",
-                    columns=["dialect","p.pron_id","rule_id","w.wordform","p.nofabet",
-                              "arrow", "new_transcription"],
-                    header=["dialect","pron_id", "rule_id", "word", "transcription", "arrow", "new_transcription"]
+                    filename,
+                    columns=columns_to_write.keys(),
+                    header=columns_to_write.values(),
                 )
             except Exception as e:
                 logging.error(e)
     end = datetime.now()
     click.secho(f"Done processing. "
-                f"Output is in {output_dir}/comparison_*.txt files.",
+                f"Output is in {output_dir}/{CHANGE_PREFIX}_*.csv files.",
                 fg="cyan")
     click.secho(f"Processing time command: {str(end-start)}, Total time:"
                 f" {str(datetime.now()-start)}",
@@ -455,7 +460,9 @@ def generate_new_lexica(
         lex_dir="lexica",
         db_path="backend-db03.db",
 ):
-    """Generate updated lexica files with a list of new rule objects.
+    """WARNING: Deprecated function.
+
+    Generate updated lexica files with a list of new rule objects.
 
     Save the rules and exemptions to disk.
     Update the lexicon database with those files,
@@ -475,6 +482,7 @@ def generate_new_lexica(
     db_path: str or Path
         Path to lexicon database
     """
+    # WARNING: Deprecated function.
     data_dir = ensure_path_exists(data_dir)
     try:
         # Lagre regelsettene til filer

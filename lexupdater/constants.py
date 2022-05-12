@@ -120,6 +120,7 @@ LEX_PREFIX="updated_lexicon"
 MATCH_PREFIX="words_matching_rules"
 MFA_PREFIX="NB_nob"
 NEW_PREFIX="base_new_words"
+CHANGE_PREFIX="rule_changes"
 
 # Define SQL query templates
 CREATE_PRON_TABLE_STMT = """CREATE TEMPORARY TABLE {pron_table_name} (

@@ -97,6 +97,12 @@ def filter_list_by_list(check_list, filter_list):
     return filtered
 
 
+def filter_exclude(check_list, exclude_list):
+    """Keep only elements from check_list if they do NOT exist in the exclude_list."""
+    filtered = [_ for _ in check_list if _ not in exclude_list]
+    return filtered
+
+
 def load_module_from_path(file_path):
     """Use importlib to load a module from a .py file path."""
     module_path = Path(file_path)

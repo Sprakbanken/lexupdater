@@ -236,56 +236,66 @@ class DatabaseUpdater:
 
         .. todo:: do a timed test - if the process exceeds 15 mins, it's too slow.
         """
-        # define data fields to retrieve/compare
+        def rule_iterator():
+            for ruleset in rulesets:
+                for dialect in ruleset.areas:
+                    for rule in ruleset.rules:
+                        is_tracked = (ruleset.name in rule_ids) or (rule.id_ in rule_ids)
+                        yield rule, ruleset.exempt_words, dialect, is_tracked
+
+        for rule_info in rule_iterator():
+            result = self._track_changes_(*rule_info)
+            if result is None or result.empty:
+                continue
+            yield result
+
+    def _track_changes_(self, rule, exemptions, dialect, is_tracked_rule):
+        """Apply subfunctions to track changes in specific tables for specific rules."""
         columns = (COL_pUID, COL_PRONID, COL_WORDFORM, COL_PRON)
-        for ruleset in rulesets:
-            for dialect in ruleset.areas:
-                for rule in ruleset.rules:
-                    is_tracked = (ruleset.name in rule_ids) or (rule.id_ in rule_ids)
-                    logging.info("Process rule %s for dialect %s", rule.id_, dialect)
-                    # create SQLite query constraints
-                    conditions, condition_values = parse_conditions(
-                        rule.constraints, ruleset.exempt_words
-                    )
+        conditions, condition_values = parse_conditions(rule.constraints, exemptions)
 
-                    if is_tracked:
+        def pre_select_rows():
+            """Retrieve the rows that match the rules before updates."""
+            select_q, select_v = self._construct_select_query_pre_update(
+                columns, self.word_table, dialect, rule.pattern, conditions,
+                condition_values
+            )
+            preupdate_match = self._run_selection(select_q, select_v)
+            return pd.DataFrame(preupdate_match, columns=columns)
 
-                        # Retrieve the rule-matching rows before updates
-                        select_q, select_v = self._construct_select_query_pre_update(
-                            columns, self.word_table, dialect, rule.pattern, conditions,
-                            condition_values
-                        )
+        def update_rows():
+            """Apply the update rule."""
+            update_q, update_v = self._construct_update_query_restricted(
+                dialect, rule.pattern, rule.replacement, conditions, condition_values)
+            self._run_update(update_q, update_v)
 
-                        preupdate_match = self._run_selection(select_q, select_v)
+        def post_update_select_rows(pre_update_df):
+            """Retrieve new transcriptions from the rows that were updated."""
+            pron_ids = pre_update_df[COL_PRONID].to_list()
+            try:
+                select_q, select_v = self._construct_select_query_post_update(
+                    ",".join([COL_PRON, COL_PRONID]), dialect, COL_PRONID, pron_ids)
+                postupdate_match = self._run_selection(select_q, select_v)
+                updated_df = pd.DataFrame(postupdate_match, columns=["new_transcription",
+                                                                     COL_PRONID])
 
-                        update_q, update_v = self._construct_update_query_restricted(
-                            dialect, rule.pattern, rule.replacement, conditions, condition_values)
-                        self._run_update(update_q, update_v)
+                comparison_df = pre_update_df.merge(updated_df, how='inner', on=[COL_PRONID])
+                # track data transformation metadata
+                comparison_df.loc[:, "rule_id"] = rule.id_  # definition of update
+                comparison_df.loc[:, "dialect"] = dialect  # affected database table
+                return comparison_df
+            except Exception as e:
+                logging.error(e)
 
-                        # Retrieve transcriptions from the same rows after the update
-                        match_df = pd.DataFrame(preupdate_match, columns=columns)
-                        pron_ids = match_df[COL_PRONID].to_list()
-                        try:
-                            select_q, select_v = self._construct_select_query_post_update(
-                                ",".join([COL_PRON, COL_PRONID]), dialect, COL_PRONID, pron_ids)
-                            postupdate_match = self._run_selection(select_q, select_v)
-                            updated_df = pd.DataFrame(postupdate_match, columns=["new_transcription",
-                                                                             COL_PRONID])
-
-                            comparison_df = match_df.merge(updated_df, how='inner', on=[COL_PRONID])
-                            # track data transformation metadata
-                            comparison_df.loc[:, "rule_id"] = rule.id_  # definition of update
-                            comparison_df.loc[:, "dialect"] = dialect  # affected database table
-
-                            logging.info("%s rows matching rule %s", len(comparison_df.index),
-                                         rule.id_)
-                            yield comparison_df
-                        except Exception as e:
-                            logging.error(e)
-                    else:
-                        update_q, update_v = self._construct_update_query_restricted(
-                            dialect, rule.pattern, rule.replacement, conditions, condition_values)
-                        self._run_update(update_q, update_v)
+        if is_tracked_rule:
+            logging.info("Track rule changes for %s", rule.id_)
+            match_df = pre_select_rows()
+            logging.info("%s rows in %s", len(match_df.index), dialect)
+            update_rows()
+            return post_update_select_rows(match_df)
+        else:
+            logging.info("Apply rule changes for %s in %s", rule.id_, dialect)
+            update_rows()
 
     def _construct_select_query(self, dialect, pattern, constraints, exempt_words):
         conditions, cond_values = parse_conditions(constraints, exempt_words)
@@ -374,12 +384,10 @@ class DatabaseUpdater:
         for ruleset in rulesets:
             for dialect in ruleset.areas:
                 for rule in ruleset.rules:
-                    query, values = self._construct_update_query_simple(
-                        dialect, rule.pattern, rule.replacement)
-                    # conditions, condition_values = parse_conditions(rule.constraints,
-                    #                                                ruleset.exempt_words)
-                    # query, values = self._construct_update_query_restricted(
-                    #    dialect, rule.pattern, rule.replacement,conditions, condition_values)
+                    conditions, condition_values = parse_conditions(rule.constraints,
+                                                                    ruleset.exempt_words)
+                    query, values = self._construct_update_query_restricted(
+                       dialect, rule.pattern, rule.replacement,conditions, condition_values)
                     self._run_update(query, values)
         return self.fetch_dialect_updates(include_id=include_id)
 

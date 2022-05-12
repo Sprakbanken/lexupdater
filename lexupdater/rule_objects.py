@@ -377,7 +377,7 @@ class RuleSet:
 
 
 def construct_rulesets(
-    rulesets: list,
+    rulesets: Iterable,
     exemptions: list,
 ) -> Generator:
     """Create RuleSet objects from a list of ruleset dicts and their corresponding exemptions.
@@ -401,7 +401,7 @@ def construct_rulesets(
         yield ruleset
 
 
-def filter_rulesets_by_dialects(rulesets, dialects) -> Generator:
+def filter_rulesets_by_dialects(rulesets: Iterable, dialects: Iterable) -> Generator:
     """Filter the rulesets (and their 'areas' attribute) by the given dialects."""
     for ruleset in rulesets:
         ruleset.areas = filter_list_by_list(ruleset.areas, dialects)
@@ -409,17 +409,49 @@ def filter_rulesets_by_dialects(rulesets, dialects) -> Generator:
             yield ruleset
 
 
-def index_rulesets(rulesets: list):
+def fetch_ruleset_dialects(rulesets: Iterable) -> list:
+    return list({d for ruleset in rulesets for d in ruleset.areas})
+
+
+def index_rulesets(rulesets: Generator) -> tuple:
     """Create an index of the rulesets where the name is the key and the value is the index
     number in the original list."""
-    return {ruleset.name: idx for idx, ruleset in enumerate(rulesets)}
+    index_dict = {}
+    original_list = []
+    for idx, ruleset in enumerate(rulesets):
+        original_list.append(ruleset)
+        index_dict[ruleset.name] = idx
+        for rule in ruleset.rules:
+            index_dict[rule.id_] = idx
+    return index_dict, original_list
 
 
-def filter_relevant_rulesets(rulesets, rule_ids, ruleset_index):
-    chosen_rule_order = sorted([ruleset_index[rule_id] for rule_id in rule_ids])
-    last_relevant_rule = chosen_rule_order[-1] + 1
-    dialects = {rulesets[ridx].areas for ridx in chosen_rule_order}
-    return filter_rulesets_by_dialects(rulesets[:last_relevant_rule], list(dialects))
+def filter_rulesets_by_id(rulesets: Generator, rule_ids: list) -> Generator:
+    ruleset_index, rulesets = index_rulesets(rulesets)
+    last_relevant_rule = 0
+    for rule_id in rule_ids:
+        idx = ruleset_index[rule_id]
+        if idx > last_relevant_rule:
+            last_relevant_rule = idx
+    return rulesets[:last_relevant_rule+1]  # Include the last rule in the slice
+
+
+def preprocess_rules(
+        rules_file, exemptions_file, rule_ids: list = None, config_dialects: list = None) -> tuple:
+    """Load and filter rules and exemptions.
+
+    Filter rules on the selected ids, if any, and filter dialects on the relevant rules.
+    """
+    rules = load_data(rules_file)
+    exemptions = load_data(exemptions_file) if exemptions_file is not None else []
+    # Load the ruleset dicts from rules.py into RuleSet objects
+    rulesets = list(construct_rulesets(rules, exemptions))
+    if rule_ids is not None:
+        rulesets = filter_rulesets_by_id(rulesets, rule_ids)
+    if config_dialects is not None:
+        rulesets = list(filter_rulesets_by_dialects(rulesets, config_dialects))
+    relevant_dialects = fetch_ruleset_dialects(rulesets)
+    return rulesets, relevant_dialects
 
 
 def map_rule_exemptions(exemptions: List[str]) -> dict:
