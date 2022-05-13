@@ -3,11 +3,12 @@
 Parse their constraints and exemptions
 into variables to fill slots in SQL query templates.
 """
+import functools
 import logging
 from typing import List, Generator
 
-from .constants import ruleset_schema, exemption_schema, WORD_NOT_IN
-from .utils import filter_list_by_list, validate_objects
+from .constants import ruleset_schema, exemption_schema, COL_WORDFORM
+from .utils import filter_list_by_list, validate_objects, add_placeholders
 from .rule_objects import map_rule_exemptions
 
 
@@ -35,11 +36,7 @@ def parse_constraints(constraints: List):
         operator = "=" if not const["is_regex"] else "REGEXP"
         constraint_fragments.append(f"{const['field']} {operator} ?")
         values.append(const["pattern"])
-
-    constraint_string = " AND ".join(constraint_fragments)
-    logging.debug("Constraint: %s", constraint_string)
-    logging.debug("Values: %s", values)
-    return constraint_string, values
+    return constraint_fragments, values
 
 
 def parse_exemptions(exemption_words):
@@ -55,12 +52,9 @@ def parse_exemptions(exemption_words):
     tuple[str, list]
         SQL fragment and a list of words that are exempt
     """
-    exemption_string = (
-        f"{WORD_NOT_IN} ({','.join(['?' for _ in exemption_words])})"
-    ) if exemption_words != [] else ""
-    logging.debug("Exemption: %s ", exemption_string)
-    logging.debug("Words: %s", exemption_words)
-    return exemption_string
+    if exemption_words:
+        return f"{COL_WORDFORM} NOT IN ({add_placeholders(exemption_words)})"
+    return ""
 
 
 def parse_conditions(constraints: list, exempt_words: list) -> tuple:
@@ -74,15 +68,14 @@ def parse_conditions(constraints: list, exempt_words: list) -> tuple:
     if not is_constrained and not exempt_words:
         return "", []
 
-    constraint_str, constraint_values = parse_constraints(constraints)
+    constraint_strs, constraint_values = parse_constraints(constraints)
     exempt_str = parse_exemptions(exempt_words)
 
-    conditions = [string for string in (constraint_str, exempt_str) if string]
-    cond_str = " AND ".join(conditions)
+    conditions = [string for string in (*constraint_strs, exempt_str) if string]
     values = constraint_values + exempt_words
-    logging.debug("Conditions: %s ", cond_str)
+    logging.debug("Conditions: %s ", conditions)
     logging.debug("Values: %s", values)
-    return cond_str, values
+    return conditions, values
 
 
 def parse_rules(

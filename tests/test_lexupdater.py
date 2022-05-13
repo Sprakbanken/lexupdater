@@ -37,7 +37,7 @@ def test_main_default_update(all_dialects, tmp_path):
     "sub_command,expected_file",
     [
         ["base", "base.txt"],
-        ["match", "words_matching_rules_n_written.txt"],
+        ["track-changes masc", "rule_changes_n_written_masc_0.csv"],
         ["insert", "base_new_words.txt"],
         ["update", "updated_lexicon_n_written.txt"],
     ]
@@ -85,9 +85,9 @@ def test_compare_command(tmp_path):
     # when
     result = runner.invoke(
         lexupdater.main,
-        f"-c tests/dummy_config.py compare -o {str(output_dir)}"
+        f"-c tests/dummy_config.py -o {str(output_dir)} track-changes masc"
     )
-    expected_file = output_dir / "comparison_n_written.txt"
+    expected_file = output_dir / f"rule_changes_n_written_masc_0.csv"
     result_files = list(output_dir.iterdir())
     # then
     assert result.exit_code == 0
@@ -110,12 +110,13 @@ def test_split_multiple_args(arg, expected):
     assert result == expected
 
 
-def test_generate_new_lexica(tmp_path, ruleset_fixture):
+@pytest.mark.skip("Deprecated")
+def test_generate_new_lexica(tmp_path, ruleset_list):
     from lexupdater.constants import LEX_PREFIX, MFA_PREFIX
     test_output = tmp_path / "test_output"
     # when
     lexupdater.generate_new_lexica(
-        [ruleset_fixture],
+        ruleset_list,
         use_ruleset_areas=True,
         data_dir=test_output,
         lex_dir=test_output,
