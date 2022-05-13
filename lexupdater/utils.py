@@ -1,6 +1,7 @@
 """Utility functions for lexupdater"""
 
 import csv
+import functools
 import importlib
 import logging
 import re
@@ -11,6 +12,7 @@ from pathlib import Path
 from typing import Union, Iterable, List, Generator, Tuple, Dict
 
 import autopep8
+import click
 import pandas as pd
 from schema import Schema, SchemaError
 
@@ -24,7 +26,7 @@ def ensure_path_exists(path):
     return path_obj
 
 
-def write_lexicon(output_file: Union[str, Path],data: Iterable,delimiter='\t'):
+def write_lexicon(output_file: Union[str, Path], data: Iterable, delimiter='\t'):
     """Write a simple txt file with the results of the SQL queries.
 
     Parameters
@@ -91,7 +93,13 @@ def flatten_match_results(data: Iterable) -> Generator:
 
 def filter_list_by_list(check_list, filter_list):
     """Keep only elements from check_list if they exist in the filter_list."""
-    filtered = [_ for _ in check_list if _ in filter_list]
+    filtered = [item for item in check_list if item in filter_list]
+    return filtered
+
+
+def filter_exclude(check_list, exclude_list):
+    """Keep only elements from check_list if they do NOT exist in the exclude_list."""
+    filtered = [item for item in check_list if item not in exclude_list]
     return filtered
 
 
@@ -212,7 +220,7 @@ def validate_objects(obj_list: list, obj_schema: Schema) -> list:
 
 
 def matching_data_to_dict(entries: Iterable) -> Dict[str, Tuple[str]]:
-    """Unpack results of select_words_matching_rules, and map them to column names."""
+    """Unpack results of select_pattern_matches, and map them to column names."""
     flat_data = flatten_match_results(entries)
     return dict(zip(("rule_id", "word", "transcription", "pron_id"), zip(*flat_data)))
 
@@ -427,3 +435,27 @@ def validate_phonemes(updated_lexicon: list, valid_phonemes: list,
                 error, row[-1])
             transcriptions["invalid"].append(row)
     return transcriptions.get(return_transcriptions, [])
+
+
+def add_placeholders(vals):
+    """Create a string of question mark placeholders for sqlite queries."""
+    return ', '.join('?' for _ in vals)
+
+
+def coordinate_constraints(constraints, add_prefix: str = ''):
+    coordination = ' AND '.join(c for c in constraints)
+    return f" {add_prefix} {coordination}" if (add_prefix and coordination) else coordination
+
+
+def time_process(f):
+    """Take the time of the process from """
+    def new_func(*args, **kwargs):
+
+        start = datetime.now()
+        result = f(*args, **kwargs)
+        end = datetime.now()
+        click.secho(f"Processing time (decorator): {str(end - start)}", fg="yellow")
+        return result
+
+    functools.update_wrapper(new_func, f)
+    return new_func

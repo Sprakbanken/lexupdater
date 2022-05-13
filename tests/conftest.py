@@ -38,10 +38,17 @@ def ruleset_fixture(rule_fixture):
         )
 
 @pytest.fixture(scope="session")
-def ruleset_list():
+def ruleset_dict_list():
     """Set up a test value for the rules."""
     from dummy_rules import test1, test2
     return [test1, test2]
+
+
+@pytest.fixture(scope="session")
+def ruleset_list():
+    """Set up a test value for the rules."""
+    from dummy_rules import test1, test2
+    return [RuleSet(**r) for r in (test1, test2)]
 
 
 @pytest.fixture(scope="session")

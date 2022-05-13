@@ -174,9 +174,9 @@ def test_load_newwords(paths, col_names):
     assert all([col in valid_col_names for col in result.columns])
 
 
-def test_validate_objects(ruleset_list, some_dialects, exemptions_list):
+def test_validate_objects(ruleset_dict_list, some_dialects, exemptions_list):
     # given
-    mixed_rules = ruleset_list + ["invalid_ruleset"]
+    mixed_rules = ruleset_dict_list + ["invalid_ruleset"]
     mixed_exemptions = exemptions_list + ["invalid_exemption"]
     mixed_dialects = some_dialects + ["invalid_dialect"]
     # when
@@ -185,7 +185,7 @@ def test_validate_objects(ruleset_list, some_dialects, exemptions_list):
                                                exemption_schema)
     result_dialects = utils.validate_objects(mixed_dialects, dialect_schema)
     # then
-    assert result_rules == ruleset_list
+    assert result_rules == ruleset_dict_list
     assert result_exemptions == exemptions_list
     assert result_dialects == some_dialects
 

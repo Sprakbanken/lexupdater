@@ -25,26 +25,27 @@ def test_parse_constraints(rule):
     # given
     constraints = rule["constraints"]
     # when
-    result_string, result_values = dialect_updater.parse_constraints(
+    result_list, result_values = dialect_updater.parse_constraints(
         constraints
     )
     # then
     assert result_values == ["NN", "MAS"]
-    assert "pos = ? AND feats REGEXP ?" in result_string
+    assert "pos = ?" in result_list
+    assert "feats REGEXP ?" in result_list
 
 
 def test_parse_constraints_with_empty_input():
-    result_string, result_values = dialect_updater.parse_constraints([])
+    result_strings, result_values = dialect_updater.parse_constraints([])
     # then
     assert result_values == []
-    assert result_string == ""
+    assert result_strings == []
 
 
 @pytest.mark.parametrize(
     "words, expected",
     [
-        (["garn", "klarne"], "w.wordform NOT IN (?,?)"),
-        (["1", "2", "3"], "w.wordform NOT IN (?,?,?)"),
+        (["garn", "klarne"], "w.wordform NOT IN (?, ?)"),
+        (["1", "2", "3"], "w.wordform NOT IN (?, ?, ?)"),
         ([], "")
     ]
 )
@@ -70,7 +71,7 @@ def test_parse_conditions(rule):
     # given
     input_exemptions = ["biler", "båter"]
     expected = (
-        "pos = ? AND feats REGEXP ? AND w.wordform NOT IN (?,?)",
+        ["pos = ?", "feats REGEXP ?", "w.wordform NOT IN (?, ?)"],
         ['NN', 'MAS', 'biler', 'båter']
     )
     # when
@@ -89,18 +90,18 @@ def test_parse_conditions_without_conditions():
     assert result == ("", [])
 
 
-def test_parse_rules(some_dialects, ruleset_list, exemptions_list):
+def test_parse_rules(some_dialects, ruleset_dict_list, exemptions_list):
     # given
     expected_first_item = (
         "e_spoken",
         r"\b(R)([NTD])\b",
         r"\1 \2",
-        "w.wordform NOT IN (?,?)",
+        ["w.wordform NOT IN (?, ?)"],
         ["garn", "klarne"]
     )
     # when
     result = dialect_updater.parse_rules(
-        some_dialects, ruleset_list, exemptions_list
+        some_dialects, ruleset_dict_list, exemptions_list
     )
     # then
     assert isinstance(result, Generator)

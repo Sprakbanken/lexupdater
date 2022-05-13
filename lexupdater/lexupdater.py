@@ -8,16 +8,22 @@ from datetime import datetime
 from pathlib import Path
 
 import click
+import pandas as pd
 
 from .constants import (
     newword_column_names,
     LEX_PREFIX,
     MATCH_PREFIX,
     NEW_PREFIX,
-    dialect_schema
+    dialect_schema,
+    CHANGE_PREFIX
 )
 from .db_handler import DatabaseUpdater
-from .rule_objects import save_rules_and_exemptions
+from .rule_objects import (
+    save_rules_and_exemptions,
+    RuleSet,
+    preprocess_rules
+)
 from .utils import (
     write_lexicon,
     flatten_match_results,
@@ -27,7 +33,6 @@ from .utils import (
     convert_lex_to_mfa,
     validate_phonemes,
     write_lex_per_dialect,
-    compare_transcriptions,
     ensure_path_exists
 )
 
@@ -203,7 +208,7 @@ def main(ctx, database, dialects, rules_file, exemptions_file,
     Note that all modifications in the backend db target temp tables,
     so the db isn't modified.
     The modifications to the lexicon are written to
-    new, dialect-specific files.
+    new, temp-table-specific files.
     """
     ctx.ensure_object(dict)
     valid_phonemes.remove("")
@@ -216,23 +221,21 @@ def main(ctx, database, dialects, rules_file, exemptions_file,
     # Log starting time
     logging.info("START")
 
-
-    if ctx.invoked_subcommand is None:
-        rulesets = load_data(rules_file)
-        exemptions = load_data(exemptions_file) if not no_exemptions else None
+    if ctx.invoked_subcommand is None:  # else the subcommand is called by default
+        if no_exemptions:
+            exemptions_file = None
+        rulesets, dialects = preprocess_rules(rules_file, exemptions_file)
         newwords = load_newwords(newword_files, newword_column_names)
 
-        click.secho('Run full update', fg="cyan")
-        click.echo(f"{datetime.now()} Loading database")
+        start = datetime.now()
+        click.secho(f'{start} Run full update. ', fg="cyan")
         with closing(
                 DatabaseUpdater(
                     database,
-                    dialects,
-                    rulesets=rulesets,
-                    newwords=newwords,
-                    exemptions=exemptions)
+                    temp_tables=dialects,
+                    newwords=newwords)
         ) as db_obj:
-            updated_lex = db_obj.update()
+            updated_lex = db_obj.update(rulesets)
         for dialect, data in updated_lex.items():
             invalid_transcriptions = validate_phonemes(
                 data, valid_phonemes, return_transcriptions="invalid")
@@ -245,136 +248,47 @@ def main(ctx, database, dialects, rules_file, exemptions_file,
 
 
 @main.command("base")
-@click.option(
-    "-db",
-    "--database",
-    type=click.Path(resolve_path=True, dir_okay=False, path_type=pathlib.Path),
-    help="The path to the lexicon database.",
-    cls=default_from_context('database'),
-)
-@click.option(
-    "-o",
-    "--output-dir",
-    type=click.Path(resolve_path=True, file_okay=False, path_type=pathlib.Path),
-    help="The directory path that files are written to.",
-    cls=default_from_context('output_dir'),
-    callback=ensure_path,
-)
 @click.pass_context
-def write_base(ctx, database, output_dir):
+def write_base(ctx):
     """Export the base lexicon prior to updates."""
     click.secho("Write the base lexicon to file.",
                 fg="cyan")
     with closing(
             DatabaseUpdater(
-                db=database,
-                dialects=[]
+                db=ctx.obj.get("database"),
+                temp_tables=[]
             )
     ) as db_obj:
         base = db_obj.get_base()
-    write_lexicon((output_dir / "base.txt"), base)
+    write_lexicon((ctx.obj.get("output_dir") / "base.txt"), base)
 
 
 @main.command("match")
-@click.option(
-    "-db",
-    "--database",
-    type=click.Path(resolve_path=True, dir_okay=False, path_type=pathlib.Path),
-    help="The path to the lexicon database.",
-    cls=default_from_context('database'),
-)
-@click.option(
-    "-d",
-    "--dialects",
-    type=str,
-    multiple=True,
-    callback=split_multiple_args,
-    help="Apply replacement rules on one or more specified dialects. "
-         "Args must be separated by a simple comma (,) and no white-space.",
-    cls=default_from_context('dialects'),
-)
-@click.option(
-    "-r",
-    "--rules-file",
-    type=click.Path(resolve_path=True, exists=True, path_type=pathlib.Path),
-    help="Apply replacement rules from the given file path.",
-    cls=default_from_context('rules_file'),
-)
-@click.option(
-    "-e",
-    "--exemptions-file",
-    type=click.Path(resolve_path=True, exists=True, path_type=pathlib.Path),
-    help="Apply exemptions from the given file path to the rules.",
-    cls=default_from_context('exemptions_file'),
-)
-@click.option(
-    "-o",
-    "--output-dir",
-    type=click.Path(resolve_path=True, file_okay=False, path_type=pathlib.Path),
-    help="The directory path that files are written to.",
-    cls=default_from_context('output_dir'),
-    callback=ensure_path,
-)
 @click.pass_context
-def match_words(ctx, database, dialects, rules_file, exemptions_file,
-                output_dir):
+def match_words(ctx):
     """Fetch database entries that match the replacement rules."""
+    # TODO: Deprecate command
     click.secho("Match database entries to dialect update rules",
                 fg="cyan")
-    rulesets = load_data(rules_file)
-    exemptions = load_data(exemptions_file)
+    # Preprocess input data
+    rules_file = ctx.obj.get("rules_file")
+    exemptions_file = ctx.obj.get("exemptions_file")
+    dialects = ctx.obj.get("dialects")
+    rulesets, dialects = preprocess_rules(rules_file, exemptions_file)
+    output_dir = ctx.obj.get("output_dir")
+
     with closing(
             DatabaseUpdater(
-                db=database,
-                dialects=dialects,
-                rulesets=rulesets,
-                exemptions=exemptions)
+                db=ctx.obj.get("database"),
+                temp_tables=dialects,
+            )
     ) as db_obj:
-        matches = db_obj.select_words_matching_rules()
+        matches = db_obj.select_pattern_matches(rulesets)
     write_lex_per_dialect(
         matches, output_dir, MATCH_PREFIX, flatten_match_results)
 
 
 @main.command("update")
-@click.option(
-    "-db",
-    "--database",
-    type=click.Path(resolve_path=True, dir_okay=False, path_type=pathlib.Path),
-    help="The path to the lexicon database.",
-    cls=default_from_context('database'),
-)
-@click.option(
-    "-d",
-    "--dialects",
-    type=str,
-    multiple=True,
-    callback=split_multiple_args,
-    help="Apply replacement rules on one or more specified dialects. "
-         "Args must be separated by a simple comma (,) and no white-space.",
-    cls=default_from_context('dialects'),
-)
-@click.option(
-    "-r",
-    "--rules-file",
-    type=click.Path(resolve_path=True, exists=True, path_type=pathlib.Path),
-    help="Apply replacement rules from the given file path.",
-    cls=default_from_context('rules_file'),
-)
-@click.option(
-    "-e",
-    "--exemptions-file",
-    type=click.Path(resolve_path=True, exists=True, path_type=pathlib.Path),
-    help="Apply exemptions from the given file path to the rules.",
-    cls=default_from_context('exemptions_file'),
-)
-@click.option(
-    "-o",
-    "--output-dir",
-    type=click.Path(resolve_path=True, file_okay=False, path_type=pathlib.Path),
-    help="The directory path that files are written to.",
-    cls=default_from_context('output_dir'),
-    callback=ensure_path,
-)
 @click.option(
     "-p",
     "--check-phonemes",
@@ -384,20 +298,23 @@ def match_words(ctx, database, dialects, rules_file, exemptions_file,
 )
 @click.pass_context
 def update_dialects(
-        ctx, database, dialects, rules_file, exemptions_file, output_dir,
-        check_phonemes):
+        ctx, check_phonemes):
     """Update dialect transcriptions with rules."""
     click.secho("Update dialect transcriptions", fg="cyan")
-    rulesets = load_data(rules_file)
-    exemptions = load_data(exemptions_file)
+    start = datetime.now()
+    rules_file = ctx.obj.get("rules_file")
+    exemptions_file = ctx.obj.get("exemptions_file")
+    rulesets, dialects = preprocess_rules(
+        rules_file, exemptions_file, config_dialects=ctx.obj.get("dialects"))
+    output_dir = ctx.obj.get("output_dir")
+
     with closing(
             DatabaseUpdater(
-                db=database,
-                dialects=dialects,
-                rulesets=rulesets,
-                exemptions=exemptions)
+                db=ctx.obj.get("database"),
+                temp_tables=dialects
+            )
     ) as db_obj:
-        updated_lex = db_obj.update()
+        updated_lex = db_obj.update(rulesets)
     write_lex_per_dialect(updated_lex, output_dir, LEX_PREFIX, None)
     if check_phonemes:
         write_lex_per_dialect(
@@ -405,122 +322,87 @@ def update_dialects(
             validate_phonemes,
             valid_phonemes=ctx.obj["valid_phonemes"],
             return_transcriptions="invalid")
+    end = datetime.now()
+    click.secho(f"Done processing. "
+                f"Output is in {output_dir}/{LEX_PREFIX}_*.txt files.",
+                fg="cyan")
+    click.secho(f"Processing time for {ctx.command}: {str(end-start)}",
+                fg="yellow")
 
 
-@main.command("compare")
-@click.option(
-    "-db",
-    "--database",
-    type=click.Path(resolve_path=True, dir_okay=False, path_type=pathlib.Path),
-    help="The path to the lexicon database.",
-    cls=default_from_context('database'),
-)
-@click.option(
-    "-d",
-    "--dialects",
-    type=str,
-    multiple=True,
-    callback=split_multiple_args,
-    help="Apply replacement rules on one or more specified dialects. "
-         "Args must be separated by a simple comma (,) and no white-space.",
-    cls=default_from_context('dialects'),
-)
-@click.option(
-    "-r",
-    "--rules-file",
-    type=click.Path(resolve_path=True, exists=True, path_type=pathlib.Path),
-    help="Apply replacement rules from the given file path.",
-    cls=default_from_context('rules_file'),
-)
-@click.option(
-    "-e",
-    "--exemptions-file",
-    type=click.Path(resolve_path=True, exists=True, path_type=pathlib.Path),
-    help="Apply exemptions from the given file path to the rules.",
-    cls=default_from_context('exemptions_file'),
-)
-@click.option(
-    "-o",
-    "--output-dir",
-    type=click.Path(resolve_path=True, file_okay=False, path_type=pathlib.Path),
-    help="The directory path that files are written to.",
-    cls=default_from_context('output_dir'),
-    callback=ensure_path,
+@main.command("track-changes")
+@click.argument(
+    "rule_ids",
+    nargs=-1,
+    required=True
 )
 @click.pass_context
-def compare_matching_updated_transcriptions(
-        ctx, database, dialects, rules_file, exemptions_file, output_dir):
-    """Compare original and updated transcriptions that match the rules."""
-    click.secho("Compare transcriptions before and after dialect updates",
-                fg="cyan")
-    rulesets = load_data(rules_file)
-    exemptions = load_data(exemptions_file)
-    with closing(
-            DatabaseUpdater(
-                db=database,
-                dialects=dialects,
-                rulesets=rulesets,
-                exemptions=exemptions)
-    ) as db_obj:
-        matching_words = db_obj.select_words_matching_rules()
-        updated_words = db_obj.update(include_id=True)
-    comparison = compare_transcriptions(matching_words, updated_words)
+def track_rule_changes(
+        ctx, rule_ids):
+    """Extract transcriptions before and after updates by given rule_ids, and write to csv files.
 
-    for dialect in dialects:
-        # now = datetime.now().strftime("%Y-%m-%d_%H%M")
-        filename = (output_dir / f"comparison_{dialect}.txt")
-        comparison["arrow"] = len(comparison.index)*["===>>>"]
-        columns = ["rule_id", "word", "transcription", "arrow", "new_transcription"]
-        comparison[comparison["dialect"] == dialect][columns].to_csv(filename)
+    RULE_IDS format:    <ruleset name>_<.rules index number> or <ruleset name>
+    Examples:           nasal_retroflex_0 retroflex errorfix_3
+    """
+    click.secho(f"Compare transcriptions before and after these transformation rules: \n"
+                f"{rule_ids}", fg="cyan")
+    start = datetime.now()
+    rules_file = ctx.obj.get("rules_file")
+    exemptions_file = ctx.obj.get("exemptions_file")
+    output_dir = ctx.obj.get("output_dir")
+    rulesets, dialects = preprocess_rules(
+        rules_file, exemptions_file, rule_ids, config_dialects=ctx.obj.get("dialects"))
+
+    with closing(
+            DatabaseUpdater(db=ctx.obj.get("database"), temp_tables=dialects)
+    ) as db_obj:
+        df_gen = db_obj.select_updates(rulesets, rule_ids)
+
+        for df in df_gen:
+            rule_id = df["rule_id"].unique()[0]
+            dialect = df["dialect"].unique()[0]
+            df["arrow"] = "===>"
+            columns_to_write = {
+                'dialect': 'dialect',
+                'p.pron_id': 'pron_id',
+                'rule_id': 'rule_id',
+                'w.wordform': 'word',
+                'p.nofabet': 'transcription',
+                'arrow': 'arrow',
+                'new_transcription': 'new_transcription'}
+            filename = output_dir / f"{CHANGE_PREFIX}_{dialect}_{rule_id}.csv"
+            try:
+                df.to_csv(
+                    filename,
+                    columns=columns_to_write.keys(),
+                    header=columns_to_write.values(),
+                )
+            except Exception as e:
+                logging.error(e)
+    end = datetime.now()
+    click.secho(f"Done processing. "
+                f"Output is in {output_dir}/{CHANGE_PREFIX}_*.csv files.",
+                fg="cyan")
+    click.secho(f"Processing time command: {str(end-start)}, Total time:"
+                f" {str(datetime.now()-start)}",
+                fg="yellow")
 
 
 @main.command("insert")
-@click.option(
-    "-db",
-    "--database",
-    type=click.Path(resolve_path=True, dir_okay=False, path_type=pathlib.Path),
-    help="The path to the lexicon database.",
-    cls=default_from_context('database'),
-)
-@click.option(
-    "-d",
-    "--dialects",
-    type=str,
-    multiple=True,
-    callback=split_multiple_args,
-    help="Apply replacement rules on one or more specified dialects. "
-         "Args must be separated by a simple comma (,) and no white-space.",
-    cls=default_from_context('dialects'),
-)
-@click.option(
-    "-n",
-    "--newword-files",
-    type=click.Path(resolve_path=True, exists=True, path_type=pathlib.Path),
-    multiple=True,
-    callback=split_multiple_args,
-    help="Paths to csv files with new words to add to the lexicon.",
-    cls=default_from_context('newword_files'),
-)
-@click.option(
-    "-o",
-    "--output-dir",
-    type=click.Path(resolve_path=True, file_okay=False, path_type=pathlib.Path),
-    help="The directory path that files are written to.",
-    cls=default_from_context('output_dir'),
-    callback=ensure_path,
-)
 @click.pass_context
-def insert_newwords(ctx, database, dialects, newword_files, output_dir):
+def insert_newwords(ctx):
     """Insert new word entries to the lexicon."""
     click.secho("Add new words to database", fg="cyan")
-    newwords = load_newwords(newword_files, newword_column_names)
+    newwords = load_newwords(ctx.obj.get("newword_files"), newword_column_names)
+    database = ctx.obj.get("database")
+    dialects = ctx.obj.get("dialects")
+    output_dir = ctx.obj.get("output_dir")
     with closing(
             DatabaseUpdater(
                 db=database,
-                dialects=dialects,
+                temp_tables=dialects,
                 newwords=newwords)
     ) as db_obj:
-        # Oppdater leksika med lexupdater
         lex_with_newwords = db_obj.get_tmp_table_state()
     write_lexicon((output_dir / f"{NEW_PREFIX}.txt"), lex_with_newwords)
 
@@ -578,7 +460,9 @@ def generate_new_lexica(
         lex_dir="lexica",
         db_path="backend-db03.db",
 ):
-    """Generate updated lexica files with a list of new rule objects.
+    """WARNING: Deprecated function.
+
+    Generate updated lexica files with a list of new rule objects.
 
     Save the rules and exemptions to disk.
     Update the lexicon database with those files,
@@ -598,6 +482,7 @@ def generate_new_lexica(
     db_path: str or Path
         Path to lexicon database
     """
+    # WARNING: Deprecated function.
     data_dir = ensure_path_exists(data_dir)
     try:
         # Lagre regelsettene til filer
@@ -608,21 +493,17 @@ def generate_new_lexica(
 
     rulesets = load_data(data_dir / "rules.py")
     exemptions = load_data(data_dir / "exemptions.py")
-    dialects = (
-        [d for r_dict in rulesets for d in r_dict["areas"]]
-        if use_ruleset_areas else dialect_schema.schema
-    )
+    rulesets = [RuleSet(**r_dict, exempt_words=exemptions) for r_dict in rulesets]
+    dialects = list({d for r in rulesets for d in r.areas}) if use_ruleset_areas else \
+        dialect_schema.schema
 
     with closing(
         DatabaseUpdater(
             db=db_path,
-            dialects=dialects,
-            rulesets=rulesets,
-            newwords=None,
-            exemptions=exemptions)
+            temp_tables=dialects,)
     ) as db_obj:
         # Oppdater leksika med lexupdater
-        updated_lex = db_obj.update()
+        updated_lex = db_obj.update(rulesets)
     write_lex_per_dialect(updated_lex, Path(lex_dir), LEX_PREFIX, None)
     # Konverter leksika til et format som passer FA-algoritmen
     convert_lex_to_mfa(

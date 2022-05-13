@@ -74,17 +74,17 @@ class TestDatabaseUpdater:
             patch_connection.cursor.assert_called()
             patch_cursor.execute.assert_called()
 
-    def test_select_words_matching_rules(self, db_updater_obj):
+    def test_select_words_matching_rules(self, db_updater_obj, ruleset_list):
         # when
-        results = db_updater_obj.select_words_matching_rules()
+        results = db_updater_obj.select_pattern_matches(ruleset_list)
         # then
         assert any(
             [result != [] for result in results]
         )
 
-    def test_update(self, db_updater_obj):
+    def test_update(self, db_updater_obj, ruleset_list):
         # when
-        results = db_updater_obj.update()
+        results = db_updater_obj.update(ruleset_list)
         # then
         assert any(
             [result != [] for result in results]
