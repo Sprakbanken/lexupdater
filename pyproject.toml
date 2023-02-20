@@ -1,7 +1,34 @@
 [build-system]
-# Minimum requirements for the build system to execute.
-requires = [
-    "setuptools>=42",
-    "wheel"
-]
+requires = ["setuptools", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "lexupdater"
+version = "0.6.2"
+authors = [
+    {name = "Språkbanken", email = "sprakbanken@nb.no"},
+]
+description = "Verktøy for å oppdatere transkripsjoner i NST sitt uttaleleksikon med ulike norske dialekter"
+readme = "README.md"
+license = {text = "MIT License"}
+requires-python = ">=3.8"
+keywords = ['pronunciation', 'lexicon', 'transcriptions', 'norwegian', 'dialects']
+classifiers = [
+    "Framework :: Django",
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "schema",
+    "click",
+    "pandas",
+    "pandera",
+    "autopep8"
+]
+
+[project.urls]
+repository = "https://github.com/Sprakbanken/lexupdater.git"
+bug_tracker = "https://github.com/Sprakbanken/lexupdater/issues"
+
+[project.scripts]
+lexupdater = "lexupdater.lexupdater:main"
