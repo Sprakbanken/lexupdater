@@ -32,3 +32,6 @@ bug_tracker = "https://github.com/Sprakbanken/lexupdater/issues"
 
 [project.scripts]
 lexupdater = "lexupdater.lexupdater:main"
+
+[tool.setuptools]
+packages = ["lexupdater"]
