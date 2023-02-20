@@ -4,11 +4,10 @@ jobs:
   tests:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-python@v3
+    - uses: actions/checkout@v3
+    - uses: actions/setup-python@v4
       with:
         python-version: '3.x'
-        architecture: x64
     - name: Install dependencies
       run: |
         pip install --upgrade pip pylint pytest pytest-cov mypy -r requirements.txt
