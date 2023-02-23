@@ -60,7 +60,7 @@ def parse_exemptions(exemption_words):
     return ""
 
 
-def parse_conditions(constraints: list, exempt_words: list, prefix) -> tuple:
+def parse_conditions(constraints: list, exempt_words: list, prefix: str = '') -> tuple:
     """Create an SQL WHERE-query fragment based on constraints and exemptions.
 
     The conditional fragment is meant to be inserted in
@@ -72,9 +72,16 @@ def parse_conditions(constraints: list, exempt_words: list, prefix) -> tuple:
 
     constraints, cond_vals = parse_constraints(constraints)
     exemption, exempt_words = parse_exemptions(exempt_words)
-
-    coordinated_conditions = f"{prefix} {' AND '.join(c for c in constraints+exemption) if c}"
+    coordinated_conditions = coordinate_constraints(constraints+exemption, prefix=prefix)
     return coordinated_conditions, cond_vals + exempt_words
+
+
+def coordinate_constraints(constraints, prefix: str = ''):
+    coordinated_str = ' AND '.join(c for c in constraints if c)
+    if prefix and coordinated_str:
+        return f" {prefix} {coordinated_str}"
+    return coordinated_str
+
 
 def parse_rulesets(rulesets: list, exemptions) -> Generator:
     """Parse a list of ruleset dicts and exemptions, yield rule objects with attributes for constructing SQL queries.
