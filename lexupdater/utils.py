@@ -16,7 +16,7 @@ import click
 import pandas as pd
 from schema import Schema, SchemaError
 
-from .constants import dialect_schema, MFA_PREFIX, LEX_PREFIX, exemption_schema, ruleset_schema, newword_column_names
+from .constants import dialect_schema, MFA_PREFIX, LEX_PREFIX, exemption_schema, ruleset_schema, newword_column_names, CHANGE_PREFIX
 
 
 def ensure_path_exists(path):
@@ -45,9 +45,23 @@ def write_lexicon(output_file: Union[str, Path], data: Iterable, delimiter: str 
         where the 1st, 2nd, 3rd and 2nd to last elements are saved to disk
     """
     logging.info("Write lexicon data to %s", output_file)
-    with open(output_file, 'w', encoding="utf-8", newline='') as csvfile:
-        out_writer = csv.writer(csvfile, delimiter=delimiter)
-        out_writer.writerows(data)
+    if isinstance(data, pd.DataFrame):
+        data.to_csv(output_file, header=True, index=False)
+    else:
+        with open(output_file, 'w', encoding="utf-8", newline='') as csvfile:
+            out_writer = csv.writer(csvfile, delimiter=delimiter)
+            out_writer.writerows(data)
+
+
+def write_tracked_update(df, output_dir, file_prefix=CHANGE_PREFIX):
+    rule_id = df["rule_id"].unique()[0]
+    df["arrow"] = "===>"
+    columns = ['dialect', 'pron_id', 'rule_id', 'wordform', 'transcription', 'arrow', 'new_transcription']
+    filename = output_dir / f"{file_prefix}_{rule_id}.csv"
+    try:
+        write_lexicon(filename, df[columns])
+    except Exception as e:
+        logging.error(e)
 
 
 def write_lex_per_dialect(
@@ -175,16 +189,14 @@ def map_rule_exemptions(exemptions: List[str]) -> dict:
 
 
 def load_exemptions(file_path: Union[str, Path]) -> dict:
+    """Load exemptions from a .py file and validate the dict objects."""
     exemptions = load_module_vars(file_path)
     exemptions = validate_objects(exemptions, exemption_schema)
     return map_rule_exemptions(exemptions)
 
 
 def load_rules(file_path: Union[str, Path]) -> Generator:
-    """Load rulesets and the words that are exempt from them.
-
-    Returns a generator of tuples(ruleset, exempt_words)
-    """
+    """Load rulesets from a .py file and validate the rule dicts."""
     rules = load_module_dict(file_path)
 
     for name, rule_dict in rules.items():
@@ -563,3 +575,4 @@ def set_logging_config(verbose=False, logfile="log.txt"):
         logging.getLogger('').addHandler(console)
 
     return verbose
+

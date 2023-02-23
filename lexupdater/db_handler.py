@@ -359,12 +359,19 @@ class DatabaseUpdater:
         self._cursor.execute(query, values)
         self._connection.commit()
 
-    def update(self, rulesets: Iterable, rule_ids: List[str] = None):
+    def update(self, rulesets: Iterable):
         for rule in rulesets:
             if rule.dialect not in self.dialects:
                 continue
+            else:
+                logging.info("Update with Rule ID: %s", rule.id_)
+                self.update_rows(rule)
 
-            if (rule_ids is not None) and ((rule.id_ in rule_ids) or (rule.ruleset in rule_ids)):
+    def track_updates(self, rulesets: Iterable, rule_ids: List[str]):
+        for rule in rulesets:
+            if rule.dialect not in self.dialects:
+                continue
+            if (rule.id_ in rule_ids) or (rule.ruleset in rule_ids):
                 logging.info("Track rule changes for %s", rule.id_)
                 match_df = self._select_rows_from_rule(rule)
                 logging.info("%s rows in %s", len(match_df.index), rule.dialect)
@@ -373,20 +380,16 @@ class DatabaseUpdater:
                 result = self._merge_comparison_dfs(rule.id_, match_df, updated_df)
                 yield result
 
-            else:
-                logging.info("Apply rule changes for %s in %s", rule.id_, rule.dialect)
-                self.update_rows(rule)
-
     def _select_rows_from_rule(self, rule):
         """Retrieve the rows that match the rules before updates."""
         condition_str, condition_values = parse_conditions(rule.constraints, rule.exemptions, prefix="AND")
-        select_q = (
+        query = (
             f"SELECT {COL_UID},{COL_PRONID},{COL_WORDFORM},{COL_PRON} FROM words_tmp w "
             f"LEFT JOIN {rule.dialect} p ON p.unique_id = w.unique_id "
             f"WHERE REGEXP(?, p.nofabet) {condition_str};"
         )
-        select_v = (rule.pattern, *condition_values)
-        return pd.read_sql_query(select_q, self._connection, params=select_v)
+        values = (rule.pattern, *condition_values)
+        return self._get_data(query, values=values)
 
     def update_rows(self, rule):
         """Apply the update rule."""
@@ -403,15 +406,12 @@ class DatabaseUpdater:
 
     def _select_rows_from_ids(self, rule, row_df):
         """Retrieve new transcriptions from the rows that were updated."""
-        pron_ids = row_df["pron_id"].to_list()
-
-        select_q = (
+        pron_ids = tuple(row_df["pron_id"])
+        query = (
             f"SELECT {COL_PRON},{COL_PRONID} FROM {rule.dialect} p WHERE p.pron_id IN "
             f"({add_placeholders(pron_ids)});"
         )
-        select_v = tuple(pron_ids)
-
-        return pd.read_sql_query(select_q, self._connection, params=select_v)
+        return self._get_data(query, values=pron_ids)
 
     def _merge_comparison_dfs(self, rule_id, pre_update_df, post_update_df ):
         comparison_df = pre_update_df.merge(post_update_df, how='inner', on=["pron_id"])
@@ -559,10 +559,9 @@ class DatabaseUpdater:
         """Return a dataframe with the select query response."""
         #return self._cursor.execute(query).fetchall()
         if values is None:
-            args  = query, self._connection
+            return pd.read_sql_query(query, self._connection)
         else:
-            args = query, self._connection, values
-        return pd.read_sql_query(*args)
+            return pd.read_sql_query(query, self._connection, params=values)
 
     def get_connection(self):
         """Return the object instance's sqlite3 connection."""
