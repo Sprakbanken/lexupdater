@@ -8,7 +8,7 @@ import logging
 from typing import List, Generator
 
 from .constants import ruleset_schema, COL_WORDFORM, rule_schema
-from .utils import filter_list_by_list, validate_objects, add_placeholders
+from .utils import filter_list_by_list, load_exemptions, load_rules, validate_objects, add_placeholders
 from .rule_objects import RuleObj
 
 
@@ -83,7 +83,7 @@ def coordinate_constraints(constraints, prefix: str = ''):
     return coordinated_str
 
 
-def parse_rulesets(rulesets: list, exemptions) -> Generator:
+def parse_rulesets(rulesets: list, exemptions: dict) -> Generator:
     """Parse a list of ruleset dicts and exemptions, yield rule objects with attributes for constructing SQL queries.
 
     Yields
@@ -96,3 +96,11 @@ def parse_rulesets(rulesets: list, exemptions) -> Generator:
             for idx, rule in enumerate(ruleset.get("rules")):
                 ruleobject = RuleObj(**rule, ruleset=name, dialect=dialect,exemptions=exemptions.get(name), idx=idx)
                 yield ruleobject
+
+
+def preprocess_rulefiles(rulefile, exemptionfile):
+    """Load files and parse the contents. Return a rule generator."""
+    rulesets = load_rules(rulefile)
+    exemptions = load_exemptions(exemptionfile)
+    rules = parse_rulesets(rulesets, exemptions)
+    return rules
