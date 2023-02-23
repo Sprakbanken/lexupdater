@@ -10,6 +10,7 @@ import pandas as pd
 from .utils import coordinate_constraints, add_placeholders
 from .rule_objects import construct_rulesets, RuleSet
 from .constants import (
+    LEXICON_COLUMNS,
     dialect_schema,
     CREATE_PRON_TABLE_STMT,
     CREATE_WORD_TABLE_STMT,
@@ -27,6 +28,10 @@ from .constants import (
     COL_pUID,
     COL_PRONID,
     COL_PRON,
+    COL_UID,
+    COL_FEATS,
+    COL_POS,
+    COL_INFO,
 )
 from .dialect_updater import parse_conditions
 from .newword_updater import parse_newwords
@@ -462,6 +467,50 @@ class DatabaseUpdater:
             stmt
         )
         return result
+
+
+    def get_dialect_data(self, dialect_table: str = None) -> pd.DataFrame:
+        """Fetch data from a dialect temp table in the database.
+
+        Parameters
+        ----------
+        dialect_table: str
+            Name of dialect area to print the lexicon for.
+        """
+        if dialect_table is None:
+            dialect_table = self.pron_table
+        query = (
+            f"SELECT {LEXICON_COLUMNS} "
+            f"FROM {self.word_table} w "
+            f"LEFT JOIN {dialect_table} p "
+            f"ON p.unique_id = w.unique_id;"
+        )
+        return self._get_data(query)
+
+    def get_original_data(self):
+        """Select the original state of the lexicon."""
+        query = f"SELECT {LEXICON_COLUMNS} FROM words w LEFT JOIN base p ON p.unique_id = w.unique_id ;"
+        return self._get_data(query)
+
+    def get_newwords(self):
+        """Select the new word entries."""
+        query = (
+            f"SELECT {LEXICON_COLUMNS} "
+            f"FROM {self.word_table} w "
+            f"LEFT JOIN {self.pron_table} p "
+            f"ON p.unique_id = w.unique_id "
+            f"WHERE REGEXP('NB\\d+', p.unique_id);"
+        )
+        return self._get_data(query)
+
+    def _get_data(self, query, values=None):
+        """Return a dataframe with the select query response."""
+        #return self._cursor.execute(query).fetchall()
+        if values is None:
+            args  = query, self._connection
+        else:
+            args = query, self._connection, values
+        return pd.read_sql_query(*args)
 
     def get_connection(self):
         """Return the object instance's sqlite3 connection."""
