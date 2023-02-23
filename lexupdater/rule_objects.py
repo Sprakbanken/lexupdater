@@ -5,6 +5,7 @@ from typing import List, Union, Iterable, Generator
 
 from schema import SchemaError
 
+
 from .constants import (
     dialect_schema,
     rule_schema,
@@ -30,7 +31,30 @@ def create_constraint_dict(
         "pattern": pattern,
         "is_regex": is_regex
     }
-    return constraint_schema.validate(constraint)
+    return constraint
+
+class Constraint:
+    def __init__(self, constraint_dict) -> None:
+
+        self.field = constraint_dict.get("field")
+        self.pattern = constraint_dict.get("pattern")
+        self.is_regex = constraint_dict.get("is_regex")
+
+    def __str__(self) -> str:
+        return str(self.to_dict())
+
+    def __hash__(self):
+        return hash((self.field, self.pattern, self.is_regex, self.is_valid))
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({repr(self.to_dict())})"
+
+    def is_valid(self):
+        return constraint_schema.is_valid(self.to_dict())
+
+    def to_dict(self):
+        return create_constraint_dict(self.field, self.pattern, self.is_regex)
+
 
 
 class Rule:
@@ -125,51 +149,28 @@ class Rule:
 
     @constraints.setter
     def constraints(self, constraint_list):
+        constraints = [Constraint(const) for const in constraint_list]
+        assert all(const.is_valid for const in constraints)
+        self._constraints = constraints
 
-        original_constraints = self._constraints.copy()
-        if len(constraint_list) == 0:
-            logging.debug("Resetting the constraints to an empty list.")
-            self._constraints = []
-        else:
-            self._constraints = []
-            for constraint in constraint_list:
-                self.add_constraint(constraint)
-            if len(self._constraints) == 0:
-                logging.debug("No valid constraints were added from %s. "
-                              "Keeping original list: %s",
-                              constraint_list, original_constraints)
-                self._constraints = original_constraints
 
-    def add_constraint(
-            self,
-            constraint: dict = None,
-            field: str = None,
-            pattern: str = None,
-            is_regex: bool = True
+class RuleObj(Rule):
+
+    def __init__(
+        self,
+        pattern: str = None,
+        replacement: str = None,
+        constraints: list = None,
+        ruleset: str = None,
+        dialect: str = None,
+        exemptions: list = None,
+        idx: int = 0,
     ):
-        """Append a valid constraint dict to self.constraints.
-
-        Either provide a pre-defined dict
-        (e.g. constructed and validated with create_constraint_dict()),
-        or pass the field, pattern and is_regex arguments directly.
-        """
-        if (not constraint) and field and pattern:
-            constraint = create_constraint_dict(
-                field=field,
-                pattern=pattern,
-                is_regex=is_regex
-            )
-        if isinstance(constraint, dict) and \
-                constraint_schema.is_valid(constraint):
-
-            unique_constraints = {str(c) for c in self.constraints}
-            if str(constraint) not in unique_constraints:
-                self._constraints.append(constraint)
-        else:
-            logging.debug(
-                "Skipping invalid constraint: %s \n"
-                "The constraints must be dicts in this format: %s",
-                constraint, constraint_schema.schema)
+        super().__init__(pattern, replacement, constraints)
+        self.ruleset = ruleset
+        self.dialect = dialect
+        self.exemptions = [] if exemptions is None else exemptions
+        self.id_ = f"{self.ruleset}_{self.dialect}_{idx}"
 
 
 class RuleSet:
