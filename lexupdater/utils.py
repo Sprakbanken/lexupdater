@@ -16,7 +16,7 @@ import click
 import pandas as pd
 from schema import Schema, SchemaError
 
-from .constants import dialect_schema, MFA_PREFIX, LEX_PREFIX
+from .constants import dialect_schema, MFA_PREFIX, LEX_PREFIX, exemption_schema, ruleset_schema, newword_column_names
 
 
 def ensure_path_exists(path):
@@ -26,7 +26,12 @@ def ensure_path_exists(path):
     return path_obj
 
 
-def write_lexicon(output_file: Union[str, Path], data: Iterable, delimiter='\t'):
+def get_filelist(dir_path: Path, suffix=".csv"):
+    """Turn a directory path into a list of the Paths in it. Filter file types with ``suffix``."""
+    return list(dir_path.glob(f"*{suffix}"))
+
+
+def write_lexicon(output_file: Union[str, Path], data: Iterable, delimiter: str = ","):
     """Write a simple txt file with the results of the SQL queries.
 
     Parameters
@@ -39,13 +44,10 @@ def write_lexicon(output_file: Union[str, Path], data: Iterable, delimiter='\t')
         A collection of dictionaries,
         where the 1st, 2nd, 3rd and 2nd to last elements are saved to disk
     """
-    if not data:  # Do not write empty data
-        return
     logging.info("Write lexicon data to %s", output_file)
     with open(output_file, 'w', encoding="utf-8", newline='') as csvfile:
         out_writer = csv.writer(csvfile, delimiter=delimiter)
-        for item in data:
-            out_writer.writerow(item)
+        out_writer.writerows(data)
 
 
 def write_lex_per_dialect(
@@ -103,10 +105,20 @@ def filter_exclude(check_list, exclude_list):
     return filtered
 
 
+def resolve_rel_path(file_rel_path: Union[str, Path]) -> Path:
+    """Resolve the full path from a potential relative path to the local or parent directory."""
+
+    full_path = Path(file_rel_path).resolve()
+    if not full_path.exists():
+        full_path = Path.cwd().parent / file_rel_path
+    return full_path
+
+
 def load_module_from_path(file_path):
     """Use importlib to load a module from a .py file path."""
-    module_path = Path(file_path)
-    assert module_path.suffix == ".py"
+    module_path = resolve_rel_path(file_path)
+    assert module_path.suffix == ".py", (
+            f"Inappropriate file type: {module_path.suffix} ({file_path})")
     module_name = module_path.stem
 
     spec = importlib.util.spec_from_file_location(module_name, module_path)
@@ -116,90 +128,128 @@ def load_module_from_path(file_path):
     return module
 
 
-def load_vars_from_module(module):
-    """Return all public variables that are defined in a module"""
-    module_dict = module.__dict__
-    # Gather all public variables, ignore private vars and dunder objects
-    module_vars = [
-        value for var, value in module_dict.items()
-        if not var.startswith("_")
-    ]
+def load_module_vars(module_path) -> List:
+    """Return all public variables' values that are defined in a module."""
+    module_vars = list(load_module_dict(module_path).values())
     return module_vars
 
 
-def load_data(file_rel_path: Union[str, Path]) -> List:
-    """Load a list of variables from the given data file.
+def load_module_dict(module_path) -> Dict:
+    """Load a dict of the public variables defined in a python module, ``{var_name:value}``."""
+    module = load_module_from_path(module_path)
+    module_dict = module.__dict__
+    return {
+        key: value for key, value in module_dict.items()
+        if value and not key.startswith("_")
+    }
+
+
+
+
+def load_data(file_path: Union[str, Path]) -> List:
+    """Load data from a python file path."""
+    return load_module_vars(file_path)
+
+
+def load_config(filename):
+    """Load variable names (lower case) and their values as a dict from a .py file."""
+    try:
+        return {k.lower(): v for k, v in load_module_dict(filename).items()}
+    except FileNotFoundError:
+        return {}
+
+def map_rule_exemptions(exemptions: List[str]) -> dict:
+    """Reduce the list of exemption dictionaries to a single dictionary.
+
+    The keys are the name of the corresponding ruleset,
+    and the exempt words are the values.
 
     Parameters
     ----------
-    file_rel_path: str or Path
-        Relative path to a .py module
-
-    Returns
-    -------
-    list
-        The python objects that are specified in the given data file
+    exemptions: list
+        list of dicts of the form ``{'ruleset': str, 'words': list}``
     """
-    try:
-        cur_path = Path(__file__).parent
-        full_path = cur_path.joinpath("..", file_rel_path).resolve()
-        assert full_path.exists(), f"File doesn't exist {full_path}"
-        assert full_path.suffix == ".py", (
-            f"Inappropriate file type: {full_path.suffix}")
-    except (FileNotFoundError, AssertionError):
-        full_path = Path(file_rel_path).resolve()
-        assert full_path.exists(), f"File doesn't exist {full_path}"
-        assert full_path.suffix == ".py", (f"Inappropriate file type: "
-                                           f"{full_path.suffix}")
-
-    module = load_module_from_path(full_path)
-    module_vars = load_vars_from_module(module)
-    return module_vars
+    return {exemption.get("ruleset"): exemption.get("words")
+        for exemption in exemptions
+    }
 
 
-def load_newwords(csv_paths: list, column_names: list) -> pd.DataFrame:
-    """Load lists of new words into a pandas DataFrame.
+def load_exemptions(file_path: Union[str, Path]) -> dict:
+    exemptions = load_module_vars(file_path)
+    exemptions = validate_objects(exemptions, exemption_schema)
+    return map_rule_exemptions(exemptions)
 
-    New words to be added to the lexicon are specified in
-    csv files, which are loaded into the dataframe "newwords".
 
-    These are the columns of "newwords":
+def load_rules(file_path: Union[str, Path]) -> Generator:
+    """Load rulesets and the words that are exempt from them.
+
+    Returns a generator of tuples(ruleset, exempt_words)
+    """
+    rules = load_module_dict(file_path)
+
+    for name, rule_dict in rules.items():
+        try:
+            ruleset_schema.validate(rule_dict)
+        except (AssertionError, SchemaError) as error:
+            logging.error("SKIPPING RULESET %s BECAUSE OF %s", name, type(error))
+            logging.error("Error message: %s", error)
+            continue
+        yield rule_dict
+
+
+def get_ruleset_order(rules_file):
+    return re.findall(r"(\w+) ?= ?{" , rules_file.read_text())
+
+
+def load_newwords(csv_path: Union[str, Path], column_names: str = None) -> pd.DataFrame:
+    """Load csv file(s) with new words into a pandas DataFrame.
+
+    These are the columns expected in the csv files:
         "token": the orthographic form
         "transcription": The primary phonetic transcription
         "alt_transcription_1-3": Alternative transcriptions. May be empty
         "pos": The POS tag
         "morphology": Morphological features. May be empty
-
-    The csv files may contain additional columns, but these will not be loaded
-    into "newwords"
+        "update_info": The dataset or source of the words
 
     Parameters
     ----------
-    csv_paths: list
-        List of csv files with new words
-    column_names: list
-        Names of the columns in the newword df
+    csv_path: str or pathlib.Path
+        Path to a folder of csv files or a single csv file with new words
+    column_names: str
+        Comma-delimited string of columns to include from the csv file(s)
 
     Returns
     -------
     pd.DataFrame
     """
-    _df_list = []
+    use_columns = (
+        newword_column_names if column_names is None
+        else make_list(column_names)
+    )
 
-    for path in csv_paths:
-        try:
-            cur_path = Path(__file__).parent
-            full_path = cur_path.joinpath("..", path).resolve()
-            assert full_path.exists() and full_path.suffix == ".csv"
-            new_word_df = pd.read_csv(
-                full_path, header=0, index_col=None
-            )
-            # ignore columns in the column list if the csv doesn't contain them
-            col_names = filter_list_by_list(column_names, new_word_df.columns)
-            _df_list.append(new_word_df.loc[:, col_names])
-        except (FileNotFoundError, AssertionError) as error:
-            logging.error(error)
-    return pd.concat(_df_list, axis=0, ignore_index=True)
+    def _csv_to_df(file_path):
+        return pd.read_csv(
+            file_path, header=0, index_col=None, usecols=lambda x: x in use_columns
+        )
+
+    def _many_csvs_to_df(dir_path):
+        _df_list = []
+        file_list = get_filelist(dir_path)
+        for path in file_list:
+            try:
+                df = _csv_to_df(path)
+            except FileNotFoundError as error:
+                logging.error("Skipping file %s: %s:%s", path, type(error), error)
+                continue
+            _df_list.append(df)
+        return pd.concat(_df_list, axis=0, ignore_index=True)
+
+    full_path = resolve_rel_path(csv_path)
+    if full_path.is_file:
+        return _csv_to_df(full_path)
+    if full_path.is_dir:
+        return _many_csvs_to_df(full_path)
 
 
 def validate_objects(obj_list: list, obj_schema: Schema) -> list:
@@ -447,6 +497,24 @@ def coordinate_constraints(constraints, add_prefix: str = ''):
     return f" {add_prefix} {coordination}" if (add_prefix and coordination) else coordination
 
 
+def make_list(value, segments=False):
+    """Turn a string, list or other collection into a list.
+
+    Split a string on comma, newline, whitespace(set segments=True) or characters.
+    """
+    if isinstance(value, list):
+        return value
+    elif isinstance(value, str):
+        if segments:
+            return value.split(" ")
+        if "," in value:
+            return [v.lstrip(" ").rstrip(" ") for v in value.split(",")]
+        if "\n" in value:
+            return value.rstrip("\n").lstrip("\n").split("\n")
+        return [value]
+    return list(value)
+
+
 def time_process(f):
     """Take the time of the process from """
     def new_func(*args, **kwargs):
@@ -454,8 +522,44 @@ def time_process(f):
         start = datetime.now()
         result = f(*args, **kwargs)
         end = datetime.now()
-        click.secho(f"Processing time (decorator): {str(end - start)}", fg="yellow")
+        click.secho(f"Processing time: {str(end - start)}", fg="blue")
         return result
 
     functools.update_wrapper(new_func, f)
     return new_func
+
+
+def log_level(verbosity: int):
+    """Calculate the log level given by the number of -v flags.
+
+    0 = logging.WARNING (30)
+    1 = logging.INFO (20)
+    2 = logging.DEBUG (10)
+    """
+    return (3 - verbosity) * 10 if verbosity in (0, 1, 2) else 10
+
+
+def set_logging_config(verbose=False, logfile="log.txt"):
+    """Configure logging level and destination based on user input."""
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format=(
+            "%(asctime)s | %(levelname)s "
+            "| %(module)s-%(funcName)s-%(lineno)04d | %(message)s"),
+        datefmt='%Y-%m-%d %H:%M',
+        filename=logfile,
+        filemode='a')
+
+    if verbose:
+        # define a Handler which writes log messages to stderr
+        console = logging.StreamHandler()
+        console.setLevel(log_level(verbose))
+        # set a format which is simpler for console use
+        formatter = logging.Formatter(
+            '%(asctime)-10s | %(levelname)s | %(message)s')
+        # tell the handler to use this format
+        console.setFormatter(formatter)
+        # add the handler to the root logger
+        logging.getLogger('').addHandler(console)
+
+    return verbose
