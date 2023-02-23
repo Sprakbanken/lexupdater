@@ -8,7 +8,8 @@ import sqlite3
 import pandas as pd
 
 from .utils import coordinate_constraints, add_placeholders
-from .rule_objects import construct_rulesets, RuleSet
+from .dialect_updater import parse_conditions, parse_rulesets
+from .newword_updater import parse_newwords
 from .constants import (
     LEXICON_COLUMNS,
     dialect_schema,
@@ -30,8 +31,6 @@ from .constants import (
     COL_POS,
     COL_INFO,
 )
-from .dialect_updater import parse_conditions
-from .newword_updater import parse_newwords
 
 
 def regexp(reg_pat, item):
@@ -94,7 +93,7 @@ class DatabaseUpdater:
 
     @rulesets.setter
     def rulesets(self, new_rulesets):
-        self._rulesets = construct_rulesets(new_rulesets, self.exemptions)
+        self._rulesets = parse_rulesets(new_rulesets, self.exemptions)
 
     @property
     def exemptions(self):
@@ -191,6 +190,11 @@ class DatabaseUpdater:
         logging.debug("Execute SQL Query: %s %s", query, values)
         return self._cursor.execute(query, values).fetchall()
 
+    def _run_update(self, query, values):
+        logging.debug("Execute SQL Query: %s %s", query, values)
+        self._cursor.execute(query, values)
+        self._connection.commit()
+
     def select_pattern_matches(self, rulesets: List):
         """Select all rows that match the patterns in `rulesets`.
 
@@ -235,8 +239,6 @@ class DatabaseUpdater:
         Yields
         ------
         pandas.DataFrame with the selected words and transcriptions before and after updates.
-
-        .. todo:: do a timed test - if the process exceeds 15 mins, it's too slow.
         """
         def rule_iterator():
             for ruleset in rulesets:
@@ -253,22 +255,18 @@ class DatabaseUpdater:
 
     def _track_changes_(self, rule, exemptions, dialect, is_tracked_rule):
         """Apply subfunctions to track changes in specific tables for specific rules."""
-        columns = (COL_pUID, COL_PRONID, COL_WORDFORM, COL_PRON)
-        conditions, condition_values = parse_conditions(rule.constraints, exemptions)
 
         def pre_select_rows():
             """Retrieve the rows that match the rules before updates."""
             select_q, select_v = self._construct_select_query_pre_update(
-                columns, self.word_table, dialect, rule.pattern, conditions,
-                condition_values
-            )
+                LEXICON_COLUMNS, self.word_table, dialect, rule.pattern, rule.constraints, exemptions)
             preupdate_match = self._run_selection(select_q, select_v)
-            return pd.DataFrame(preupdate_match, columns=columns)
+            return pd.DataFrame(preupdate_match, columns=LEXICON_COLUMNS)
 
         def update_rows():
             """Apply the update rule."""
             update_q, update_v = self._construct_update_query_restricted(
-                dialect, rule.pattern, rule.replacement, conditions, condition_values)
+                dialect, rule.pattern, rule.replacement, rule.constraints, exemptions)
             self._run_update(update_q, update_v)
 
         def post_update_select_rows(pre_update_df):
@@ -300,14 +298,13 @@ class DatabaseUpdater:
             update_rows()
 
     def _construct_select_query(self, dialect, pattern, constraints, exempt_words):
-        conditions, cond_values = parse_conditions(constraints, exempt_words)
-        condition_str = coordinate_constraints(conditions, add_prefix="AND")
+        conditions, cond_values = parse_conditions(constraints, exempt_words, prefix="AND")
         query = SELECT_QUERY.format(
-            columns=COL_WORD_PRON_ID,
+            columns=LEXICON_COLUMNS,
             word_table=self.word_table,
             pron_table=dialect,
             where_regex=WHERE_REGEXP,
-            where_word_in_stmt=condition_str
+            where_word_in_stmt=conditions
         )
         values = (pattern, *cond_values)
         return query, values
@@ -321,9 +318,9 @@ class DatabaseUpdater:
         return query, values
 
     def _construct_select_query_pre_update(self, columns, word_table, pron_table,
-                                           pattern, conditions,
-                                           condition_vals):
-        condition_str = coordinate_constraints(conditions, add_prefix="AND")
+                                           pattern, constraints,
+                                           exemptions):
+        condition_str, condition_vals = parse_conditions(constraints, exemptions, prefix="AND")
         query = (
             f"SELECT {', '.join(columns)} "
             f"FROM {word_table} w "
@@ -347,8 +344,8 @@ class DatabaseUpdater:
         return query, values
 
     def _construct_update_query_restricted(self, dialect: str, pattern: str, replacement: str,
-                                           conditions: list, cond_values: list):
-        condition_str = coordinate_constraints(conditions, "WHERE")
+                                           constraints: list, exemptions: list):
+        condition_str, cond_values = parse_conditions(constraints, exemptions, "WHERE")
         condition = (
             f"WHERE unique_id IN (SELECT unique_id FROM {self.word_table} w "
             f" {condition_str})"
@@ -362,7 +359,71 @@ class DatabaseUpdater:
         self._cursor.execute(query, values)
         self._connection.commit()
 
-    def update(self, rulesets: list, include_id: bool = False):
+    def update(self, rulesets: Iterable, rule_ids: List[str] = None):
+        for rule in rulesets:
+            if rule.dialect not in self.dialects:
+                continue
+
+            if (rule_ids is not None) and ((rule.id_ in rule_ids) or (rule.ruleset in rule_ids)):
+                logging.info("Track rule changes for %s", rule.id_)
+                match_df = self._select_rows_from_rule(rule)
+                logging.info("%s rows in %s", len(match_df.index), rule.dialect)
+                self.update_rows(rule)
+                updated_df = self._select_rows_from_ids(rule, match_df)
+                result = self._merge_comparison_dfs(rule.id_, match_df, updated_df)
+                yield result
+
+            else:
+                logging.info("Apply rule changes for %s in %s", rule.id_, rule.dialect)
+                self.update_rows(rule)
+
+    def _select_rows_from_rule(self, rule):
+        """Retrieve the rows that match the rules before updates."""
+        condition_str, condition_values = parse_conditions(rule.constraints, rule.exemptions, prefix="AND")
+        select_q = (
+            f"SELECT {COL_UID},{COL_PRONID},{COL_WORDFORM},{COL_PRON} FROM words_tmp w "
+            f"LEFT JOIN {rule.dialect} p ON p.unique_id = w.unique_id "
+            f"WHERE REGEXP(?, p.nofabet) {condition_str};"
+        )
+        select_v = (rule.pattern, *condition_values)
+        return pd.read_sql_query(select_q, self._connection, params=select_v)
+
+    def update_rows(self, rule):
+        """Apply the update rule."""
+        condition_str, condition_values = parse_conditions(rule.constraints, rule.exemptions, prefix="WHERE")
+        query = (
+            f"UPDATE {rule.dialect} "
+            f"SET nofabet=REGREPLACE(?,?,nofabet) "
+            f"WHERE unique_id IN "
+            f"(SELECT unique_id FROM {self.word_table} w {condition_str})"
+            f";")
+
+        values = (rule.pattern, rule.replacement, *condition_values)
+        self._run_update(query, values)
+
+    def _select_rows_from_ids(self, rule, row_df):
+        """Retrieve new transcriptions from the rows that were updated."""
+        pron_ids = row_df["pron_id"].to_list()
+
+        select_q = (
+            f"SELECT {COL_PRON},{COL_PRONID} FROM {rule.dialect} p WHERE p.pron_id IN "
+            f"({add_placeholders(pron_ids)});"
+        )
+        select_v = tuple(pron_ids)
+
+        return pd.read_sql_query(select_q, self._connection, params=select_v)
+
+    def _merge_comparison_dfs(self, rule_id, pre_update_df, post_update_df ):
+        comparison_df = pre_update_df.merge(post_update_df, how='inner', on=["pron_id"])
+        comparison_df.loc[:, "rule_id"] = rule_id
+        #comparison_df.loc[:, "dialect"] = rule.dialect
+        comparison_df = comparison_df.rename(columns={
+            "nofabet_x": "transcription",
+            "nofabet_y": "new_transcription"})
+        return comparison_df
+
+
+    def update_old(self, rulesets: list, include_id: bool = False):
         """Update the lexicon database with transformations defined by the `rules`.
 
         Construct SQL UPDATE queries with the rules and exemptions before
@@ -386,10 +447,8 @@ class DatabaseUpdater:
         for ruleset in rulesets:
             for dialect in ruleset.areas:
                 for rule in ruleset.rules:
-                    conditions, condition_values = parse_conditions(rule.constraints,
-                                                                    ruleset.exempt_words)
                     query, values = self._construct_update_query_restricted(
-                       dialect, rule.pattern, rule.replacement,conditions, condition_values)
+                       dialect, rule.pattern, rule.replacement,rule.constraints, ruleset.exempt_words)
                     self._run_update(query, values)
         return self.fetch_dialect_updates(include_id=include_id)
 
@@ -407,14 +466,10 @@ class DatabaseUpdater:
             from each field in the database are the values
         """
         results: dict = {dialect: [] for dialect in self.dialects}
-        columns_to_fetch = (
-            COL_ID_WORD_FEATS_PRON_ID if include_id
-            else COL_WORD_POS_FEATS_PRON
-        )
 
         for dialect in self.dialects:
             stmt = SELECT_QUERY.format(
-                columns=columns_to_fetch,
+                columns=LEXICON_COLUMNS,
                 word_table=self.word_table,
                 pron_table=dialect,
                 where_regex='',
@@ -433,7 +488,7 @@ class DatabaseUpdater:
             The full contents of the base lexicon
         """
         stmt = SELECT_QUERY.format(
-                columns=COL_WORD_POS_FEATS_PRON,
+                columns=LEXICON_COLUMNS,
                 word_table="words",
                 pron_table="base",
                 where_regex='',
@@ -451,7 +506,7 @@ class DatabaseUpdater:
         """Fetch the state of the temporary tables, including new word
         entries."""
         stmt = SELECT_QUERY.format(
-            columns=COL_ID_WORD_FEATS_PRON_ID,
+            columns=LEXICON_COLUMNS,
             word_table=self.word_table,
             pron_table=self.pron_table,
             where_regex='',
