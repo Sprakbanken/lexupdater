@@ -26,7 +26,7 @@ def _process_newword_table(newwords):
         axis=1
     )
     word_df = newwords[
-        ["token", "pos", "morphology", "unique_id"]
+        ["token", "pos", "morphology", "unique_id", "update_info"]
     ]
     pron_df = pd.concat(
         [
