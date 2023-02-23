@@ -190,6 +190,7 @@ LICIT_PHONES = [
     "YY3",
     "Z",
     "RS",
+    "_",
 ]
 
 # Define validation Schemas
@@ -232,6 +233,7 @@ rule_schema = Schema(
     }
 )
 
+
 ruleset_schema = Schema(
     {
         "areas": dialect_schema.schema,
@@ -240,31 +242,38 @@ ruleset_schema = Schema(
     }
 )
 
+
 exemption_schema = Schema({"ruleset": str, "words": list})
 
-_phone_check = (
-    lambda s: all(x in LICIT_PHONES for x in s.split(" "))
-    if isinstance(s, str)
-    else True
+
+phoneme_schema = Schema(LICIT_PHONES)
+
+
+def _phone_check(s: str):
+    return (
+        phoneme_schema.is_valid(s.split(" "))
+        if isinstance(s, str) else True
+    )
+
+check_phones = Check(
+    _phone_check,
+    element_wise=True
 )
+
 
 newword_schema = DataFrameSchema(
     {
         "token": Column(pa.String),
-        "transcription": Column(pa.String, Check(_phone_check, element_wise=True)),
-        "alt_transcription_1": Column(
-            pa.String, Check(_phone_check, element_wise=True), nullable=True
-        ),
-        "alt_transcription_2": Column(
-            pa.String, Check(_phone_check, element_wise=True), nullable=True
-        ),
-        "alt_transcription_3": Column(
-            pa.String, Check(_phone_check, element_wise=True), nullable=True
-        ),
+        "transcription": Column(pa.String, check_phones),
+        "alt_transcription_1": Column(pa.String, check_phones, nullable=True),
+        "alt_transcription_2": Column(pa.String, check_phones, nullable=True),
+        "alt_transcription_3": Column(pa.String, check_phones, nullable=True),
         "pos": Column(pa.String),
         "morphology": Column(pa.String, nullable=True),
+        "update_info": Column(pa.String, required=False, nullable=True),
     }
 )
+
 
 newword_column_names = [
     "token",
@@ -274,13 +283,16 @@ newword_column_names = [
     "alt_transcription_3",
     "pos",
     "morphology",
+    "update_info"
 ]
+
 
 LEX_PREFIX = "updated_lexicon"
 MATCH_PREFIX = "words_matching_rules"
 MFA_PREFIX = "NB_nob"
 NEW_PREFIX = "base_new_words"
 CHANGE_PREFIX = "rule_changes"
+
 
 # Define SQL query templates
 CREATE_PRON_TABLE_STMT = """CREATE TEMPORARY TABLE {pron_table_name} (
@@ -291,6 +303,7 @@ unique_id VARCHAR NOT NULL,
 FOREIGN KEY(unique_id) REFERENCES words(unique_id)
 ON UPDATE CASCADE);
 """
+
 
 CREATE_WORD_TABLE_STMT = """CREATE TEMPORARY TABLE {word_table_name} (
 word_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -321,62 +334,69 @@ comment TEXT,
 unique_id VARCHAR NOT NULL UNIQUE
 );"""
 
+
 INSERT_STMT = "INSERT INTO {table_name} SELECT * FROM {other_table};"
 
+
 WHERE_WORD_IN_STMT = (
-    "WHERE unique_id IN (SELECT w.unique_id FROM {word_table} w " "WHERE {conditions})"
+    "WHERE unique_id IN (SELECT w.unique_id FROM {word_table} w WHERE {conditions})"
 )
+
 
 WHERE_REGEXP = "WHERE REGEXP(?,nofabet)"
 
 COL_WORDFORM = "w.wordform"
 COL_pUID = "p.unique_id"
+COL_UID = "p.unique_id"
 COL_PRON = "p.nofabet"
 COL_PRONID = "p.pron_id"
+COL_POS = "w.pos"
+COL_FEATS = "w.feats"
+COL_INFO = "w.update_info"
 
-COL_WORD_PRON_ID = ", ".join([COL_WORDFORM, COL_PRON, COL_PRONID]) + " "
 
-COL_ID_WORD_FEATS_PRON_ID = (
-    "w.unique_id, w.wordform, w.pos, w.feats, p.nofabet, p.pron_id "
-)
+LEXICON_COLUMNS = ", ".join([COL_WORDFORM, COL_POS, COL_FEATS, COL_UID, COL_INFO, COL_PRON])
 
-COL_WORD_POS_FEATS_PRON = "w.wordform, w.pos, w.feats, p.nofabet"
 
-COL_ALL = (
-    "w.word_id, "
-    "w.wordform, "
-    "w.pos, "
-    "w.feats, "
-    "w.source, "
-    "w.decomp_ort, "
-    "w.decomp_pos, "
-    "w.garbage, "
-    "w.domain, "
-    "w.abbr, "
-    "w.set_name, "
-    "w.style_status, "
-    "w.inflector_role, "
-    "w.inflector_rule, "
-    "w.morph_label, "
-    "w.compounder_code, "
-    "w.update_info, "
-    "w.lang_code, "
-    "w.expansion, "
-    "w.set_id, "
-    "w.lemma, "
-    "w.sem_code, "
-    "w.frequency, "
-    "w.orig_wf, "
-    "w.comment, "
-    "p.pron_id, "
-    "p.nofabet, "
-    "p.certainty, "
-    "p.unique_id "
-)
+
+COLMAP = {
+    'word_id': 'w.word_id',
+    'wordform': 'w.wordform',
+    'pos': 'w.pos',
+    'feats': 'w.feats',
+    'source': 'w.source',
+    'decomp_ort': 'w.decomp_ort',
+    'decomp_pos': 'w.decomp_pos',
+    'garbage': 'w.garbage',
+    'domain': 'w.domain',
+    'abbr': 'w.abbr',
+    'set_name': 'w.set_name',
+    'style_status': 'w.style_status',
+    'inflector_role': 'w.inflector_role',
+    'inflector_rule': 'w.inflector_rule',
+    'morph_label': 'w.morph_label',
+    'compounder_code': 'w.compounder_code',
+    'update_info': 'w.update_info',
+    'lang_code': 'w.lang_code',
+    'expansion': 'w.expansion',
+    'set_id': 'w.set_id',
+    'lemma': 'w.lemma',
+    'sem_code': 'w.sem_code',
+    'frequency': 'w.frequency',
+    'orig_wf': 'w.orig_wf',
+    'comment': 'w.comment',
+    'pron_id': 'p.pron_id',
+    'transcription': 'p.nofabet',
+    'nofabet':  'p.nofabet',
+    'certainty': 'p.certainty',
+    'unique_id': 'p.unique_id'
+}
+
 
 UPDATE_QUERY = (
-    "UPDATE {dialect} SET nofabet = REGREPLACE(?,?,nofabet) " "{where_word_in_stmt};"
+    "UPDATE {dialect} SET nofabet = REGREPLACE(?,?,nofabet) {where_word_in_stmt};"
 )
+
 
 SELECT_QUERY = (
     "SELECT "
@@ -388,10 +408,14 @@ SELECT_QUERY = (
     "{where_word_in_stmt};"
 )
 
+
 UNIQUE_ID_PATTERN = "NB{counter}"
 
-NEWWORD_INSERT = "INSERT INTO {table} ({columns}) " "VALUES ({vars});"
 
-NW_WORD_COLS = ("wordform, pos, feats, unique_id", "?,?,?,?")
+NEWWORD_INSERT = "INSERT INTO {table} ({columns}) VALUES ({vars});"
+
+
+NW_WORD_COLS = ("wordform, pos, feats, unique_id, update_info", "?,?,?,?,?")
+
 
 NW_PRON_COLS = ("nofabet, unique_id, certainty", "?,?,?")
