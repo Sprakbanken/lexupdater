@@ -44,15 +44,15 @@ List of dicts with words to be exempted from the specified rulesets.
 
 DIALECTS = [
     "e_spoken",
- #   "e_written",
+    "e_written",
     "sw_spoken",
- #   "sw_written",
+    "sw_written",
     "w_spoken",
-  #  "w_written",
+    "w_written",
     "t_spoken",
-  #  "t_written",
+    "t_written",
     "n_spoken",
-  #  "n_written",
+    "n_written",
 ]
 """List of dialects which update rules can target.
 

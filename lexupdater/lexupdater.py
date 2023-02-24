@@ -152,8 +152,8 @@ def main(ctx, database, dialects, newwords_path, verbose):
 
     @ctx.call_on_close
     def close_db():
-        click.echo("CLOSE DATABASE")
         db.close()
+        click.echo("DATABASE CLOSED")
 
 
 @main.command("original-lexicon")
@@ -173,27 +173,25 @@ def write_original(db_obj, outfile):
 
 
 @main.command("match", deprecated=True)
-@click.pass_context
-def match_words(ctx):
+@click.pass_obj
+def match_words(db_obj):
     """Fetch database entries that match the replacement rules."""
-    click.secho("Match database entries to dialect update rules",
-                fg="cyan")
+    click.secho("Fetch rows in the database that match the given rules",fg="cyan")
     # Preprocess input data
-    rules_file = ctx.obj.get("rules_file")
-    exemptions_file = ctx.obj.get("exemptions_file")
-    dialects = ctx.obj.get("dialects")
+    rules_file = CFG.get("rules_file")
+    exemptions_file = CFG.get("exemptions_file")
+    dialects = CFG.get("dialects")
     rulesets, dialects = preprocess_rules(rules_file, exemptions_file)
-    output_dir = ctx.obj.get("output_dir")
 
     with closing(
             DatabaseUpdater(
-                db=ctx.obj.get("database"),
+                db=CFG.get("database"),
                 temp_tables=dialects,
             )
     ) as db_obj:
         matches = db_obj.select_pattern_matches(rulesets)
     write_lex_per_dialect(
-        matches, output_dir, MATCH_PREFIX, flatten_match_results)
+        matches, OUTPUT_DIR, MATCH_PREFIX, flatten_match_results)
 
 
 @main.command("update")
@@ -202,24 +200,21 @@ def match_words(ctx):
     "--rules-file",
     type=click.Path(resolve_path=True, exists=True, path_type=pathlib.Path),
     help="Apply replacement rules from the given file path.",
-    default="rules.py"
+    default=CFG.get("rules_file")
 )
 @click.option(
     "-e",
     "--exemptions-file",
     type=click.Path(resolve_path=True, exists=True, path_type=pathlib.Path),
     help="Apply exemptions from the given file path to the rules.",
-    default="exemptions.py"
-)
-@click.option(
-    "-op", "--output-prefix", default="updated_lexicon"
+    default=CFG.get("exemptions_file")
 )
 @click.option(
     "-o",
     "--output-dir",
     type=click.Path(resolve_path=True, file_okay=False, path_type=pathlib.Path),
     help="The directory path that files are written to.",
-    callback=ensure_path,
+    callback=resolve_dir,
 )
 @click.option(
     "-t", "--track-rules",
@@ -229,25 +224,25 @@ def match_words(ctx):
     help="Extract transcriptions before and after updates by given rule ids, comma-separated"
 )
 @click.pass_obj
-@click.pass_context
-def update_dialects(ctx, db_obj, rules_file, exemptions_file, output_prefix, output_dir, track_rules):
+def update_dialects(db_obj, rules_file, exemptions_file, output_dir, track_rules):
     """Update dialect transcriptions with rules."""
-    click.secho("Update dialect transcriptions", fg="cyan")
     # Load data
     rulesets = preprocess_rulefiles(rules_file, exemptions_file)
 
     # Iterate through rules and run update queries
-    if track_rules is not None:
-        tracked_updates = db_obj.track_updates(rulesets, track_rules)
+    if track_rules:
+        click.secho(f"Track transcription changes for rules: {track_rules}", fg="cyan")
+        tracked_updates = db_obj.update(rulesets, track_rules)
         for df in tracked_updates:
-            write_tracked_update(df, output_dir, output_prefix)
+            write_tracked_update(df, output_dir)
     else:
+        click.secho("Update dialect transcriptions", fg="cyan")
         db_obj.update(rulesets)
 
     # Write output to disk
     for dialect in db_obj.dialects:
         data = db_obj.get_dialect_data(dialect)
-        filename = (output_dir / f"{output_prefix}_{dialect}.csv")
+        filename = (output_dir / f"{dialect}_pronunciation_lexicon.csv")
         write_lexicon(filename, data)
 
 
@@ -264,31 +259,30 @@ def update_dialects_old(ctx, check_phonemes):
     """Update dialect transcriptions with rules."""
     click.secho("Update dialect transcriptions", fg="cyan")
     start = datetime.now()
-    rules_file = ctx.obj.get("rules_file")
-    exemptions_file = ctx.obj.get("exemptions_file")
+    rules_file = CFG.get("rules_file")
+    exemptions_file = CFG.get("exemptions_file")
     rulesets, dialects = preprocess_rules(
-        rules_file, exemptions_file, config_dialects=ctx.obj.get("dialects"))
-    output_dir = ctx.obj.get("output_dir")
+        rules_file, exemptions_file, config_dialects=CFG.get("dialects"))
 
     with closing(
             DatabaseUpdater(
-                db=ctx.obj.get("database"),
+                db=CFG.get("database"),
                 temp_tables=dialects
             )
     ) as db_obj:
-        updated_lex = db_obj.update(rulesets)
-    write_lex_per_dialect(updated_lex, output_dir, LEX_PREFIX, None)
+        updated_lex = db_obj.update_old(rulesets)
+    write_lex_per_dialect(updated_lex, OUTPUT_DIR, LEX_PREFIX, None)
     if check_phonemes:
         write_lex_per_dialect(
-            updated_lex, output_dir, "invalid_transcriptions",
+            updated_lex, OUTPUT_DIR, "invalid_transcriptions",
             validate_phonemes,
-            valid_phonemes=ctx.obj["valid_phonemes"],
+            valid_phonemes=LICIT_PHONES,
             return_transcriptions="invalid")
     end = datetime.now()
     click.secho(f"Done processing. "
-                f"Output is in {output_dir}/{LEX_PREFIX}_*.txt files.",
+                f"Output is in {OUTPUT_DIR}/{LEX_PREFIX}_*.txt files.",
                 fg="cyan")
-    click.secho(f"Processing time for {ctx.command}: {str(end-start)}",
+    click.secho(f"Processing time: {str(end-start)}",
                 fg="yellow")
 
 
@@ -308,14 +302,13 @@ def track_rule_changes(ctx, rule_ids):
     click.secho(f"Compare transcriptions before and after these transformation rules: \n"
                 f"{rule_ids}", fg="cyan")
     start = datetime.now()
-    rules_file = ctx.obj.get("rules_file")
-    exemptions_file = ctx.obj.get("exemptions_file")
-    output_dir = ctx.obj.get("output_dir")
+    rules_file = CFG.get("rules_file")
+    exemptions_file = CFG.get("exemptions_file")
     rulesets, dialects = preprocess_rules(
-        rules_file, exemptions_file, rule_ids, config_dialects=ctx.obj.get("dialects"))
+        rules_file, exemptions_file, rule_ids, config_dialects=CFG.get("dialects"))
 
     with closing(
-            DatabaseUpdater(db=ctx.obj.get("database"), temp_tables=dialects)
+            DatabaseUpdater(db=CFG.get("database"), temp_tables=dialects)
     ) as db_obj:
         df_gen = db_obj.select_updates(rulesets, rule_ids)
 
@@ -331,7 +324,7 @@ def track_rule_changes(ctx, rule_ids):
                 'p.nofabet': 'transcription',
                 'arrow': 'arrow',
                 'new_transcription': 'new_transcription'}
-            filename = output_dir / f"{CHANGE_PREFIX}_{dialect}_{rule_id}.csv"
+            filename = OUTPUT_DIR / f"transcription_changelog_{rule_id}.csv"
             try:
                 df.to_csv(
                     filename,
@@ -340,29 +333,24 @@ def track_rule_changes(ctx, rule_ids):
                 )
             except Exception as e:
                 logging.error(e)
-    end = datetime.now()
-    click.secho(f"Done processing. "
-                f"Output is in {output_dir}/{CHANGE_PREFIX}_*.csv files.",
-                fg="cyan")
-    click.secho(f"Processing time command: {str(end-start)}, Total time:"
-                f" {str(datetime.now()-start)}",
-                fg="yellow")
+    click.echo("Done processing.")
+    click.echo(f"Total time: {str(datetime.now()-start)}")
 
 @main.command("newwords")
 @click.option(
     "-o",
-    "--output-file",
+    "--outfile",
     type=click.Path(),
     default="lexicon_with_new_words.csv",
     help="File name where the updated lexicon will be saved.",
     callback=resolve_dir,
 )
 @click.pass_obj
-def get_newwords(db_obj, output_file):
+def get_newwords(db_obj, outfile):
     """Write the new word entries from the lexicon db to disk."""
     click.secho("Add new words to database", fg="cyan")
     data = db_obj.get_newwords()
-    write_lexicon(output_file, data)
+    write_lexicon(outfile, data)
 
 
 @main.command("convert")
@@ -378,10 +366,10 @@ def convert_transcriptions(ctx, standards, filename):
 def insert_newwords_old(ctx):
     """Insert new word entries to the lexicon."""
     click.secho("Add new words to database", fg="cyan")
-    newwords = load_newwords(ctx.obj.get("newword_files"), newword_column_names)
-    database = ctx.obj.get("database")
-    dialects = ctx.obj.get("dialects")
-    output_dir = ctx.obj.get("output_dir")
+    newwords = load_newwords(CFG.get("newword_files"), newword_column_names)
+    database = CFG.get("database")
+    dialects = CFG.get("dialects")
+    output_dir = CFG.get("output_dir")
     with closing(
             DatabaseUpdater(
                 db=database,
@@ -392,12 +380,12 @@ def insert_newwords_old(ctx):
     write_lexicon((output_dir / f"{NEW_PREFIX}.txt"), lex_with_newwords)
 
 
-@main.command("convert", deprecated=True)
+@main.command("convert-old", deprecated=True)
 @click.option(
     "-l",
     "--lexicon-dir",
     type=click.Path(resolve_path=True, file_okay=False, path_type=pathlib.Path),
-    callback=ensure_path,
+    callback=resolve_dir,
     help="Directory where updated lexicon .txt files are located, and that "
          "converted .dict files will be written to."
 )
