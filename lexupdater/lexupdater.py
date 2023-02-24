@@ -13,6 +13,7 @@ import pandas as pd
 from lexupdater.dialect_updater import preprocess_rulefiles
 
 from .constants import (
+    LICIT_PHONES,
     newword_column_names,
     LEX_PREFIX,
     MATCH_PREFIX,
@@ -42,11 +43,9 @@ from .utils import (
     write_tracked_update
 )
 
-
-OUTPUT_DIR = ensure_path_exists('data/output')
 CFG = {
     'database': 'data/nst_lexicon_bm.db',
-    'output_dir': OUTPUT_DIR,
+    'output_dir': 'data/output',
     'dialects': [
         'e_spoken',
         'e_written',
@@ -62,28 +61,23 @@ CFG = {
     'newwords_path': 'newwords.csv',
     'rules_file': 'rules.py',
 }
-
-
+CONFIG_FILE = load_config("./config.py")
+CFG.update(CONFIG_FILE)
 CONTEXT_SETTINGS = dict(
     default_map=CFG,
     help_option_names=['-h', '--help'],
 )
-
-
-def configure(ctx, param, filename):
-    """Load default values from config file."""
-    if Path(filename).exists:
-        ctx.default_map = load_config(filename)
-
-
-def ensure_path(ctx, param, path):
-    """Create dir paths given by command line."""
-    return ensure_path_exists(path)
+OUTPUT_DIR = ensure_path_exists(CFG.get("output_dir"))
 
 
 def resolve_dir(ctx, param, path):
-    full_path = (CFG.get("output_dir") / path)
-    return resolve_rel_path(full_path)
+    if path is None:
+        return OUTPUT_DIR
+    if path.is_dir() or not path.parent.exists():
+        return ensure_path_exists(path)
+    if path.is_file() and path.parent == Path.cwd():
+        return OUTPUT_DIR / path
+    return OUTPUT_DIR
 
 
 def split_multiple_args(ctx, param, arg):
@@ -97,21 +91,10 @@ def split_multiple_args(ctx, param, arg):
 
 def configure_logging(ctx, param, verbose):
     """Configure logging level and destination based on user input."""
-    output_dir = ensure_path_exists(ctx.lookup_default("output_dir"))
-    return set_logging_config(verbose, logfile=(output_dir/"log.txt"))
+    return set_logging_config(verbose, logfile=(OUTPUT_DIR/"log.txt"))
 
 
 @click.group(context_settings=CONTEXT_SETTINGS, invoke_without_command=True, chain=True)
-@click.option(
-    '-c', '--config',
-    type=click.Path(dir_okay=False),
-    default="./config.py",
-    callback=configure,
-    is_eager=True,
-    expose_value=False,
-    help='Read config defaults from the specified .py file',
-    show_default=True,
-)
 @click.option(
     "-db",
     "--database",
@@ -157,15 +140,15 @@ def main(ctx, database, dialects, newwords_path, verbose):
     new, temp-table-specific files.
     """
     logging.info("START LOG")
+    global CFG
+    CFG.update(ctx.params)
     if verbose:
         click.secho("Configuration values:", fg="yellow")
-        click.echo(pprint.pformat(ctx.params))
+        click.echo(pprint.pformat(CFG))
 
-
-    click.echo("Load new words")
-    #newwords = load_newwords(newwords_path)
+    newwords = load_newwords(newwords_path)
     click.echo("Initialise database")
-    ctx.obj = db = DatabaseUpdater(db=database, temp_tables=dialects)#, newwords=newwords)
+    ctx.obj = db = DatabaseUpdater(db=database, temp_tables=dialects, newwords=newwords)
 
     @ctx.call_on_close
     def close_db():
