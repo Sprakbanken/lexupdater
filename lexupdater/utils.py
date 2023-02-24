@@ -498,16 +498,6 @@ def validate_phonemes(updated_lexicon: list, valid_phonemes: list,
     return transcriptions.get(return_transcriptions, [])
 
 
-def add_placeholders(vals):
-    """Create a string of question mark placeholders for sqlite queries."""
-    return ', '.join('?' for _ in vals)
-
-
-def coordinate_constraints(constraints, add_prefix: str = ''):
-    coordination = ' AND '.join(c for c in constraints)
-    return f" {add_prefix} {coordination}" if (add_prefix and coordination) else coordination
-
-
 def make_list(value, segments=False):
     """Turn a string, list or other collection into a list.
 
