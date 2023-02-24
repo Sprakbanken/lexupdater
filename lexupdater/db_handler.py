@@ -7,8 +7,7 @@ import sqlite3
 
 import pandas as pd
 
-from .utils import coordinate_constraints, add_placeholders
-from .dialect_updater import parse_conditions, parse_rulesets
+from .dialect_updater import parse_conditions, parse_rulesets, add_placeholders
 from .newword_updater import parse_newwords
 from .constants import (
     LEXICON_COLUMNS,
@@ -359,26 +358,23 @@ class DatabaseUpdater:
         self._cursor.execute(query, values)
         self._connection.commit()
 
-    def update(self, rulesets: Iterable):
-        for rule in rulesets:
-            if rule.dialect not in self.dialects:
-                continue
-            else:
-                logging.info("Update with Rule ID: %s", rule.id_)
-                self.update_rows(rule)
-
-    def track_updates(self, rulesets: Iterable, rule_ids: List[str]):
+    def update(self, rulesets: Iterable, rule_ids: List[str] = None):
+        if rule_ids is None:
+            rule_ids = []
         for rule in rulesets:
             if rule.dialect not in self.dialects:
                 continue
             if (rule.id_ in rule_ids) or (rule.ruleset in rule_ids):
-                logging.info("Track rule changes for %s", rule.id_)
-                match_df = self._select_rows_from_rule(rule)
-                logging.info("%s rows in %s", len(match_df.index), rule.dialect)
+                yield self.track_updates(rule)
+            else:
                 self.update_rows(rule)
-                updated_df = self._select_rows_from_ids(rule, match_df)
-                result = self._merge_comparison_dfs(rule.id_, match_df, updated_df)
-                yield result
+
+    def track_updates(self, rule):
+        match_df = self._select_rows_from_rule(rule)
+        logging.info("Rule %s matches %s rows in %s", rule.id_,len(match_df.index), rule.dialect)
+        self.update_rows(rule)
+        updated_df = self._select_rows_from_ids(rule, match_df)
+        return self._merge_comparison_dfs(rule, match_df, updated_df)
 
     def _select_rows_from_rule(self, rule):
         """Retrieve the rows that match the rules before updates."""
@@ -393,6 +389,7 @@ class DatabaseUpdater:
 
     def update_rows(self, rule):
         """Apply the update rule."""
+        logging.debug("Update with rule ID: %s", rule.id_)
         condition_str, condition_values = parse_conditions(rule.constraints, rule.exemptions, prefix="WHERE")
         query = (
             f"UPDATE {rule.dialect} "
@@ -413,10 +410,10 @@ class DatabaseUpdater:
         )
         return self._get_data(query, values=pron_ids)
 
-    def _merge_comparison_dfs(self, rule_id, pre_update_df, post_update_df ):
+    def _merge_comparison_dfs(self, rule, pre_update_df, post_update_df ):
         comparison_df = pre_update_df.merge(post_update_df, how='inner', on=["pron_id"])
-        comparison_df.loc[:, "rule_id"] = rule_id
-        #comparison_df.loc[:, "dialect"] = rule.dialect
+        comparison_df.loc[:, "rule_id"] = rule.id_
+        comparison_df.loc[:, "dialect"] = rule.dialect
         comparison_df = comparison_df.rename(columns={
             "nofabet_x": "transcription",
             "nofabet_y": "new_transcription"})
