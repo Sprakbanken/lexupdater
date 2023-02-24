@@ -119,12 +119,11 @@ def filter_exclude(check_list, exclude_list):
     return filtered
 
 
-def resolve_rel_path(file_rel_path: Union[str, Path]) -> Path:
+def resolve_rel_path(file_rel_path) -> Path:
     """Resolve the full path from a potential relative path to the local or parent directory."""
-
-    full_path = Path(file_rel_path).resolve()
+    full_path = (Path.cwd() / file_rel_path).resolve()
     if not full_path.exists():
-        full_path = Path.cwd().parent / file_rel_path
+        full_path = (Path.cwd().parent / file_rel_path).resolve()
     return full_path
 
 
