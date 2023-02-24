@@ -548,7 +548,7 @@ def log_level(verbosity: int):
     1 = logging.INFO (20)
     2 = logging.DEBUG (10)
     """
-    return (3 - verbosity) * 10 if verbosity in (0, 1, 2) else 10
+    return {0:30, 1:20, 2:10}.get(verbosity, 10)
 
 
 def set_logging_config(verbose=False, logfile="log.txt"):
