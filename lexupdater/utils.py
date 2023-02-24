@@ -53,11 +53,11 @@ def write_lexicon(output_file: Union[str, Path], data: Iterable, delimiter: str 
             out_writer.writerows(data)
 
 
-def write_tracked_update(df, output_dir, file_prefix=CHANGE_PREFIX):
+def write_tracked_update(df, output_dir):
     rule_id = df["rule_id"].unique()[0]
     df["arrow"] = "===>"
     columns = ['dialect', 'pron_id', 'rule_id', 'wordform', 'transcription', 'arrow', 'new_transcription']
-    filename = output_dir / f"{file_prefix}_{rule_id}.csv"
+    filename = output_dir / f"transcription_changelog_{rule_id}.csv"
     try:
         write_lexicon(filename, df[columns])
     except Exception as e:
