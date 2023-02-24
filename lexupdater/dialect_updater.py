@@ -7,9 +7,14 @@ into variables to fill slots in SQL query templates.
 import logging
 from typing import List, Generator
 
-from .constants import ruleset_schema, COL_WORDFORM, rule_schema
-from .utils import filter_list_by_list, load_exemptions, load_rules, validate_objects, add_placeholders
+from .constants import COL_WORDFORM
+from .utils import load_exemptions, load_rules
 from .rule_objects import RuleObj
+
+
+def add_placeholders(vals):
+    """Create a string of question mark placeholders for sqlite queries."""
+    return ', '.join('?' for _ in vals)
 
 
 def sql_operator(is_regex):
@@ -22,24 +27,10 @@ def parse_constraint(constraint) -> tuple:
 
 
 def parse_constraints(constraints: List) -> List[tuple]:
-    """Construct SQL WHERE queries from the replacement rule constraints.
-
-    Grammatical categories and features that are given in the word table of
-    the lexicon can be used to narrow down the scope of words that the
-    replacement rule applies to.
-
-    Parameters
-    ----------
-    constraints: list[dict]
-        list of dictionaries with `field`, `pattern`, and `is_regex` keys
-
-    Returns
-    -------
-    tuple[str, list]
-        SQL clause fragment and list of feature values
-        for the words that the rule applies to
-    """
-    return [parse_constraint(c) for c in constraints]
+    """Create list of constraint string fragments."""
+    if constraints:
+        return zip(*[parse_constraint(c) for c in constraints])
+    return [], []
 
 
 def parse_exemptions(exemption_words):
@@ -56,7 +47,7 @@ def parse_exemptions(exemption_words):
         SQL fragment and a list of words that are exempt
     """
     if exemption_words:
-        return f"{COL_WORDFORM} NOT IN ({add_placeholders(exemption_words)})", exemption_words
+        return f"{COL_WORDFORM} NOT IN ({add_placeholders(exemption_words)})"
     return ""
 
 
@@ -70,10 +61,14 @@ def parse_conditions(constraints: list, exempt_words: list, prefix: str = '') ->
     if not bool(constraints) and not exempt_words:
         return "", []
 
-    constraints, cond_vals = parse_constraints(constraints)
-    exemption, exempt_words = parse_exemptions(exempt_words)
-    coordinated_conditions = coordinate_constraints(constraints+exemption, prefix=prefix)
-    return coordinated_conditions, cond_vals + exempt_words
+    constraints, values = parse_constraints(constraints)
+    exemption = parse_exemptions(exempt_words)
+    conditions = [*constraints, exemption]
+    values = [*values, *exempt_words]
+    condition_string = coordinate_constraints(conditions, prefix=prefix)
+    logging.debug("condition %s", condition_string)
+    logging.debug("values %s", values)
+    return condition_string, values
 
 
 def coordinate_constraints(constraints, prefix: str = ''):
@@ -100,7 +95,9 @@ def parse_rulesets(rulesets: list, exemptions: dict) -> Generator:
 
 def preprocess_rulefiles(rulefile, exemptionfile):
     """Load files and parse the contents. Return a rule generator."""
+    logging.debug("Loading rules from %s and exemptions from %s", rulefile, exemptionfile)
     rulesets = load_rules(rulefile)
     exemptions = load_exemptions(exemptionfile)
+    logging.debug("Parse rulesets")
     rules = parse_rulesets(rulesets, exemptions)
     return rules
