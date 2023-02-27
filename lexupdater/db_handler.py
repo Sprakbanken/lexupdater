@@ -191,8 +191,11 @@ class DatabaseUpdater:
 
     def _run_update(self, query, values):
         logging.debug("Execute SQL Query: %s %s", query, values)
-        self._cursor.execute(query, values)
-        self._connection.commit()
+        try:
+            self._cursor.execute(query, values)
+            self._connection.commit()
+        except sqlite3.OperationalError:
+            logging.error("Skipping update. Couldn't run query: %s", query)
 
     def select_pattern_matches(self, rulesets: List):
         """Select all rows that match the patterns in `rulesets`.
@@ -352,11 +355,6 @@ class DatabaseUpdater:
         query = UPDATE_QUERY.format(dialect=dialect, where_word_in_stmt=condition)
         values = (pattern, replacement, *cond_values)
         return query, values
-
-    def _run_update(self, query, values):
-        logging.debug("Execute SQL Query: %s %s", query, values)
-        self._cursor.execute(query, values)
-        self._connection.commit()
 
     def update(self, rulesets: Iterable, rule_ids: List[str] = None):
         if rule_ids is None:
@@ -518,7 +516,7 @@ class DatabaseUpdater:
         return result
 
 
-    def get_dialect_data(self, dialect_table: str = None) -> pd.DataFrame:
+    def get_dialect_data(self, dialect_table) -> pd.DataFrame:
         """Fetch data from a dialect temp table in the database.
 
         Parameters
@@ -526,8 +524,6 @@ class DatabaseUpdater:
         dialect_table: str
             Name of dialect area to print the lexicon for.
         """
-        if dialect_table is None:
-            dialect_table = self.pron_table
         query = (
             f"SELECT {LEXICON_COLUMNS} "
             f"FROM {self.word_table} w "
