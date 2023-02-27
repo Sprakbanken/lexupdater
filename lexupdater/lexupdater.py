@@ -148,11 +148,12 @@ def main(ctx, database, dialects, newwords_path, verbose):
         click.echo(pprint.pformat(CFG))
         click.echo(f"Invoked command: {ctx.invoked_subcommand}")
 
-    if ctx.invoked_subcommand in ["original-lexicon"]:
+    click.echo("Initialise database")
+    if ctx.invoked_subcommand == "original-lexicon":
         ctx.obj = db = DatabaseUpdater(db=database, temp_tables=[])
-    else:
+    elif ctx.invoked_subcommand in ["update", "newwords"]:
         newwords = load_newwords(newwords_path)
-        click.echo("Initialise database")
+        click.echo("Insert new words to the database")
         ctx.obj = db = DatabaseUpdater(db=database, temp_tables=dialects, newwords=newwords)
 
     @ctx.call_on_close
@@ -356,14 +357,6 @@ def get_newwords(db_obj, outfile):
     click.secho("Add new words to database", fg="cyan")
     data = db_obj.get_newwords()
     write_lexicon(outfile, data)
-
-
-@main.command("convert")
-@click.option("-s", "--standards", default="nofabet,ipa,sampa")
-@click.option("--filename")
-@click.pass_context
-def convert_transcriptions(ctx, standards, filename):
-    pass
 
 
 @main.command("insert", deprecated=True)
