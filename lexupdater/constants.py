@@ -360,36 +360,10 @@ LEXICON_COLUMNS = ", ".join([COL_WORDFORM, COL_POS, COL_FEATS, COL_UID, COL_INFO
 
 
 COLMAP = {
-    'word_id': 'w.word_id',
-    'wordform': 'w.wordform',
-    'pos': 'w.pos',
-    'feats': 'w.feats',
-    'source': 'w.source',
-    'decomp_ort': 'w.decomp_ort',
-    'decomp_pos': 'w.decomp_pos',
-    'garbage': 'w.garbage',
-    'domain': 'w.domain',
-    'abbr': 'w.abbr',
-    'set_name': 'w.set_name',
-    'style_status': 'w.style_status',
-    'inflector_role': 'w.inflector_role',
-    'inflector_rule': 'w.inflector_rule',
-    'morph_label': 'w.morph_label',
-    'compounder_code': 'w.compounder_code',
-    'update_info': 'w.update_info',
-    'lang_code': 'w.lang_code',
-    'expansion': 'w.expansion',
-    'set_id': 'w.set_id',
-    'lemma': 'w.lemma',
-    'sem_code': 'w.sem_code',
-    'frequency': 'w.frequency',
-    'orig_wf': 'w.orig_wf',
-    'comment': 'w.comment',
-    'pron_id': 'p.pron_id',
-    'transcription': 'p.nofabet',
-    'nofabet':  'p.nofabet',
-    'certainty': 'p.certainty',
-    'unique_id': 'p.unique_id'
+    'unique_id': 'wordform_id',
+    'nofabet': 'nofabet_transcription',
+    'ipa': 'ipa_transcription',
+    'sampa': 'sampa_transcription'
 }
 
 
