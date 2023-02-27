@@ -76,9 +76,9 @@ def resolve_dir(ctx, param, path):
 
 
 def ensure_dir(ctx, param, path):
-    if path.is_dir():
-        return ensure_path_exists(path)
-    return ensure_path_exists(OUTPUT_DIR)
+    if path is None:
+        path = OUTPUT_DIR
+    return ensure_path_exists(path)
 
 
 def split_multiple_args(ctx, param, arg):
@@ -237,12 +237,12 @@ def update_dialects(db_obj, rules_file, exemptions_file, output_dir, track_rules
     # Iterate through rules and run update queries
     if track_rules:
         click.secho(f"Track transcription changes for rules: {track_rules}", fg="cyan")
-        tracked_updates = db_obj.update(rulesets, track_rules)
-        for df in tracked_updates:
-            write_tracked_update(df, output_dir)
     else:
         click.secho("Update dialect transcriptions", fg="cyan")
-        db_obj.update(rulesets)
+
+    tracked_updates = db_obj.update(rulesets, track_rules)
+    for df in tracked_updates:
+        write_tracked_update(df, output_dir)
 
     # Write output to disk
     for dialect in db_obj.dialects:
