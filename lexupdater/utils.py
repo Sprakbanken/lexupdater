@@ -18,7 +18,7 @@ from schema import Schema, SchemaError
 
 from lexupdater.conversion import convert_nofabet
 
-from .constants import dialect_schema, MFA_PREFIX, LEX_PREFIX, exemption_schema, ruleset_schema, newword_column_names, CHANGE_PREFIX
+from .constants import COLMAP, dialect_schema, MFA_PREFIX, LEX_PREFIX, exemption_schema, ruleset_schema, newword_column_names, CHANGE_PREFIX
 
 
 def ensure_path_exists(path):
@@ -50,6 +50,7 @@ def write_lexicon(output_file: Union[str, Path], data: Iterable, delimiter: str 
     if isinstance(data, pd.DataFrame):
         data = convert_transcriptions(data, "ipa")
         data = convert_transcriptions(data, "sampa")
+        data = data.rename(columns=COLMAP)
         data.to_csv(output_file, header=True, index=False)
     else:
         with open(output_file, 'w', encoding="utf-8", newline='') as csvfile:
