@@ -16,6 +16,8 @@ import click
 import pandas as pd
 from schema import Schema, SchemaError
 
+from lexupdater.conversion import convert_nofabet
+
 from .constants import dialect_schema, MFA_PREFIX, LEX_PREFIX, exemption_schema, ruleset_schema, newword_column_names, CHANGE_PREFIX
 
 
@@ -62,6 +64,12 @@ def write_tracked_update(df, output_dir):
         write_lexicon(filename, df[columns])
     except Exception as e:
         logging.error(e)
+
+
+def convert_transcriptions(data: pd.DataFrame, phoneme_standard: str = "ipa") -> pd.DataFrame:
+    """Convert nofabet transcriptions to IPA ('ipa') or X-SAMPA ('sampa')."""
+    data[phoneme_standard] = data["nofabet"].apply(convert_nofabet, to=phoneme_standard)
+    return data
 
 
 def write_lex_per_dialect(
