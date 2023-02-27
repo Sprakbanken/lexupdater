@@ -71,14 +71,14 @@ OUTPUT_DIR = ensure_path_exists(CFG.get("output_dir"))
 
 
 def resolve_dir(ctx, param, path):
-    if path is None:
-        return OUTPUT_DIR
-    path = Path(path)
+    if path is not None:
+        return OUTPUT_DIR / path
+
+
+def ensure_dir(ctx, param, path):
     if path.is_dir():
         return ensure_path_exists(path)
-    if path.is_file():
-        return OUTPUT_DIR / path
-    return OUTPUT_DIR
+    return ensure_path_exists(OUTPUT_DIR)
 
 
 def split_multiple_args(ctx, param, arg):
@@ -219,7 +219,7 @@ def match_words(db_obj):
     "--output-dir",
     type=click.Path(resolve_path=True, file_okay=False, path_type=pathlib.Path),
     help="The directory path that files are written to.",
-    callback=resolve_dir,
+    callback=ensure_dir,
 )
 @click.option(
     "-t", "--track-rules",
@@ -390,7 +390,7 @@ def insert_newwords_old(ctx):
     "-l",
     "--lexicon-dir",
     type=click.Path(resolve_path=True, file_okay=False, path_type=pathlib.Path),
-    callback=resolve_dir,
+    callback=ensure_dir,
     help="Directory where updated lexicon .txt files are located, and that "
          "converted .dict files will be written to."
 )
