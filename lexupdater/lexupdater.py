@@ -1,5 +1,6 @@
 """Transcription updates for a pronunciation lexicon in sqlite3 db format."""
 
+import sys
 import logging
 import pathlib
 import pprint
@@ -148,13 +149,17 @@ def main(ctx, database, dialects, newwords_path, verbose):
         click.echo(pprint.pformat(CFG))
         click.echo(f"Invoked command: {ctx.invoked_subcommand}")
 
+    if ctx.invoked_subcommand is None:
+        sys.exit(0)
+
     click.echo("Initialise database")
-    if ctx.invoked_subcommand == "original-lexicon":
-        ctx.obj = db = DatabaseUpdater(db=database, temp_tables=[])
-    elif ctx.invoked_subcommand in ["update", "newwords"]:
+    if ctx.invoked_subcommand in ["update", "newwords"]:
         newwords = load_newwords(newwords_path)
         click.echo("Insert new words to the database")
         ctx.obj = db = DatabaseUpdater(db=database, temp_tables=dialects, newwords=newwords)
+    else:
+#        if ctx.invoked_subcommand == "original-lexicon":
+        ctx.obj = db = DatabaseUpdater(db=database, temp_tables=[])
 
     @ctx.call_on_close
     def close_db():
