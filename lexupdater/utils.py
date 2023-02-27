@@ -16,7 +16,7 @@ import click
 import pandas as pd
 from schema import Schema, SchemaError
 
-from .constants import dialect_schema, MFA_PREFIX, LEX_PREFIX, exemption_schema, ruleset_schema, newword_column_names
+from .constants import dialect_schema, MFA_PREFIX, LEX_PREFIX, exemption_schema, ruleset_schema, newword_column_names, CHANGE_PREFIX
 
 
 def ensure_path_exists(path):
@@ -45,9 +45,23 @@ def write_lexicon(output_file: Union[str, Path], data: Iterable, delimiter: str 
         where the 1st, 2nd, 3rd and 2nd to last elements are saved to disk
     """
     logging.info("Write lexicon data to %s", output_file)
-    with open(output_file, 'w', encoding="utf-8", newline='') as csvfile:
-        out_writer = csv.writer(csvfile, delimiter=delimiter)
-        out_writer.writerows(data)
+    if isinstance(data, pd.DataFrame):
+        data.to_csv(output_file, header=True, index=False)
+    else:
+        with open(output_file, 'w', encoding="utf-8", newline='') as csvfile:
+            out_writer = csv.writer(csvfile, delimiter=delimiter)
+            out_writer.writerows(data)
+
+
+def write_tracked_update(df, output_dir):
+    rule_id = df["rule_id"].unique()[0]
+    df["arrow"] = "===>"
+    columns = ['dialect', 'pron_id', 'rule_id', 'wordform', 'transcription', 'arrow', 'new_transcription']
+    filename = output_dir / f"transcription_changelog_{rule_id}.csv"
+    try:
+        write_lexicon(filename, df[columns])
+    except Exception as e:
+        logging.error(e)
 
 
 def write_lex_per_dialect(
@@ -105,12 +119,11 @@ def filter_exclude(check_list, exclude_list):
     return filtered
 
 
-def resolve_rel_path(file_rel_path: Union[str, Path]) -> Path:
+def resolve_rel_path(file_rel_path) -> Path:
     """Resolve the full path from a potential relative path to the local or parent directory."""
-
-    full_path = Path(file_rel_path).resolve()
+    full_path = (Path.cwd() / file_rel_path).resolve()
     if not full_path.exists():
-        full_path = Path.cwd().parent / file_rel_path
+        full_path = (Path.cwd().parent / file_rel_path).resolve()
     return full_path
 
 
@@ -175,16 +188,14 @@ def map_rule_exemptions(exemptions: List[str]) -> dict:
 
 
 def load_exemptions(file_path: Union[str, Path]) -> dict:
+    """Load exemptions from a .py file and validate the dict objects."""
     exemptions = load_module_vars(file_path)
     exemptions = validate_objects(exemptions, exemption_schema)
     return map_rule_exemptions(exemptions)
 
 
 def load_rules(file_path: Union[str, Path]) -> Generator:
-    """Load rulesets and the words that are exempt from them.
-
-    Returns a generator of tuples(ruleset, exempt_words)
-    """
+    """Load rulesets from a .py file and validate the rule dicts."""
     rules = load_module_dict(file_path)
 
     for name, rule_dict in rules.items():
@@ -487,16 +498,6 @@ def validate_phonemes(updated_lexicon: list, valid_phonemes: list,
     return transcriptions.get(return_transcriptions, [])
 
 
-def add_placeholders(vals):
-    """Create a string of question mark placeholders for sqlite queries."""
-    return ', '.join('?' for _ in vals)
-
-
-def coordinate_constraints(constraints, add_prefix: str = ''):
-    coordination = ' AND '.join(c for c in constraints)
-    return f" {add_prefix} {coordination}" if (add_prefix and coordination) else coordination
-
-
 def make_list(value, segments=False):
     """Turn a string, list or other collection into a list.
 
@@ -536,7 +537,7 @@ def log_level(verbosity: int):
     1 = logging.INFO (20)
     2 = logging.DEBUG (10)
     """
-    return (3 - verbosity) * 10 if verbosity in (0, 1, 2) else 10
+    return {0:30, 1:20, 2:10}.get(verbosity, 10)
 
 
 def set_logging_config(verbose=False, logfile="log.txt"):
@@ -563,3 +564,4 @@ def set_logging_config(verbose=False, logfile="log.txt"):
         logging.getLogger('').addHandler(console)
 
     return verbose
+

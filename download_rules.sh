@@ -5,21 +5,17 @@ GITHUB_TOKEN="${1:-$GITHUB_TOKEN}"
 
 function download_file {
   FILE=$1
-  GIT_RESPONSE="tmp.txt"
 
-  curl \
-      -H "Authorization: token ${GITHUB_TOKEN}" \
-      -o $GIT_RESPONSE \
-      -L "https://api.github.com/repos/Ingerid/rulebook/contents/${FILE}?ref=develop"
+  JSON_RESPONSE=$(curl \
+    -H "Accept: application/vnd.github+json" \
+    -H "Authorization: Bearer ${GITHUB_TOKEN}"\
+    -H "X-GitHub-Api-Version: 2022-11-28" \
+    https://api.github.com/repos/Sprakbanken/rulebook/contents/${FILE}?ref=develop )
 
-  URL=$( grep -E 'download_url": ' $GIT_RESPONSE |  sed -E s'/.*"download_url": "(.*)",.*/\1/' )
+  URL="$(echo $JSON_RESPONSE | jq -r '.download_url' )"
 
-  echo "download_url of the git blob: "
-  echo ${URL}
 
-  wget -O  ${FILE} "${URL}"
-
-  rm -f $GIT_RESPONSE
+  wget -O ${FILE} ${URL}
 }
 
 for FILE in 'rules.py' 'exemptions.py'; do download_file $FILE; done

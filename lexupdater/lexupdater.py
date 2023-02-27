@@ -10,7 +10,10 @@ from pathlib import Path
 import click
 import pandas as pd
 
+from lexupdater.dialect_updater import preprocess_rulefiles
+
 from .constants import (
+    LICIT_PHONES,
     newword_column_names,
     LEX_PREFIX,
     MATCH_PREFIX,
@@ -25,106 +28,79 @@ from .rule_objects import (
     preprocess_rules
 )
 from .utils import (
+    make_list,
+    set_logging_config,
     write_lexicon,
     flatten_match_results,
+    load_config,
     load_data,
-    load_module_from_path,
     load_newwords,
     convert_lex_to_mfa,
     validate_phonemes,
     write_lex_per_dialect,
-    ensure_path_exists
+    ensure_path_exists,
+    resolve_rel_path,
+    write_tracked_update
 )
 
+CFG = {
+    'database': 'data/nst_lexicon_bm.db',
+    'output_dir': 'data/output',
+    'dialects': [
+        'e_spoken',
+        'e_written',
+        'sw_spoken',
+        'sw_written',
+        'w_spoken',
+        'w_written',
+        't_spoken',
+        't_written',
+        'n_spoken',
+        'n_written'],
+    'exemptions_file': 'exemptions.py',
+    'newwords_path': 'newwords.csv',
+    'rules_file': 'rules.py',
+}
+CONFIG_FILE = load_config("./config.py")
+CFG.update(CONFIG_FILE)
+CONTEXT_SETTINGS = dict(
+    default_map=CFG,
+    help_option_names=['-h', '--help'],
+)
+OUTPUT_DIR = ensure_path_exists(CFG.get("output_dir"))
 
-def configure(ctx, param, filename):
-    """Load default values from config file."""
-    cfg = load_module_from_path(filename).__dict__
-    ctx.default_map = {key.lower(): value for key, value in cfg.items()}
+
+def resolve_dir(ctx, param, path):
+    if path is not None:
+        return OUTPUT_DIR / path
 
 
-def ensure_path(ctx, param, path):
-    """Create dir paths given by command line."""
+def ensure_dir(ctx, param, path):
+    if path is None:
+        path = OUTPUT_DIR
     return ensure_path_exists(path)
 
 
-def default_from_context(default_name):
-    """Let the context be created and set default values.
-
-    Code from stackoverflow:
-    https://stackoverflow.com/questions/56042757/can-i-use-a-context-value-as-a-click-option-default
-    """
-    class OptionDefaultFromContext(click.Option):
-        """Overwriting default value of an option object."""
-        def get_default(self, ctx, call=False):
-            self.default = ctx.obj[default_name]
-            return super(OptionDefaultFromContext, self).get_default(ctx)
-
-    return OptionDefaultFromContext
-
-
 def split_multiple_args(ctx, param, arg):
-    """Create a list from an option value where 'multiple=True'. """
-    argslist = []
-    for value in arg:
-        if isinstance(value, str) and "," in value:
-            argslist.extend(value.split(","))
-        else:
-            argslist.append(value)
-    return argslist
+    """Create a list from an option parameter."""
+    if arg is None:
+        return
+    if isinstance(arg, list):
+        return [item for value in arg for item in make_list(value)]
+    return make_list(arg)
 
 
 def configure_logging(ctx, param, verbose):
     """Configure logging level and destination based on user input."""
-    output_dir = Path(ctx.default_map.get("output_dir", "."))
-    output_dir.mkdir(exist_ok=True, parents=True)
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format=(
-            "%(asctime)s | %(levelname)s "
-            "| %(module)s-%(funcName)s-%(lineno)04d | %(message)s"),
-        datefmt='%Y-%m-%d %H:%M',
-        filename=output_dir / "log.txt",
-        filemode='a')
-
-    def log_level(verbosity: int):
-        """Calculate the log level given by the number of -v flags.
-
-        0 = logging.WARNING (30)
-        1 = logging.INFO (20)
-        2 = logging.DEBUG (10)
-        """
-        return (3 - verbosity) * 10 if verbosity in (0, 1, 2) else 10
-
-    if verbose:
-        # define a Handler which writes log messages to stderr
-        console = logging.StreamHandler()
-        console.setLevel(log_level(verbose))
-        # set a format which is simpler for console use
-        formatter = logging.Formatter(
-            '%(asctime)-10s | %(levelname)s | %(message)s')
-        # tell the handler to use this format
-        console.setFormatter(formatter)
-        # add the handler to the root logger
-        logging.getLogger('').addHandler(console)
-
-    return verbose
+    return set_logging_config(verbose, logfile=(OUTPUT_DIR/"log.txt"))
 
 
-@click.group(
-    context_settings={"help_option_names": ['-h', '--help']},
-    invoke_without_command=True,
-    chain=True,
-)
+@click.group(context_settings=CONTEXT_SETTINGS, invoke_without_command=True)
 @click.option(
-    '-c', '--config',
-    type=click.Path(exists=True, dir_okay=False),
-    default="./config.py",
-    callback=configure,
-    is_eager=True,
-    expose_value=False,
-    help='Read config defaults from the specified .py file',
-    show_default=True,
+    "-db",
+    "--database",
+    type=click.Path(resolve_path=True, dir_okay=False, path_type=pathlib.Path),
+    help="The path to the lexicon database.",
 )
 @click.option(
     "-d",
@@ -136,55 +112,10 @@ def configure_logging(ctx, param, verbose):
          "Args must be separated by a simple comma (,) and no white-space.",
 )
 @click.option(
-    "-r",
-    "--rules-file",
-    type=click.Path(resolve_path=True, exists=True, path_type=pathlib.Path),
-    help="Apply replacement rules from the given file path.",
-    default="rules.py"
-)
-@click.option(
-    "-e",
-    "--exemptions-file",
-    type=click.Path(resolve_path=True, exists=True, path_type=pathlib.Path),
-    help="Apply exemptions from the given file path to the rules.",
-    default="exemptions.py"
-)
-@click.option(
-    "--no-exemptions",
-    is_flag=True,
-    help="Disable any exemptions."
-)
-@click.option(
-    "-p",
-    "--valid-phonemes",
-    nargs=1,
-    type=click.Path(resolve_path=True, exists=True, path_type=pathlib.Path),
-    callback=lambda ctx, param, file: file.read_text().split("\n"),
-    help="Verify that all phonemes in the lexicon transcriptions are in the "
-         "given phoneme inventory file, with one phoneme per line.",
-    default="phoneme_inventory.txt"
-)
-@click.option(
     "-n",
-    "--newword-files",
+    "--newwords-path",
     type=click.Path(resolve_path=True, exists=True, path_type=pathlib.Path),
-    multiple=True,
-    callback=split_multiple_args,
-    help="Paths to csv files with new words to add to the lexicon.",
-)
-@click.option(
-    "-db",
-    "--database",
-    type=click.Path(resolve_path=True, dir_okay=False, path_type=pathlib.Path),
-    help="The path to the lexicon database.",
-)
-@click.option(
-    "-o",
-    "--output-dir",
-    type=click.Path(resolve_path=True, file_okay=False, path_type=pathlib.Path),
-    help="The directory path that files are written to.",
-    callback=ensure_path,
-    is_eager=True
+    help="Path to folder with csv files or to a single file with new words to add to the lexicon.",
 )
 @click.option(
     "-v",
@@ -195,8 +126,7 @@ def configure_logging(ctx, param, verbose):
          "-v is informative, -vv is detailed (for debugging)."
 )
 @click.pass_context
-def main(ctx, database, dialects, rules_file, exemptions_file,
-         no_exemptions, valid_phonemes, newword_files, output_dir, verbose):
+def main(ctx, database, dialects, newwords_path, verbose):
     """Apply the dialect update rules on the base lexicon.
 
     Default file paths to the lexicon database, the replacement rules,
@@ -210,85 +140,119 @@ def main(ctx, database, dialects, rules_file, exemptions_file,
     The modifications to the lexicon are written to
     new, temp-table-specific files.
     """
-    ctx.ensure_object(dict)
-    valid_phonemes.remove("")
-    ctx.obj.update(ctx.params)
+    logging.info("START LOG")
+    global CFG
+    CFG.update(ctx.params)
     if verbose:
-        click.secho(
-            f"Script configuration values: \n"
-            f"{pprint.pformat(ctx.params)}", fg="yellow")
+        click.secho("Configuration values:", fg="yellow")
+        click.echo(pprint.pformat(CFG))
+        click.echo(f"Invoked command: {ctx.invoked_subcommand}")
 
-    # Log starting time
-    logging.info("START")
+    click.echo("Initialise database")
+    if ctx.invoked_subcommand == "original-lexicon":
+        ctx.obj = db = DatabaseUpdater(db=database, temp_tables=[])
+    elif ctx.invoked_subcommand in ["update", "newwords"]:
+        newwords = load_newwords(newwords_path)
+        click.echo("Insert new words to the database")
+        ctx.obj = db = DatabaseUpdater(db=database, temp_tables=dialects, newwords=newwords)
 
-    if ctx.invoked_subcommand is None:  # else the subcommand is called by default
-        if no_exemptions:
-            exemptions_file = None
-        rulesets, dialects = preprocess_rules(rules_file, exemptions_file)
-        newwords = load_newwords(newword_files, newword_column_names)
-
-        start = datetime.now()
-        click.secho(f'{start} Run full update. ', fg="cyan")
-        with closing(
-                DatabaseUpdater(
-                    database,
-                    temp_tables=dialects,
-                    newwords=newwords)
-        ) as db_obj:
-            updated_lex = db_obj.update(rulesets)
-        for dialect, data in updated_lex.items():
-            invalid_transcriptions = validate_phonemes(
-                data, valid_phonemes, return_transcriptions="invalid")
-            write_lexicon(output_dir / f"{LEX_PREFIX}_{dialect}.txt", data)
-            write_lexicon(
-                output_dir / f"invalid_transcriptions_{dialect}.txt",
-                invalid_transcriptions)
-        click.secho(f"Database closed. Files written to {output_dir}",
-                    fg="green")
+    @ctx.call_on_close
+    def close_db():
+        db.close()
+        click.echo("DATABASE CLOSED")
 
 
-@main.command("base")
-@click.pass_context
-def write_base(ctx):
-    """Export the base lexicon prior to updates."""
+@main.command("original-lexicon")
+@click.option(
+    "-o", "--outfile",
+    type=click.Path(resolve_path=True, path_type=pathlib.Path),
+    default="original_nst_lexicon_bm.csv",
+    callback=resolve_dir,
+)
+@click.pass_obj
+def write_original(db_obj, outfile):
+    """Write the original lexicon database entries to file."""
     click.secho("Write the base lexicon to file.",
                 fg="cyan")
-    with closing(
-            DatabaseUpdater(
-                db=ctx.obj.get("database"),
-                temp_tables=[]
-            )
-    ) as db_obj:
-        base = db_obj.get_base()
-    write_lexicon((ctx.obj.get("output_dir") / "base.txt"), base)
+    data = db_obj.get_original_data()
+    write_lexicon(outfile, data)
 
 
-@main.command("match")
-@click.pass_context
-def match_words(ctx):
+@main.command("match", deprecated=True)
+@click.pass_obj
+def match_words(db_obj):
     """Fetch database entries that match the replacement rules."""
-    # TODO: Deprecate command
-    click.secho("Match database entries to dialect update rules",
-                fg="cyan")
+    click.secho("Fetch rows in the database that match the given rules",fg="cyan")
     # Preprocess input data
-    rules_file = ctx.obj.get("rules_file")
-    exemptions_file = ctx.obj.get("exemptions_file")
-    dialects = ctx.obj.get("dialects")
+    rules_file = CFG.get("rules_file")
+    exemptions_file = CFG.get("exemptions_file")
+    dialects = CFG.get("dialects")
     rulesets, dialects = preprocess_rules(rules_file, exemptions_file)
-    output_dir = ctx.obj.get("output_dir")
 
     with closing(
             DatabaseUpdater(
-                db=ctx.obj.get("database"),
+                db=CFG.get("database"),
                 temp_tables=dialects,
             )
     ) as db_obj:
         matches = db_obj.select_pattern_matches(rulesets)
     write_lex_per_dialect(
-        matches, output_dir, MATCH_PREFIX, flatten_match_results)
+        matches, OUTPUT_DIR, MATCH_PREFIX, flatten_match_results)
 
 
-@main.command("update")
+@main.command("update", context_settings={"help_option_names":['-h', '--help']})
+@click.option(
+    "-r",
+    "--rules-file",
+    type=click.Path(resolve_path=True, exists=True, path_type=pathlib.Path),
+    help="Apply replacement rules from the given file path.",
+    default=CFG.get("rules_file")
+)
+@click.option(
+    "-e",
+    "--exemptions-file",
+    type=click.Path(resolve_path=True, exists=True, path_type=pathlib.Path),
+    help="Apply exemptions from the given file path to the rules.",
+    default=CFG.get("exemptions_file")
+)
+@click.option(
+    "-o",
+    "--output-dir",
+    type=click.Path(resolve_path=True, file_okay=False, path_type=pathlib.Path),
+    help="The directory path that files are written to.",
+    callback=ensure_dir,
+)
+@click.option(
+    "-t", "--track-rules",
+    type=str,
+    multiple=True,
+    callback=split_multiple_args,
+    help="Extract transcriptions before and after updates by given rule ids, comma-separated"
+)
+@click.pass_obj
+def update_dialects(db_obj, rules_file, exemptions_file, output_dir, track_rules):
+    """Update dialect transcriptions with rules."""
+    # Load data
+    rulesets = preprocess_rulefiles(rules_file, exemptions_file)
+
+    # Iterate through rules and run update queries
+    if track_rules:
+        click.secho(f"Track transcription changes for rules: {track_rules}", fg="cyan")
+    else:
+        click.secho("Update dialect transcriptions", fg="cyan")
+
+    tracked_updates = db_obj.update(rulesets, track_rules)
+    for df in tracked_updates:
+        write_tracked_update(df, output_dir)
+
+    # Write output to disk
+    for dialect in db_obj.dialects:
+        data = db_obj.get_dialect_data(dialect)
+        filename = (output_dir / f"{dialect}_pronunciation_lexicon.csv")
+        write_lexicon(filename, data)
+
+
+@main.command("update-old", deprecated=True)
 @click.option(
     "-p",
     "--check-phonemes",
@@ -297,48 +261,45 @@ def match_words(ctx):
          "given phoneme inventory file, with one phoneme per line."
 )
 @click.pass_context
-def update_dialects(
-        ctx, check_phonemes):
+def update_dialects_old(ctx, check_phonemes):
     """Update dialect transcriptions with rules."""
     click.secho("Update dialect transcriptions", fg="cyan")
     start = datetime.now()
-    rules_file = ctx.obj.get("rules_file")
-    exemptions_file = ctx.obj.get("exemptions_file")
+    rules_file = CFG.get("rules_file")
+    exemptions_file = CFG.get("exemptions_file")
     rulesets, dialects = preprocess_rules(
-        rules_file, exemptions_file, config_dialects=ctx.obj.get("dialects"))
-    output_dir = ctx.obj.get("output_dir")
+        rules_file, exemptions_file, config_dialects=CFG.get("dialects"))
 
     with closing(
             DatabaseUpdater(
-                db=ctx.obj.get("database"),
+                db=CFG.get("database"),
                 temp_tables=dialects
             )
     ) as db_obj:
-        updated_lex = db_obj.update(rulesets)
-    write_lex_per_dialect(updated_lex, output_dir, LEX_PREFIX, None)
+        updated_lex = db_obj.update_old(rulesets)
+    write_lex_per_dialect(updated_lex, OUTPUT_DIR, LEX_PREFIX, None)
     if check_phonemes:
         write_lex_per_dialect(
-            updated_lex, output_dir, "invalid_transcriptions",
+            updated_lex, OUTPUT_DIR, "invalid_transcriptions",
             validate_phonemes,
-            valid_phonemes=ctx.obj["valid_phonemes"],
+            valid_phonemes=LICIT_PHONES,
             return_transcriptions="invalid")
     end = datetime.now()
     click.secho(f"Done processing. "
-                f"Output is in {output_dir}/{LEX_PREFIX}_*.txt files.",
+                f"Output is in {OUTPUT_DIR}/{LEX_PREFIX}_*.txt files.",
                 fg="cyan")
-    click.secho(f"Processing time for {ctx.command}: {str(end-start)}",
+    click.secho(f"Processing time: {str(end-start)}",
                 fg="yellow")
 
 
-@main.command("track-changes")
+@main.command("track-changes", deprecated=True)
 @click.argument(
     "rule_ids",
     nargs=-1,
     required=True
 )
 @click.pass_context
-def track_rule_changes(
-        ctx, rule_ids):
+def track_rule_changes(ctx, rule_ids):
     """Extract transcriptions before and after updates by given rule_ids, and write to csv files.
 
     RULE_IDS format:    <ruleset name>_<.rules index number> or <ruleset name>
@@ -347,14 +308,13 @@ def track_rule_changes(
     click.secho(f"Compare transcriptions before and after these transformation rules: \n"
                 f"{rule_ids}", fg="cyan")
     start = datetime.now()
-    rules_file = ctx.obj.get("rules_file")
-    exemptions_file = ctx.obj.get("exemptions_file")
-    output_dir = ctx.obj.get("output_dir")
+    rules_file = CFG.get("rules_file")
+    exemptions_file = CFG.get("exemptions_file")
     rulesets, dialects = preprocess_rules(
-        rules_file, exemptions_file, rule_ids, config_dialects=ctx.obj.get("dialects"))
+        rules_file, exemptions_file, rule_ids, config_dialects=CFG.get("dialects"))
 
     with closing(
-            DatabaseUpdater(db=ctx.obj.get("database"), temp_tables=dialects)
+            DatabaseUpdater(db=CFG.get("database"), temp_tables=dialects)
     ) as db_obj:
         df_gen = db_obj.select_updates(rulesets, rule_ids)
 
@@ -370,7 +330,7 @@ def track_rule_changes(
                 'p.nofabet': 'transcription',
                 'arrow': 'arrow',
                 'new_transcription': 'new_transcription'}
-            filename = output_dir / f"{CHANGE_PREFIX}_{dialect}_{rule_id}.csv"
+            filename = OUTPUT_DIR / f"transcription_changelog_{rule_id}.csv"
             try:
                 df.to_csv(
                     filename,
@@ -379,24 +339,35 @@ def track_rule_changes(
                 )
             except Exception as e:
                 logging.error(e)
-    end = datetime.now()
-    click.secho(f"Done processing. "
-                f"Output is in {output_dir}/{CHANGE_PREFIX}_*.csv files.",
-                fg="cyan")
-    click.secho(f"Processing time command: {str(end-start)}, Total time:"
-                f" {str(datetime.now()-start)}",
-                fg="yellow")
+    click.echo("Done processing.")
+    click.echo(f"Total time: {str(datetime.now()-start)}")
+
+@main.command("newwords")
+@click.option(
+    "-o",
+    "--outfile",
+    type=click.Path(),
+    default="lexicon_with_new_words.csv",
+    help="File name where the updated lexicon will be saved.",
+    callback=resolve_dir,
+)
+@click.pass_obj
+def get_newwords(db_obj, outfile):
+    """Write the new word entries from the lexicon db to disk."""
+    click.secho("Add new words to database", fg="cyan")
+    data = db_obj.get_newwords()
+    write_lexicon(outfile, data)
 
 
-@main.command("insert")
+@main.command("insert", deprecated=True)
 @click.pass_context
-def insert_newwords(ctx):
+def insert_newwords_old(ctx):
     """Insert new word entries to the lexicon."""
     click.secho("Add new words to database", fg="cyan")
-    newwords = load_newwords(ctx.obj.get("newword_files"), newword_column_names)
-    database = ctx.obj.get("database")
-    dialects = ctx.obj.get("dialects")
-    output_dir = ctx.obj.get("output_dir")
+    newwords = load_newwords(CFG.get("newword_files"), newword_column_names)
+    database = CFG.get("database")
+    dialects = CFG.get("dialects")
+    output_dir = CFG.get("output_dir")
     with closing(
             DatabaseUpdater(
                 db=database,
@@ -407,13 +378,12 @@ def insert_newwords(ctx):
     write_lexicon((output_dir / f"{NEW_PREFIX}.txt"), lex_with_newwords)
 
 
-@main.command("convert")
+@main.command("convert-old", deprecated=True)
 @click.option(
     "-l",
     "--lexicon-dir",
     type=click.Path(resolve_path=True, file_okay=False, path_type=pathlib.Path),
-    cls=default_from_context('output_dir'),
-    callback=ensure_path,
+    callback=ensure_dir,
     help="Directory where updated lexicon .txt files are located, and that "
          "converted .dict files will be written to."
 )
@@ -482,7 +452,7 @@ def generate_new_lexica(
     db_path: str or Path
         Path to lexicon database
     """
-    # WARNING: Deprecated function.
+    logging.warning("WARNING: Deprecated function.")
     data_dir = ensure_path_exists(data_dir)
     try:
         # Lagre regelsettene til filer
