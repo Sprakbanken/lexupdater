@@ -73,9 +73,10 @@ OUTPUT_DIR = ensure_path_exists(CFG.get("output_dir"))
 def resolve_dir(ctx, param, path):
     if path is None:
         return OUTPUT_DIR
-    if path.is_dir() or not path.parent.exists():
+    path = Path(path)
+    if path.is_dir():
         return ensure_path_exists(path)
-    if path.is_file() and path.parent == Path.cwd():
+    if path.is_file():
         return OUTPUT_DIR / path
     return OUTPUT_DIR
 
@@ -94,7 +95,7 @@ def configure_logging(ctx, param, verbose):
     return set_logging_config(verbose, logfile=(OUTPUT_DIR/"log.txt"))
 
 
-@click.group(context_settings=CONTEXT_SETTINGS, invoke_without_command=True, chain=True)
+@click.group(context_settings=CONTEXT_SETTINGS, invoke_without_command=True)
 @click.option(
     "-db",
     "--database",
@@ -145,10 +146,14 @@ def main(ctx, database, dialects, newwords_path, verbose):
     if verbose:
         click.secho("Configuration values:", fg="yellow")
         click.echo(pprint.pformat(CFG))
+        click.echo(f"Invoked command: {ctx.invoked_subcommand}")
 
-    newwords = load_newwords(newwords_path)
-    click.echo("Initialise database")
-    ctx.obj = db = DatabaseUpdater(db=database, temp_tables=dialects, newwords=newwords)
+    if ctx.invoked_subcommand in ["original-lexicon"]:
+        ctx.obj = db = DatabaseUpdater(db=database, temp_tables=[])
+    else:
+        newwords = load_newwords(newwords_path)
+        click.echo("Initialise database")
+        ctx.obj = db = DatabaseUpdater(db=database, temp_tables=dialects, newwords=newwords)
 
     @ctx.call_on_close
     def close_db():
@@ -194,7 +199,7 @@ def match_words(db_obj):
         matches, OUTPUT_DIR, MATCH_PREFIX, flatten_match_results)
 
 
-@main.command("update")
+@main.command("update", context_settings={"help_option_names":['-h', '--help']})
 @click.option(
     "-r",
     "--rules-file",
