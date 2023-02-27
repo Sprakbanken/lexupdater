@@ -291,7 +291,7 @@ LEX_PREFIX = "updated_lexicon"
 MATCH_PREFIX = "words_matching_rules"
 MFA_PREFIX = "NB_nob"
 NEW_PREFIX = "base_new_words"
-CHANGE_PREFIX = "rule_changes"
+CHANGE_PREFIX = "tracked_update"
 
 
 # Define SQL query templates

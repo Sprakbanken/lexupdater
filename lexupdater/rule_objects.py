@@ -68,10 +68,7 @@ class Rule:
     ):
         self.pattern = pattern
         self.replacement = replacement
-        self._constraints = [] if constraints is None else validate_objects(
-            constraints,
-            constraint_schema
-        )
+        self.constraints = constraints
         self.id_ = self.hash_
         if not self.is_valid:
             logging.error("Instatiated an invalid rule: %s", self)
@@ -92,7 +89,7 @@ class Rule:
         rule_dict = {
             'pattern': self.pattern,
             'replacement': self.replacement,
-            'constraints': self.constraints
+            'constraints': [c.to_dict() for c in self.constraints]
         }
         return rule_schema.validate(rule_dict)
 
@@ -149,9 +146,12 @@ class Rule:
 
     @constraints.setter
     def constraints(self, constraint_list):
-        constraints = [Constraint(const) for const in constraint_list]
-        assert all(const.is_valid for const in constraints)
-        self._constraints = constraints
+        if constraint_list is None:
+            self._constraints = []
+        else:
+            constraints = [Constraint(const) for const in constraint_list]
+            assert all(const.is_valid for const in constraints)
+            self._constraints = constraints
 
 
 class RuleObj(Rule):
