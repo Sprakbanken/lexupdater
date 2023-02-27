@@ -357,15 +357,20 @@ class DatabaseUpdater:
         return query, values
 
     def update(self, rulesets: Iterable, rule_ids: List[str] = None):
-        if rule_ids is None:
+        if (rule_ids is None) or (not rule_ids):
+            logging.debug("No rule IDs to track.")
             rule_ids = []
+        tracked = []
         for rule in rulesets:
             if rule.dialect not in self.dialects:
+                logging.debug("skipping %s", rule.id_)
                 continue
             if (rule.id_ in rule_ids) or (rule.ruleset in rule_ids):
-                yield self.track_updates(rule)
+                tracked.append(self.track_updates(rule))
             else:
+                logging.debug("update with %s", rule.id_)
                 self.update_rows(rule)
+        return tracked
 
     def track_updates(self, rule):
         match_df = self._select_rows_from_rule(rule)
