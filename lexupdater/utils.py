@@ -48,6 +48,8 @@ def write_lexicon(output_file: Union[str, Path], data: Iterable, delimiter: str 
     """
     logging.info("Write lexicon data to %s", output_file)
     if isinstance(data, pd.DataFrame):
+        data = convert_transcriptions(data, "ipa")
+        data = convert_transcriptions(data, "sampa")
         data.to_csv(output_file, header=True, index=False)
     else:
         with open(output_file, 'w', encoding="utf-8", newline='') as csvfile:
