@@ -145,3 +145,6 @@ lexica/
 
 # pycharm
 .idea/
+
+# vscode
+.vscode/*
