@@ -24,11 +24,11 @@ exemption_veg = {
 exemption_retro_sj = {
     "ruleset": "errorfix_retro_sj",
     "words": [
-		"Antikvitetshuset_Tordenskjold", "Bjørnskinn",
+        "Antikvitetshuset_Tordenskjold", "Bjørnskinn",
         "Erik_Werenskiolds_vei", "Tordenskiolds_gate",
         "Ullernchauseen", "Ullernchausséen", "Wærenskjold",
         "brunsjer", "punching", "tordensky", "tordenskyer"
-	],
+    ],
 }
 
 exemption_r_sj = {
