@@ -190,12 +190,10 @@ class DatabaseUpdater:
         return self._cursor.execute(query, values).fetchall()
 
     def _run_update(self, query, values):
-        logging.debug("Execute SQL Query: %s %s", query, values)
-        try:
-            self._cursor.execute(query, values)
-            self._connection.commit()
-        except sqlite3.OperationalError:
-            logging.error("Skipping update. Couldn't run query: %s", query)
+        """Execute and commit results from an update query."""
+        self._cursor.execute(query, values)
+        self._connection.commit()
+        logging.debug("Executed SQL Query: %s %s", query, values)
 
     def select_pattern_matches(self, rulesets: List):
         """Select all rows that match the patterns in `rulesets`.
@@ -392,7 +390,7 @@ class DatabaseUpdater:
 
     def update_rows(self, rule):
         """Apply the update rule."""
-        logging.debug("Update with rule ID: %s", rule.id_)
+        logging.debug("Process rule %s", rule.id_)
         condition_str, condition_values = parse_conditions(rule.constraints, rule.exemptions, prefix="WHERE")
         query = (
             f"UPDATE {rule.dialect} "
@@ -402,7 +400,11 @@ class DatabaseUpdater:
             f";")
 
         values = (rule.pattern, rule.replacement, *condition_values)
-        self._run_update(query, values)
+        try:
+            self._run_update(query, values)
+        except sqlite3.OperationalError:
+            logging.error("Couldn't run update query for rule %s with values %s", rule.ids_, values)
+
 
     def _select_rows_from_ids(self, rule, row_df):
         """Retrieve new transcriptions from the rows that were updated."""
