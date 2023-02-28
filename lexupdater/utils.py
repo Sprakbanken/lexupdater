@@ -18,7 +18,11 @@ from schema import Schema, SchemaError
 
 from lexupdater.conversion import convert_nofabet
 
-from .constants import COLMAP, dialect_schema, MFA_PREFIX, LEX_PREFIX, exemption_schema, ruleset_schema, newword_column_names, CHANGE_PREFIX
+from .constants import (
+    COLMAP, MFA_PREFIX, LEX_PREFIX,
+    dialect_schema, exemption_schema, ruleset_schema, newword_column_names,
+    phone_check
+)
 
 
 def ensure_path_exists(path):
@@ -59,20 +63,35 @@ def write_lexicon(output_file: Union[str, Path], data: Iterable, delimiter: str 
 
 
 def write_tracked_update(df, output_dir):
+    """Format and write output for tracked changes in the lexicon."""
     rule_id = df["rule_id"].unique()[0]
     df["arrow"] = "===>"
-    columns = ['dialect', 'pron_id', 'rule_id', 'wordform', 'transcription', 'arrow', 'new_transcription']
+    columns = [
+        'dialect', 'pron_id', 'rule_id', 'wordform',
+        'transcription','arrow', 'new_transcription'
+    ]
     filename = output_dir / f"transcription_changelog_{rule_id}.csv"
     try:
         write_lexicon(filename, df[columns])
-    except Exception as e:
-        logging.error(e)
+    except Exception as error:
+        logging.error(error)
 
 
-def convert_transcriptions(data: pd.DataFrame, phoneme_standard: str = "ipa") -> pd.DataFrame:
+def convert_transcriptions(data: pd.DataFrame, phoneme_standard: str) -> pd.DataFrame:
     """Convert nofabet transcriptions to IPA ('ipa') or X-SAMPA ('sampa')."""
-    data[phoneme_standard] = data["nofabet"].apply(convert_nofabet, to=phoneme_standard)
+    logging.debug("Convert NoFabet transcriptions to %s", phoneme_standard)
+    data[phoneme_standard] = data["nofabet"].apply(
+        validate_and_convert_nofabet, to=phoneme_standard)
     return data
+
+
+def validate_and_convert_nofabet(transcription: str, to: str):
+    """Verify NoFabet transcription before converting it."""
+    if phone_check(transcription):
+        return convert_nofabet(transcription, to=to)
+    else:
+        logging.debug("Return empty string: Invalid NoFabet transcription.")
+        return ""
 
 
 def write_lex_per_dialect(
@@ -142,7 +161,7 @@ def load_module_from_path(file_path):
     """Use importlib to load a module from a .py file path."""
     module_path = resolve_rel_path(file_path)
     assert module_path.suffix == ".py", (
-            f"Inappropriate file type: {module_path.suffix} ({file_path})")
+        f"Inappropriate file type: {module_path.suffix} ({file_path})")
     module_name = module_path.stem
 
     spec = importlib.util.spec_from_file_location(module_name, module_path)
@@ -168,8 +187,6 @@ def load_module_dict(module_path) -> Dict:
     }
 
 
-
-
 def load_data(file_path: Union[str, Path]) -> List:
     """Load data from a python file path."""
     return load_module_vars(file_path)
@@ -181,6 +198,7 @@ def load_config(filename):
         return {k.lower(): v for k, v in load_module_dict(filename).items()}
     except FileNotFoundError:
         return {}
+
 
 def map_rule_exemptions(exemptions: List[str]) -> dict:
     """Reduce the list of exemption dictionaries to a single dictionary.
@@ -194,8 +212,8 @@ def map_rule_exemptions(exemptions: List[str]) -> dict:
         list of dicts of the form ``{'ruleset': str, 'words': list}``
     """
     return {exemption.get("ruleset"): exemption.get("words")
-        for exemption in exemptions
-    }
+            for exemption in exemptions
+            }
 
 
 def load_exemptions(file_path: Union[str, Path]) -> dict:
@@ -213,14 +231,15 @@ def load_rules(file_path: Union[str, Path]) -> Generator:
         try:
             ruleset_schema.validate(rule_dict)
         except (AssertionError, SchemaError) as error:
-            logging.error("SKIPPING RULESET %s BECAUSE OF %s", name, type(error))
+            logging.error("SKIPPING RULESET %s BECAUSE OF %s",
+                          name, type(error))
             logging.error("Error message: %s", error)
             continue
         yield rule_dict
 
 
 def get_ruleset_order(rules_file):
-    return re.findall(r"(\w+) ?= ?{" , rules_file.read_text())
+    return re.findall(r"(\w+) ?= ?{", rules_file.read_text())
 
 
 def load_newwords(csv_path: Union[str, Path], column_names: str = None) -> pd.DataFrame:
@@ -262,7 +281,8 @@ def load_newwords(csv_path: Union[str, Path], column_names: str = None) -> pd.Da
             try:
                 df = _csv_to_df(path)
             except FileNotFoundError as error:
-                logging.error("Skipping file %s: %s:%s", path, type(error), error)
+                logging.error("Skipping file %s: %s:%s",
+                              path, type(error), error)
                 continue
             _df_list.append(df)
         return pd.concat(_df_list, axis=0, ignore_index=True)
@@ -548,7 +568,7 @@ def log_level(verbosity: int):
     1 = logging.INFO (20)
     2 = logging.DEBUG (10)
     """
-    return {0:30, 1:20, 2:10}.get(verbosity, 10)
+    return {0: 30, 1: 20, 2: 10}.get(verbosity, 10)
 
 
 def set_logging_config(verbose=False, logfile="log.txt"):
@@ -575,4 +595,3 @@ def set_logging_config(verbose=False, logfile="log.txt"):
         logging.getLogger('').addHandler(console)
 
     return verbose
-

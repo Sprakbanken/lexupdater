@@ -4,6 +4,7 @@
 * SQL query template strings to create tables, insert values, update entries
 and select entries.
 """
+import logging
 import re
 
 import pandera as pa
@@ -246,17 +247,20 @@ ruleset_schema = Schema(
 exemption_schema = Schema({"ruleset": str, "words": list})
 
 
-phoneme_schema = Schema(LICIT_PHONES)
+def phone_is_valid(p):
+    if not (validation := p in LICIT_PHONES):
+        logging.error("Phoneme '%s' is invalid.", p)
+    return validation
 
 
-def _phone_check(s: str):
+def phone_check(s: str):
     return (
-        phoneme_schema.is_valid(s.split(" "))
+        all(phone_is_valid(ph) for ph in s.split(" "))
         if isinstance(s, str) else True
     )
 
 check_phones = Check(
-    _phone_check,
+    phone_check,
     element_wise=True
 )
 
@@ -356,7 +360,6 @@ COL_INFO = "w.update_info"
 
 
 LEXICON_COLUMNS = ", ".join([COL_WORDFORM, COL_POS, COL_FEATS, COL_UID, COL_INFO, COL_PRON])
-
 
 
 COLMAP = {
