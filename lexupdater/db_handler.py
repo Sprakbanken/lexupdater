@@ -403,7 +403,7 @@ class DatabaseUpdater:
         try:
             self._run_update(query, values)
         except sqlite3.OperationalError:
-            logging.error("Couldn't run update query for rule %s with values %s", rule.ids_, values)
+            logging.error("Couldn't run update query for rule %s with values %s", rule.id_, values)
 
 
     def _select_rows_from_ids(self, rule, row_df):
