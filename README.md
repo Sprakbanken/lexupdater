@@ -1,131 +1,134 @@
-# Lexupdater 
+# Lexupdater
 
-Lexupdater er et utviklingsverktøy for å oppdatere og utvide 
-[NST-leksikonet](https://www.nb.no/sprakbanken/ressurskatalog/oai-nb-no-sbr-23/) 
-med transkripsjoner for 4 dialekter og 30 000 nyord. 
-Dialektutvidelsen skal lages ved hjelp av strengtransformasjoner 
-(søk-erstatt-regler), mens nyorda legges til som lister med ord og
-transkripsjoner.
+Lexupdater er et utviklingsverktøy for å oppdatere og utvide
+[NST-leksikonet](https://www.nb.no/sprakbanken/ressurskatalog/oai-nb-no-sbr-23/)
+med dialektvariasjon i transkripsjonene og nyord.
+Dialektvariasjonen kommer fra strengtransformasjoner
+(søk-erstatt-regler) som er utviklet av lingvister i Språkbanken. Nyordene kommer fra Norsk Aviskorpus og Målfrid, og er filtrert på frekvente forekomster over flere år, etter år 2000.
 
-## Kom i gang
-### 1. Sett opp kode-miljøet
-Sørg for at du har versjon `3.7` eller høyere av `python`.
-Sett opp et virtuelt kodemiljø og installer python-pakkene som er listet i 
-`requirements.txt`. 
+## 1. Installer lexupdater
 
-### 2. Last ned data
-Original-leksikonet er blitt lagret som en `sqlite`-database, 
-og må lastes ned i forkant. 
-Kontakt [Per Erik Solberg](https://github.com/peresolb) for å få tilgang 
-til denne fila. 
+Sørg for at du har versjon `3.8` eller høyere av `python`, og sett gjerne opp et virtuelt kodemiljø med pyenv, conda eller lignende.
 
-Lagre databasefilen lokalt i inndata-mappen `data/input/`.
+Installer lexupdater:
 
-### 3. Konfigurér oppdateringen av leksikonet
-
-Hovedskriptet til `lexupdater` konfigureres i `config.py`, 
-hvor man bl.a. spesifiserer følgende variabler:
-
-Variabelnavn | Forklaring | Default-verdi
----|---|---
-`DATABASE`  | Filsti til backend-databasen i filstrukturen | `backend-db03.db`
-`OUTPUT_DIR` | Filmappe hvor output blir lagret | `lexica`
-`RULES_FILE` | Python-fil med søk-erstatt-regelsett-lister |  `rules.py`
-`EXEMPTIONS_FILE` | Python-fil med lister over ord som er unntatt regel-oppdateringene | `exemptions.py`
-`NEWWORD_FILES` | CSV-filer med nyord som skal legges til  |   `nyord.csv, nyord2.csv`
-`DIALECTS` | Navn på gyldige dialektområder | `e_spoken, e_written, sw_spoken, sw_written, w_spoken, w_written, t_spoken, t_written, n_spoken, n_written`
-
-
-## Oppdatér leksikonet
-Hovedprogramsnutten er i fila `lexupdater/lexupdater.py`, som kan kjøres med 
-`python -m lexupdater` og med kommandolinje-argumenter eller sub-kommandoer som 
-beskrevet under. 
-
-Kjører man `lexupdater` uten argumenter eller sub-kommandoer, 
-genereres leksikonfiler med oppdaterte transkripsjoner for alle 
-dialektområdene, og med nyordsoppdateringer, med default-ressursene som 
-defineres i config.py.
-
-Samme informasjon er tilgjengelig med `python -m lexupdater -h`.
-For å se argumentene som sub-kommandoene tar, kjør `python -m lexupdater 
-KOMMANDO -h`.
-
-Flagg | Forklaring  | Gyldige verdier/eksempler
----   | --- | ---
-`-c, --config` | Filsti til en python-konfigurasjonsfil. | `config.py`
-`-d, --dialects`  | Generer leksikonfiler bare for spesifikke dialektområder.  | `e_spoken, e_written, sw_spoken, sw_written, w_spoken, w_written, t_spoken, t_written, n_spoken, n_written`
-`-r, --rules-file` | Python-fil med søk-erstatt-regelsett-lister. | `rules.py`  
-`-e, --exemptions-file` | Python-fil med lister over ord som er unntatt regel-oppdateringene. | `exemptions.py`
-`--no-exemptions`  | Ignorer unntakene til reglene. |
-`-n, --newword-files` | CSV-filer med nyord som skal legges til.  |   `nyord.csv, nyord2.csv`
-`-db, --database` | Filsti til backend-databasen i filstrukturen. | `backend-db03.db` 
-`-o, --output-dir` | Filmappe hvor output blir lagret. | `lexica`
-`-v, --verbose`  | Skriv ut logg-beskjeder til terminalen. `-vv` gir mer detaljerte beskjer, for debugging. |
-`-h, --help` | Print informasjon om alle argumentene og avslutt. |
-||
-__Sub-kommando__ | __Forklaring__ | _Kjør `python -m lexupdater KOMMANDO -h` for å se mulige argumenter/valg_
-`base` | Eksporter base-leksikonet før oppdateringer. |  
-`compare` | Sammenlign originale og oppdaterte transkripsjoner som matcher reglene.  |
-`convert` | Konverter formatet på leksikonfiler for å brukes med MFA.  |  
-`insert` | Eksporter base-leksikonet med nyordsoppdateringer. |
-`match`  | Hent ut leksikonrader som matcher reglene i rules.py | 
-`update` | Oppdater dialekttranskripsjoner med regler og unntak. | 
-
-
-## Oppdater regel- og unntakslistene automatisk
-Regler og unntak utvikles i repoet `rulebook`, og lagres til filene `rules.py` og `exemptions.py`. 
-
-Disse kan lastes ned automatisk til dette repoet via 
-shell-skriptet [`download_rules.sh`](download_rules.sh), hvis du har en 
-[personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token)
-for GitHub-repoer,
-og du har tilgang til det private repoet [`rulebook`](https://github.com/Ingerid/rulebook/tree/main).
-
-Bytt ut `token-tekst-her` med reell token i kommando-valgene nedenfor. 
-
-* Eksporter miljøvariabelen `GITHUB_TOKEN` før du kjører skriptet
-    ```
-    export GITHUB_TOKEN=token-tekst-her         # Eksporter variabelen med token
-    ./download_rules.sh  
-    ```
-
-* Evt. gi din token som et argument til skriptet.
-    ```
-    ./download_rules.sh token-tekst-her         # Gi token som argument
-    ```
-
-# For utviklere
-
-I filen  `Makefile` er det flere automatiserte steg som kan kjøres med 
-`make <prossessnavn>`-kommandoer:   
-
-## Sjekk kodekvalitet
-Denne kommandoen er "alt-i-ett", 
-og kjører prosessene `test` (automatiske enhets- og integrasjonstester), 
-`lint` (kodekvalitet i henhold til pep8-konvensjonene), og 
-`mypy` (overenstemmelse av variabler og deres angitte datatyper)
 ```shell
-make check
+pip install -e .
 ```
 
-## Bygg `lexupdater` som en python-pakke
-Ferdig-bygde Python-pakker er installérbare, og tillater å dele verktøyet 
-som en vanlig fil, samt å installere pakken med `pip`. 
+## 2. Last ned data
 
-### Windows 
+### Leksikondatabase
+
+NST uttaleleksikon er lastet inn i en SQLite databasefil (`nst_lexicon_bm.db`) med en ordtabell (`words`) og en uttaletabell (`base`).
+
+- Last ned filen ved å klikke på lenken:
+    <https://www.nb.no/sbfil/uttaleleksikon/nst_lexicon_bm.db>
+
+- Evt. kan du også laste ned filen fra kommandolinjen:
+
+    ```shell
+    wget https://www.nb.no/sbfil/uttaleleksikon/nst_lexicon_bm.db
+    ```
+
+### Regelfiler
+
+Du kan hente de mest oppdaterte regelfilene fra [`rulebook`](https://github.com/Sprakbanken/rulebook) via git:
+
+1. Legg til rulebook som en remote URL i dette repoet (obs! Dette gjøres bare én gang):
+
+    ```shell
+    git remote add rules git@github.com:Sprakbanken/rulebook.git
+    ```
+
+2. Hent filene:
+
+    ```shell
+    git fetch rules
+    git checkout rules/develop rules.py exemptions.py
+    ```
+
+## 3. Konfigurér oppdateringen av leksikonet
+
+``` shell
+lexupdater -h
+
+Usage: lexupdater [OPTIONS] COMMAND [ARGS]...
+
+  Apply the dialect update rules on the base lexicon.
+
+  Default file paths to the lexicon database, the replacement rules, and their
+  exemptions, as well as the output directory, are specified in the config.py
+  file.
+
+  If provided, CLI arguments override the default values from the config.
+
+  Note that all modifications in the backend db target temp tables, so the db
+  isn't modified. The modifications to the lexicon are written to new, temp-
+  table-specific files.
+
+Options:
+  -db, --database FILE      The path to the lexicon database.
+  -d, --dialects TEXT       Apply replacement rules on one or more specified
+                            dialects. Args must be separated by a simple comma
+                            (,) and no white-space.
+  -n, --newwords-path PATH  Path to folder with csv files or to a single file
+                            with new words to add to the lexicon.
+  -v, --verbose             Print logging messages to the console in addition
+                            to the log file. -v is informative, -vv is
+                            detailed (for debugging).
+  -h, --help                Show this message and exit.
+
+Commands:
+  convert-old       (Deprecated) Convert lexicon formats to comply with MFA.
+  insert            (Deprecated) Insert new word entries to the lexicon.
+  match             (Deprecated) Fetch database entries that match the
+                    replacement rules.
+  newwords          Write the new word entries from the lexicon db to disk.
+  original-lexicon  Write the original lexicon database entries to file.
+  track-changes     (Deprecated) Extract transcriptions before and after
+                    updates by...
+  update            Update dialect transcriptions with rules.
+  update-old        (Deprecated) Update dialect transcriptions with rules.
+````
+
+Parameterne `database`(filsti: str), `output_dir`(filsti: str), `newwords_path`(filsti), `dialects`(liste av str) pluss `update`-parameterne `rules_file`(filsti: str) og `exemptions_file`(filsti:str) kan konfigureres i en lokal `config.py`-fil.
+
+## 4. Oppdatér leksikonet
+
+Kjør `lexupdater update` med default-parametere:
+
 ```shell
-python setup.py bdist --formats=wininst
+lexupdater -v \
+    --database "nst_lexicon_bm.db" \
+    --newwords-path "newwords.csv" \
+    --dialects e_spoken \
+        -d e_written \
+        -d sw_spoken \
+        -d sw_written \
+        -d w_spoken \
+        -d w_written \
+        -d t_spoken \
+        -d t_written \
+        -d n_spoken \
+        -d n_written \
+    update \
+        --rules-file "rules.py" \
+        --exemptions-file "exemptions.py" \
+        --output-dir "data/output"
 ```
 
-### OS-uavhengig
+## Utviklere: Bygg `lexupdater` som en python-pakke
+
+Pakkekonfigurasjonen er i [`pyproject.toml`](./pyproject.toml).
+
 ```shell
-python setup.py bdist_wheel
+python -m build .
 ```
 
-## Installér `lexupdater` som en python-pakke 
-Etter at python-pakken er bygget, vil den ligge i `dist`-mappen. Den kan nå 
-installeres med `pip`: 
+Etter at python-pakken er bygget, vil den ligge i `dist`-mappen. Den kan nå
+installeres med `pip`:
 
 ```shell
-pip install dist/lexupdater-0.*.whl      # OS-uavhengig
+pip install dist/lexupdater-*.whl      # OS-uavhengig
 ```
