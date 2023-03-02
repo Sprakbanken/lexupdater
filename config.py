@@ -1,12 +1,12 @@
 """Configure input data to update the lexicon transcriptions."""
 
-DATABASE = "data/backend-db03.db"
+DATABASE = "nst_lexicon_bm.db"
 """Path to the backend db"""
 
-OUTPUT_DIR = "data/lexica"
+OUTPUT_DIR = "data/output"
 """Path to the output folder for the lexica"""
 
-RULES_FILE = "data/input/rules_v1.py"
+RULES_FILE = "rules.py"
 """Path to file with pronunciation replacement rulesets for dialect updates.
 
 Note that multiple rules may affect the same  pronunciations,
@@ -36,7 +36,7 @@ Note that multiple rules may affect the same pronunciations,
 and that the ordering of the rules may be of importance for the result.
 """
 
-EXEMPTIONS_FILE = "data/input/exemptions_v1.py"
+EXEMPTIONS_FILE = "exemptions.py"
 """Path to file with exemptions:
 
 List of dicts with words to be exempted from the specified rulesets.
@@ -59,5 +59,5 @@ DIALECTS = [
 Corresponds to names of pronunciation temp tables created in the backend db.
 """
 
-NEWWORDS_PATH = "data/input/newwords_2022.csv"
+NEWWORDS_PATH = "newwords.csv"
 """A directory or file path to csv file(s) containing new words, their transcriptions + metadata."""

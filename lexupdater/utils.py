@@ -233,7 +233,7 @@ def load_rules(file_path: Union[str, Path]) -> Generator:
         except (AssertionError, SchemaError) as error:
             logging.error("SKIPPING RULESET %s BECAUSE OF %s",
                           name, type(error))
-            logging.error("Error message: %s", error)
+            logging.debug("Error message: %s", error)
             continue
         yield rule_dict
 
