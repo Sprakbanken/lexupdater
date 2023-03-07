@@ -312,8 +312,8 @@ ON UPDATE CASCADE);
 CREATE_WORD_TABLE_STMT = """CREATE TEMPORARY TABLE {word_table_name} (
 word_id INTEGER PRIMARY KEY AUTOINCREMENT,
 wordform TEXT NOT NULL,
-pos TEXT,
-feats TEXT,
+pos TEXT NOT NULL,
+feats TEXT NOT NULL,
 source TEXT,
 decomp_ort TEXT,
 decomp_pos TEXT,

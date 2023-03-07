@@ -2,6 +2,7 @@
 from typing import List, Iterable
 from collections import defaultdict
 import logging
+import sys
 import re
 import sqlite3
 
@@ -30,6 +31,20 @@ from .constants import (
     COL_POS,
     COL_INFO,
 )
+
+
+def debug(unraisable):
+    """Function modified from python docs:
+    https://docs.python.org/3/library/sqlite3.html#sqlite3.enable_callback_tracebacks
+    """
+#    logging.error("%r in callback %s}", unraisable.exc_value, unraisable.object.__name__)
+ #   logging.error("Error message: %s", unraisable.err_msg)
+    print(f"{unraisable.exc_value!r} in callback {unraisable.object.__name__}")
+    print(f"Error message: {unraisable.err_msg}")
+    sys.exit(1)
+
+sqlite3.enable_callback_tracebacks(True)
+sys.unraisablehook = debug
 
 
 def regexp(reg_pat, item):
@@ -123,7 +138,7 @@ class DatabaseUpdater:
 
     def _create_temp_tables(self):
         logging.debug(
-            "Creating temporary tables: word_table, pron_table"
+            "Creating temporary tables: %s, %s", self.word_table, self.pron_table
         )
         self._cursor.execute(
             CREATE_WORD_TABLE_STMT.format(
@@ -139,7 +154,7 @@ class DatabaseUpdater:
 
     def _populate_temp_tables(self):
         logging.debug(
-            "Populating temporary tables: word_table, pron_table"
+            "Populating temporary tables: %s, %s", self.word_table, self.pron_table
         )
         self._cursor.execute(
             INSERT_STMT.format(
@@ -167,7 +182,11 @@ class DatabaseUpdater:
             columns=NW_PRON_COLS[0],
             vars=NW_PRON_COLS[1]
         )
+        logging.debug(word_insert_stmt)
+        logging.debug("Insert words: %s", word_vals)
         self._cursor.executemany(word_insert_stmt, word_vals)
+        logging.debug(pron_insert_stmt)
+        logging.debug("Insert transcriptions: %s", pron_vals)
         self._cursor.executemany(pron_insert_stmt, pron_vals)
         self._connection.commit()
 
@@ -191,9 +210,12 @@ class DatabaseUpdater:
 
     def _run_update(self, query, values):
         """Execute and commit results from an update query."""
+
+        s = iter(query.split("?"))
+        message = (next(s) + "".join(f"{y} {x}" for x,y in zip(s,values)))
+        logging.debug(message)
         self._cursor.execute(query, values)
         self._connection.commit()
-        logging.debug("Executed SQL Query: %s %s", query, values)
 
     def select_pattern_matches(self, rulesets: List):
         """Select all rows that match the patterns in `rulesets`.
@@ -400,11 +422,8 @@ class DatabaseUpdater:
             f";")
 
         values = (rule.pattern, rule.replacement, *condition_values)
-        try:
-            self._run_update(query, values)
-        except sqlite3.OperationalError:
-            logging.error("Couldn't run update query for rule %s with values %s", rule.id_, values)
 
+        self._run_update(query, values)
 
     def _select_rows_from_ids(self, rule, row_df):
         """Retrieve new transcriptions from the rows that were updated."""
