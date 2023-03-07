@@ -27,7 +27,7 @@ def _process_newword_table(newwords):
     )
     word_df = newwords[
         ["token", "pos", "morphology", "unique_id", "update_info"]
-    ]
+    ].fillna("")
     pron_df = pd.concat(
         [
             _make_pron_table(newwords, "transcription"),
