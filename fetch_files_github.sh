@@ -1,49 +1,30 @@
 #!/usr/bin/env bash
 
-GITHUB_TOKEN="${1:-$GITHUB_TOKEN}"
+#GITHUB_TOKEN="${1:-$GITHUB_TOKEN}"
 
-
-##### EITHER fetch with git itself ###############################
-
-function add_remotes {
-git remote add rules git@github.com:Sprakbanken/rulebook.git
-git remote add conversion git@github.com:Sprakbanken/convert_nofabet.git
-}
+##### Define functions to fetch files with git ###############################
 
 function fetch_conversion_module {
-git fetch conversion
-git checkout conversion/main conversion.py
-mv conversion.py lexupdater/conversion.py
+  git remote add conversion git@github.com:Sprakbanken/convert_nofabet.git
+  git fetch conversion
+  git show conversion/main:conversion.py > lexupdater/conversion.py
 }
 
 function fetch_rules_exemptions {
-git fetch rules
-git checkout rules/develop rules.py exemptions.py
+  git remote add nb_uttale git@github.com:Sprakbanken/nb_uttale.git
+  git fetch nb_uttale
+  git show nb_uttale/main:data/input/rules_v1.py > rules.py
+  git show nb_uttale/main:data/input/exemptions_v1.py > exemptions.py
+  git show nb_uttale/main:data/input/newwords_2022.csv > newwords.csv
 }
 
-
-############# OR use github API to download raw file #####################
-
-function download_file {
-  FILE=$1
-
-  JSON_RESPONSE=$(curl \
-    -H "Accept: application/vnd.github+json" \
-    -H "Authorization: Bearer ${GITHUB_TOKEN}"\
-    -H "X-GitHub-Api-Version: 2022-11-28" \
-    https://api.github.com/repos/Sprakbanken/rulebook/contents/${FILE}?ref=develop )
-
-  URL="$(echo $JSON_RESPONSE | jq -r '.download_url' )"
-
-
-  wget -O ${FILE} ${URL}
+function cleanup_remotes {
+  git remote remove conversion
+  git remote remove nb_uttale
 }
 
 ################### RUN FUNCTIONS ###################
-# Toggle comment to run/ignore
 
-#add_remotes # This only needs to be run once per user. Comment out afterwards.
 fetch_conversion_module
 fetch_rules_exemptions
-
-# for FILE in 'rules.py' 'exemptions.py'; do download_file $FILE; done
+cleanup_remotes
