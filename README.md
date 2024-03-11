@@ -1,27 +1,37 @@
 # Lexupdater
 
-Lexupdater er et utviklingsverktøy for å oppdatere og utvide
-[NST-leksikonet](https://www.nb.no/sprakbanken/ressurskatalog/oai-nb-no-sbr-23/)
-med dialektvariasjon i transkripsjonene og nyord.
-Dialektvariasjonen kommer fra strengtransformasjoner
-(søk-erstatt-regler) som er utviklet av lingvister i Språkbanken. 
-Nyordene kommer fra [Norsk Aviskorpus](https://www.nb.no/sprakbanken/ressurskatalog/oai-clarino-uib-no-avis-plain/) og [Målfrid](https://www.nb.no/sprakbanken/ressurskatalog/oai-nb-no-sbr-69/) etter år 2000, 
-og er filtrert slik at bare frekvente forekomster over flere år er kommet med.
+Lexupdater is a tool to extend and update the 
+[NST pronunciation lexicon](https://www.nb.no/sprakbanken/en/resource-catalogue/oai-nb-no-sbr-23/) with new words and dialect variation in the pronunciation transcriptions. 
+
+The dialectal variation is updated through string transformation rules (search-and-replace with rege patterns) developed by trained linguists in the Language Bank at the National Library of Norway.
+
+Since NST was first published before 2000, new words occurring after 2000 have been added from the corpora [Norwegian Newspaper Corpus Bokmål](https://www.nb.no/sprakbanken/en/resource-catalogue/oai-clarino-uib-no-avis-plain/) and [Målfrid 2021 – Freely Available Documents from Norwegian State Institutions](https://www.nb.no/sprakbanken/en/resource-catalogue/oai-nb-no-sbr-69/).
 
 
-## 1. Installer lexupdater
+## Usage 
 
-Sørg for at du har versjon `3.8` eller høyere av [`python`](https://www.python.org/downloads/), og sett gjerne opp et virtuelt kodemiljø med pyenv, conda, venv eller lignende.
+### 1. Install lexupdater
 
-Installer lexupdater:
+Enure you have [`python`](https://www.python.org/downloads/) version `3.8` or higher. 
+
+Create a virtual environment and activate it, e.g. 
+```shell 
+python -m venv .venv
+source .venv/bin/activate
+```
+
+Install lexupdater:
 
 ```shell
 pip install git+https://github.com/Sprakbanken/lexupdater.git@v0.7.6
 ```
 
-## 2. Last ned data
+## 2. Download data
 
-NST uttaleleksikon er tilgjengelig i en SQLite databasefil (`nst_lexicon_bm.db`) med en ordtabell (`words`), en uttaletabell (`prons`) og en uttaletabell (`base`).
+The NST pronunciation lexion is availalbe in an SQLite database [`nst_lexicon_bm.db`](https://www.nb.no/sbfil/uttaleleksikon/nst_lexicon_bm.db). It has a table with `words`, and with pronunciations (`base`). 
+
+Lexupdater uses external python files with dicts of regex patterns to update the database, and a csv-file to add new words. These files are available from the 
+[`nb_uttale`-repo](https://github.com/Sprakbanken/nb_uttale). 
 
 
 ### Linux 
@@ -30,11 +40,10 @@ NST uttaleleksikon er tilgjengelig i en SQLite databasefil (`nst_lexicon_bm.db`)
 ./fetch_data.sh
 ```
 
-### Andre OS (Windows, Mac)
+### Other OS (Windows, Mac)
 
-- Last ned uttaledatabasefilen ved å klikke på lenken:
-    <https://www.nb.no/sbfil/uttaleleksikon/nst_lexicon_bm.db>
-- Bruk git i terminalen for å hente regelfilene fra [`nb_uttale`](https://github.com/Sprakbanken/nb_uttale):
+- Download the pronunciation database by clicking this link: <https://www.nb.no/sbfil/uttaleleksikon/nst_lexicon_bm.db>
+- Use git commands to fetch the rules and newwords from [`nb_uttale`](https://github.com/Sprakbanken/nb_uttale):
 
 ```shell
 git remote add nb_uttale git@github.com:Sprakbanken/nb_uttale.git
@@ -45,15 +54,15 @@ git show nb_uttale/main:data/input/newwords_2022.csv > newwords.csv
 git remote remove nb_uttale
 ```
 
-## 3. Legg til nyord i uttaleleksikonet
+## 3. Add new words to the lexicon
 
-Kjør `lexupdater newwords` fra kommandolinjen.
+Run `lexupdater newwords` from your command line.
 
-## 4. Generer dialektvariasjoner i uttaleleksikonet
+## 4. Generate dialect variations 
 
-Kjør `lexupdater update` fra kommandolinjen. 
+Run `lexupdater update` from the command line. 
 
-Default-innstillingene gjør at dette tilsvarer følgende kommando: 
+The `update` command and the default settings correspond to the following: 
 
 ```shell
 lexupdater -v \
@@ -75,29 +84,29 @@ lexupdater -v \
         --output-dir "data/output"
 ```
 
-### Konfigurer Lexupdater
-Parameterne `database`, `output_dir`, `newwords_path`, `dialects` pluss `update`-parameterne `rules_file` og `exemptions_file` kan konfigureres i din lokale [`config.py`](./config.py)-fil.
+### Configure Lexupdater
 
+The parameters `database`, `output_dir`, `newwords_path`, `dialects` and the `update`-parameters `rules_file` and `exemptions_file` can be changed in your local [`config.py`](./config.py).
 
-Du kan også endre parameterne direkte fra kommandolinjen. Se tilgjengelige subkommandoer med hjelpeflagget: 
+You can also set the parameters directly from the command line. See the `help` flag for more info: 
 
 ```shell
 lexupdater -h
 ```
 
-## Utviklere
+## Developers
 
-### Bygg `lexupdater` som en python-pakke
+### Build the `lexupdater` python package yourself
 
-Pakkekonfigurasjonen er i [`pyproject.toml`](./pyproject.toml).
+We use [`pyproject.toml`](./pyproject.toml) to configure the package. 
 
 ```shell
 python -m build .
 ```
 
-Etter at python-pakken er bygget, vil den ligge i `dist`-mappen. Den kan nå
-installeres med `pip`:
+The python distribution wheel is located in the `dist`-folder. 
+It can be intsalled with `pip`:
 
 ```shell
-pip install dist/lexupdater-*.whl      # OS-uavhengig
+pip install dist/lexupdater-*.whl      # OS-independent
 ```
