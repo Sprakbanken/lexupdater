@@ -16,7 +16,7 @@ Sørg for at du har versjon `3.8` eller høyere av [`python`](https://www.python
 Installer lexupdater:
 
 ```shell
-pip install git+https://github.com/Sprakbanken/lexupdater.git@v0.7.5
+pip install git+https://github.com/Sprakbanken/lexupdater.git@v0.7.6
 ```
 
 ## 2. Last ned data
