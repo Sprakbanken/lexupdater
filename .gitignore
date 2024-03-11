@@ -142,6 +142,10 @@ cython_debug/
 data/
 *.db
 lexica/
+rules.py
+exemptions.py
+newwords.csv
+
 
 # pycharm
 .idea/
