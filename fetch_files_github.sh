@@ -8,6 +8,7 @@ function fetch_conversion_module {
   git remote add conversion git@github.com:Sprakbanken/convert_nofabet.git
   git fetch conversion
   git show conversion/main:conversion.py > lexupdater/conversion.py
+  git remote remove conversion
 }
 
 function fetch_rules_exemptions {
@@ -16,15 +17,10 @@ function fetch_rules_exemptions {
   git show nb_uttale/main:data/input/rules_v1.py > rules.py
   git show nb_uttale/main:data/input/exemptions_v1.py > exemptions.py
   git show nb_uttale/main:data/input/newwords_2022.csv > newwords.csv
-}
-
-function cleanup_remotes {
-  git remote remove conversion
   git remote remove nb_uttale
 }
 
 ################### RUN FUNCTIONS ###################
 
-fetch_conversion_module
+#fetch_conversion_module
 fetch_rules_exemptions
-cleanup_remotes
