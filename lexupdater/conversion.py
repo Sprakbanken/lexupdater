@@ -228,11 +228,11 @@ def nofabet_to_syllables(transcription):
 
     def context_range(start, end):
         nonlocal seglist
-        l = len(seglist)
+        length = len(seglist)
         if start < 0:
             start = 0
-        if end > l + 1:
-            end = l + 1
+        if end > length + 1:
+            end = length + 1
         return seglist[start:end]
 
     def is_last_syllable(n):
