@@ -59,6 +59,16 @@ def exemptions_list():
 
 
 @pytest.fixture(scope="session")
+def exemptions_dict():
+    """Test value for the exemptions."""
+    from dummy_exemptions import exemption1, exemption2
+    return {
+        exemption["ruleset"]: exemption["words"]
+        for exemption in [exemption1, exemption2]
+    }
+
+
+@pytest.fixture(scope="session")
 def some_dialects():
     """Set up a test value for the dialects."""
     return ["e_spoken", "n_written", "sw_spoken"]
@@ -144,23 +154,6 @@ def invalid_trans():
         "alt_transcription_3": [None]
     }
     return pd.DataFrame(word)
-
-
-@pytest.fixture
-def invalid_config_values(request, ruleset_list, exemptions_list):
-    """Manipulated input data to test the schema validation."""
-    if request.param == "rules":
-        return (
-            ruleset_list + [{"unexpected_key": "unexpected_value"}],
-            exemptions_list,
-        )
-    elif request.param == "exemptions":
-        return (
-            ruleset_list,
-            exemptions_list + [{"unexpected_key": "unexpected_value"}],
-        )
-    else:
-        raise ValueError("invalid internal test config")
 
 
 @pytest.fixture(scope="function")
