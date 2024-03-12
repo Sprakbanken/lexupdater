@@ -15,11 +15,17 @@ def test_write_lexicon(tmp_path):
     # given
     output_file = tmp_path / "some_file.txt"
     out_data = [["hello", "world", "this"], ["is", "a", "test"]]
-    # when
-    utils.write_lexicon(output_file, out_data)
+    # when given the delimiter
+    utils.write_lexicon(output_file, out_data, "\t")
     # then
     assert output_file.exists()
     assert output_file.read_text() == 'hello\tworld\tthis\nis\ta\ttest\n'
+
+    # when run with default delimiter
+    utils.write_lexicon(output_file, out_data)
+    # then
+    assert output_file.read_text() == 'hello,world,this\nis,a,test\n'
+
 
 
 def test_flatten_match_results():
@@ -102,10 +108,8 @@ def test_load_module_from_path_raises_error():
 
 
 def test_load_vars_from_module():
-    # given
-    import dummy_config
     # when
-    result = utils.load_vars_from_module(dummy_config)
+    result = utils.load_module_vars("tests/dummy_config.py")
     # then
     assert isinstance(result, list)
     assert "tests/dummy_data.db" in result
@@ -137,29 +141,9 @@ def test_load_data_raises_error():
         utils.load_data(file_path)
 
 
-@pytest.mark.parametrize(
-    "paths,col_names",
-    [
-        (["tests/dummy_newwords_2.csv"], ["token"]),
-        (
-            ["tests/dummy_newwords_1.csv", "tests/dummy_newwords_2.csv"],
-            [
-                "token",
-                "transcription",
-                "alt_transcription_1",
-                "alt_transcription_2",
-                "alt_transcription_3",
-                "pos",
-                "morphology"
-            ]
-        ),
-        (["tests/dummy_newwords_2.csv"], ["word", "transcription", "feats"])
-    ],
-    ids=["minimal_input", "maximal_input", "wrong_input"]
-)
-def test_load_newwords(paths, col_names):
-    # given
-    valid_col_names = [
+@pytest.fixture
+def valid_col_names():
+    return [
         "token",
         "transcription",
         "alt_transcription_1",
@@ -168,11 +152,43 @@ def test_load_newwords(paths, col_names):
         "pos",
         "morphology"
     ]
-    result = utils.load_newwords(paths, col_names)[:5]
 
+def test_newwords_minimal_input(valid_col_names):
+    #given
+    colnames = ["token"]
+    #when 
+    result = utils.load_newwords("tests/dummy_newwords_2.csv", colnames)
+    #then
     assert isinstance(result, pd.DataFrame)
     assert all([col in valid_col_names for col in result.columns])
 
+def test_newwords_maximal_input(valid_col_names):
+    #given
+    colnames =  [
+                "token",
+                "transcription",
+                "alt_transcription_1",
+                "alt_transcription_2",
+                "alt_transcription_3",
+                "pos",
+                "morphology"
+            ]
+    #when 
+    result = utils.load_newwords("tests", colnames)[:5] #extract only the first 5 rows
+    #then
+    assert isinstance(result, pd.DataFrame)
+    assert all([col in valid_col_names for col in result.columns])
+
+
+def test_newwords_wrong_input(valid_col_names):
+    #given
+    colnames = ["word", "transcription", "feats"]
+    #when 
+    result = utils.load_newwords("tests/dummy_newwords_2.csv", colnames)
+    #then
+    top5 = result[:5]
+    assert isinstance(result, pd.DataFrame)
+    assert all([col in valid_col_names for col in result.columns])
 
 def test_validate_objects(ruleset_dict_list, some_dialects, exemptions_list):
     # given
@@ -283,7 +299,7 @@ def test_data_to_df_matching():
     assert "transcription_str" in result_values
     assert "pron_id_str" in result_values
 
-
+@pytest.mark.skip("Don't test db connections")
 def test_compare_transcriptions(db_updater_obj):
     test_data_updated = {"dialect_name": (
         ("u1", "w1", "p1", "f1", "t1", 1),

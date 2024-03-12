@@ -288,12 +288,13 @@ def load_newwords(csv_path: Union[str, Path], column_names: str = None) -> pd.Da
         return pd.concat(_df_list, axis=0, ignore_index=True)
 
     full_path = resolve_rel_path(csv_path)
-    if full_path.is_file:
-        return _csv_to_df(full_path)
-    if full_path.is_dir:
+    if full_path.is_dir():
         return _many_csvs_to_df(full_path)
+    if full_path.is_file():
+        return _csv_to_df(full_path)
 
 
+#%%
 def validate_objects(obj_list: list, obj_schema: Schema) -> list:
     """Use a Schema to validate a list of objects.
 
