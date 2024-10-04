@@ -9,7 +9,7 @@ from lexupdater.db_handler import DatabaseUpdater
 from lexupdater.rule_objects import Rule, RuleSet
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def rule_fixture():
     """Dummy rule to be used in tests."""
     return Rule(

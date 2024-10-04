@@ -68,7 +68,7 @@ class Rule:
     ):
         self.pattern = pattern
         self.replacement = replacement
-        self.constraints = constraints
+        self._constraints = [Constraint(const) for const in constraints] if not constraints is None else []
         self.id_ = self.hash_
         if not self.is_valid:
             logging.error("Instatiated an invalid rule: %s", self)
@@ -188,7 +188,7 @@ class RuleSet:
         self._exempt_words: List = [] if exempt_words is None else exempt_words
 
         if rules is not None:
-            self.add_multiple_rules(rules)
+            self.rules += rules
 
     @classmethod
     def from_dict(cls, ruleset_dict: dict, exemptions: list = None):
@@ -256,7 +256,18 @@ class RuleSet:
             self._rules = []
         else:
             self._rules = []
-            self.add_multiple_rules(rule_list)
+            #self.add_multiple_rules(rule_list)
+            for rule_obj in rule_list:
+                try:
+                    rule = self._create_rule(rule_obj)
+                except ValueError as e:
+                    logging.debug("ValueError: %s, skipping %s", e, rule_obj)
+                    continue
+                if rule not in self.rules:
+                    self._rules.append(rule)
+                    #logging.debug("Adding %s to self.rules", rule)
+                    rule.id_ = f"{self.name}_{self.get_idx_number(rule)}"
+                
             if len(self._rules) == 0:
                 logging.debug("No valid rules were added from the list: %s. "
                               "Keeping original values: %s",
@@ -308,6 +319,18 @@ class RuleSet:
         """Turn the indexed list of rules into a dictionary."""
         idx_to_dict = {i: rule.to_dict() for i, rule in enumerate(self._rules)}
         return idx_to_dict
+
+    def _create_rule(self, rule_dict) -> Rule:
+        """Create a Rule object from a valid rule dictionary."""
+        #if rule_schema.is_valid(rule_dict):
+        try:
+            rule = Rule.from_dict(rule_dict)
+        except TypeError:
+            try:
+                rule = Rule(**rule_dict)
+            except TypeError:
+                raise ValueError(f"Invalid rule arguments: {rule_dict}")
+        return rule
 
     def add_rule(self,
                  rule=None,
@@ -481,7 +504,7 @@ def verify_all_rulesets(rule_file: Union[str, Path], ruleset_list: list):
         file_rules = load_data(rule_file)
         file_rulesets = [RuleSet.from_dict(r_dict) for r_dict in file_rules]
         all_rulesets = file_rulesets + list(ruleset_list)
-    except AssertionError:
+    except (AssertionError, FileNotFoundError):
         all_rulesets = list(ruleset_list)
     duplicates = check_duplicate_ruleset_names(all_rulesets)
     if duplicates:
