@@ -1,5 +1,8 @@
+
 import logging
 from collections import Counter
+from dataclasses import dataclass, field
+
 from pathlib import Path
 from typing import List, Union, Iterable, Generator
 
@@ -33,12 +36,18 @@ def create_constraint_dict(
     }
     return constraint
 
+@dataclass(kw_only=True)
 class Constraint:
-    def __init__(self, constraint_dict) -> None:
+    """Class for representing a constraint on a rule.
 
-        self.field = constraint_dict.get("field")
-        self.pattern = constraint_dict.get("pattern")
-        self.is_regex = constraint_dict.get("is_regex")
+    Each constraint specifies a field (e.g. "pos" or "feats"),
+    a pattern (e.g. "NN" or "FEM") and a boolean value `is_regex`,
+    which ensures the pattern matches the lexicon value
+    either partially (True) or fully (False).
+    """
+    field: str
+    pattern: str
+    is_regex: bool
 
     def __str__(self) -> str:
         return str(self.to_dict())
@@ -46,33 +55,38 @@ class Constraint:
     def __hash__(self):
         return hash((self.field, self.pattern, self.is_regex, self.is_valid))
 
-    def __repr__(self):
-        return f"{self.__class__.__name__}({repr(self.to_dict())})"
-
     def is_valid(self):
         return constraint_schema.is_valid(self.to_dict())
 
     def to_dict(self):
-        return create_constraint_dict(self.field, self.pattern, self.is_regex)
+        return self.__dict__
+        #return create_constraint_dict(self.field, self.pattern, self.is_regex)
 
 
+def make_constraints_list(constraints: list = None) -> list:
+    """Create a list of Constraint objects from a list of constraint dictionaries."""
+    if constraints is not None:
+        new_constraints = [Constraint(**const) for const in constraints if constraint_schema.is_valid(const)]
+    else: 
+        new_constraints = []
+    return new_constraints
 
+
+@dataclass()
 class Rule:
     """Replacement rule used to transform transcription entries in the lexicon.
 
     Each rule contains a regex pattern, a replacement string,
     and optionally a list of extra constraints.
-    """
-    def __init__(
-            self, pattern: str, replacement: str, constraints: list = None
-    ):
-        self.pattern = pattern
-        self.replacement = replacement
-        self._constraints = [Constraint(const) for const in constraints] if not constraints is None else []
-        self.id_ = self.hash_
-        if not self.is_valid:
-            logging.error("Instatiated an invalid rule: %s", self)
 
+    """
+    pattern: str
+    replacement: str
+    constraints: list = field(default_factory=make_constraints_list)
+
+    def __post_init__(self): 
+        self.id_ = self.hash_
+    
     @classmethod
     def from_dict(cls, rule_dict: dict):
         """Instantiate a Rule object from a valid rule dictionary.
@@ -132,26 +146,6 @@ class Rule:
         except SchemaError:
             return False
         return rule_schema.is_valid(dict_format)
-
-    @property
-    def constraints(self):
-        """Conditions for the rule to apply to a word's transcription.
-
-        Each constraint specifies a field (e.g. "pos" or "feats"),
-        a pattern (e.g. "NN" or "FEM") and a boolean value is_regex,
-        which ensures the pattern matches the lexicon value
-        either partially (True) or fully (False).
-        """
-        return self._constraints
-
-    @constraints.setter
-    def constraints(self, constraint_list):
-        if constraint_list is None:
-            self._constraints = []
-        else:
-            constraints = [Constraint(const) for const in constraint_list]
-            assert all(const.is_valid for const in constraints)
-            self._constraints = constraints
 
 
 class RuleObj(Rule):
@@ -240,7 +234,7 @@ class RuleSet:
         self._areas = list(set(self._areas))
 
     @property
-    def rules(self):
+    def rules(self) -> list:
         """Collection of replacement rules.
 
         Rules have a regex pattern, string replacement,
@@ -249,7 +243,7 @@ class RuleSet:
         return self._rules
 
     @rules.setter
-    def rules(self, rule_list: list):
+    def rules(self, rule_list: list) -> None:
         original_rules = self._rules.copy()
         if len(rule_list) == 0:
             logging.debug("Resetting the rules to an empty list.")

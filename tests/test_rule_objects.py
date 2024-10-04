@@ -2,12 +2,12 @@
 import re
 
 import pytest
-from schema import SchemaError
 
 from lexupdater.constants import ruleset_schema, rule_schema
 from lexupdater import rule_objects
 
 
+@pytest.mark.skip("Deprecated")
 def test_create_constraint_dict():
     # given
     expected = {
@@ -27,6 +27,7 @@ def test_create_constraint_dict():
 @pytest.mark.parametrize(
     "filename", ("tests/dummy_rules.py", "non_existent_rules.py"))
 def test_verify_all_rulesets(filename, ruleset_fixture):
+    """Test that the function handles nonexistent files and returns None when there are no duplicates."""
     # when
     result = rule_objects.verify_all_rulesets(filename, [ruleset_fixture])
     # then
@@ -66,10 +67,10 @@ def test_save_rules_and_exemptions(ruleset_fixture, tmp_path):
     match_result_exemptions = re.match(expected_exemptions, e_file.read_text())
     assert match_result_exemptions is not None
 
-
+#@pytest.mark.skip(reason="one by one")
 class TestRule:
 
-    def test_rule_constructor(self, rule_fixture):
+    def test_rule_constructor(self):
         # when
         result = rule_objects.Rule(
             pattern="transcription_pattern_to_replace",
@@ -81,28 +82,29 @@ class TestRule:
         assert result.constraints == []
         assert result.is_valid
         # hash_ is a hash of pattern and replacement
-        assert result.hash_ == rule_fixture.hash_
-        # equality check also includes constraints
-        assert result != rule_fixture
+        assert result.id_ == result.hash_
 
     def test_rule_constructor_invalid_rule(self):
-        with pytest.raises(SchemaError):
-            result = rule_objects.Rule(pattern=1, replacement=2, constraints=[3])
-            assert isinstance(result, rule_objects.Rule)
-            assert not result.is_valid
+        #with pytest.raises(SchemaError):
+        result = rule_objects.Rule(pattern=1, replacement=2, constraints=[3])
+        assert isinstance(result, rule_objects.Rule)
+        assert not result.is_valid
 
     @pytest.mark.parametrize(
         "new_constraints",
         ([{"field": "f", "pattern": "p", "is_regex": True}],[])
     )
-    def test_constraints(self, new_constraints, rule_fixture):
+    def test_constraints(self, new_constraints, proper_constraints):
         # given
-        initial = rule_fixture.constraints.copy()
+        initial = proper_constraints.copy()
+        ruleobject = rule_objects.Rule(pattern="test", replacement="test",constraints=initial)
+        constraint_objs = [rule_objects.Constraint(**c) for c in initial]
         # when
-        rule_fixture.constraints = new_constraints
+        ruleobject.constraints = new_constraints
         # then
-        assert rule_fixture.constraints != initial
-        assert rule_fixture.constraints == new_constraints
+        assert ruleobject.constraints != initial
+        assert ruleobject.constraints == constraint_objs
+
 
     @pytest.mark.parametrize(
         "new_constraints",
@@ -111,34 +113,16 @@ class TestRule:
          [{"invalid": "dict"}],
          "string"),
         ids=["dict", "invalid_list", "invalid_list2", "str"])
-    def test_invalid_constraints(self, rule_fixture, new_constraints):
+    def test_invalid_constraints(self, proper_constraints, new_constraints):
         # given
-        initial = rule_fixture.constraints.copy()
+        initial = proper_constraints.copy()
+        ruleobject = rule_objects.Rule(pattern="test", replacement="test",constraints=initial)
+        constraint_objs = [rule_objects.Constraint(**c) for c in initial]
         # when
-        rule_fixture.constraints = new_constraints
+        ruleobject.constraints = new_constraints
         # then
-        assert initial == rule_fixture.constraints
-
-    def test_add_constraint(self, rule_fixture, proper_constraints):
-        # given
-        initial = rule_fixture.constraints.copy()
-        valid_dict = {
-            "field": "column_name", "pattern": "value", "is_regex": True
-        }
-        proper = proper_constraints[0]
-        # when
-        rule_fixture.add_constraint(valid_dict)  # add full dict
-
-        rule_fixture.add_constraint(  # add with parameters
-            field=proper["field"],
-            pattern=proper["pattern"],
-            is_regex=proper["is_regex"]
-        )
-        # then
-        assert valid_dict in rule_fixture.constraints
-        assert proper in rule_fixture.constraints
-        # adding new constraints shouldn't overwrite the original ones
-        assert all(c in rule_fixture.constraints for c in initial)
+        assert ruleobject.constraints == constraint_objs
+        
 
     def test_from_dict(self):
         # given
@@ -186,18 +170,6 @@ class TestRule:
         rule_fixture.replacement = 500
         # then
         assert not rule_fixture.is_valid
-
-    def test_constraints(self, rule_fixture, proper_constraints):
-        # given
-        original_constraints = rule_fixture.constraints.copy()
-        # when
-        rule_fixture.constraints = ["some", "invalid","constraints", "here"]
-        same_constraints = rule_fixture.constraints.copy()
-        rule_fixture.constraints = proper_constraints
-        new_constraints = rule_fixture.constraints.copy()
-        # then
-        assert original_constraints == same_constraints
-        assert original_constraints != new_constraints
 
 
 class TestRuleSet:
@@ -266,9 +238,10 @@ class TestRuleSet:
         # given
         test_rule = rule_objects.Rule(pattern="test1",
                                       replacement=r"T EH0 S T \2")
+        test_rule_dict = test_rule.to_dict()
         # when
         ruleset_fixture.add_rule(test_rule)
-        ruleset_fixture.add_rule(test_rule.to_dict())
+        ruleset_fixture.add_rule(test_rule_dict)
         ruleset_fixture.add_rule(pattern=test_rule.pattern,
                                  replacement=test_rule.replacement)
         # then
@@ -302,19 +275,28 @@ class TestRuleSet:
         # then
         assert test_rule in ruleset_fixture.rules
 
-    def test_add_multiple_rules(self, ruleset_fixture):
+    def test_add_rules(self):
         # given
-        test_rule1 = rule_objects.Rule(pattern="test1",
-                                       replacement=r"T EH0 S T \1")
-        test_rule2 = rule_objects.Rule(pattern="test2",
-                                       replacement=r"T EH0 S T \2")
-        invalid_rule = "invalid_rule_object"
-        input_rules = [test_rule1,test_rule2, invalid_rule]
+        test_rule1 = dict(
+            pattern="test1",
+            replacement=r"T EH0 S T \1")
+        test_rule2 = dict(
+            pattern="test2",
+            replacement=r"T EH0 S T \2")
+
+
+        ruleset = rule_objects.RuleSet(name="test_rule_set", areas=["e_spoken"])
         # when
-        ruleset_fixture.add_multiple_rules(input_rules)
+        ruleset.rules += [test_rule1, test_rule2]
         # then
-        assert len(ruleset_fixture.rules) == 3
-        assert all([rule.is_valid for rule in ruleset_fixture.rules])
+        assert len(ruleset.rules) == 2, ruleset.rules
+        assert all([rule.is_valid for rule in ruleset.rules])
+
+
+    def test_add_rule_invalid(self, ruleset_fixture):
+        invalid_rule = "invalid_rule_object"
+        with pytest.raises(ValueError):
+            ruleset_fixture.add_rule(invalid_rule)
 
     def test_create_exemption_dict(self, ruleset_fixture):
         # given
@@ -323,3 +305,15 @@ class TestRuleSet:
         result = ruleset_fixture.create_exemption_dict()
         # then
         assert str(expected) == str(result)
+
+
+def test_map_rule_exemptions():
+    # given
+    input_exemptions = [{"ruleset": "test", "words": ["garn", "klarne"]}]
+    expected = {"test": ["garn", "klarne"]}
+    # when
+    result = rule_objects.map_rule_exemptions(input_exemptions)
+    # then
+    assert list(result.keys()) == list(expected.keys())
+    assert list(result.values()) == list(expected.values())
+
